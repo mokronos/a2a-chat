@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 function InputBox({ children }: { children?: React.ReactNode }) {
     return (
         <div className="flex-1 flex flex-col gap-2">
-            <Textarea />
+            <Textarea placeholder="Type your message here..." />
             <Button variant="outline" size="icon">
             <ArrowUpIcon />
             </Button>
