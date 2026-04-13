@@ -4,18 +4,40 @@ import { ArrowUpIcon } from "lucide-react"
 import { Button } from "../ui/button"
 import { Textarea } from "../ui/textarea"
 
-function InputBox() {
+type InputBoxProps = {
+  value: string
+  onChange: (value: string) => void
+  onSubmit: () => void
+  disabled?: boolean
+}
+
+function InputBox({ value, onChange, onSubmit, disabled = false }: InputBoxProps) {
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault()
+      onSubmit()
+    }
+  }
+
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex items-center gap-2">
       <Textarea
         placeholder="Write a message..."
-        className="min-h-20 resize-none"
+        className="min-h-20 flex-1 resize-none"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onKeyDown={handleKeyDown}
+        disabled={disabled}
       />
-      <div className="flex justify-end">
-        <Button variant="outline" size="icon" disabled aria-label="Send message">
-          <ArrowUpIcon />
-        </Button>
-      </div>
+      <Button
+        variant="outline"
+        size="icon"
+        disabled={disabled || value.trim().length === 0}
+        aria-label="Send message"
+        onClick={onSubmit}
+      >
+        <ArrowUpIcon />
+      </Button>
     </div>
   )
 }

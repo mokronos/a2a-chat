@@ -12,7 +12,7 @@
   "dependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "@a2a-chat/ui": "workspace:*"
+    "@mokronos/a2a-chat-ui": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

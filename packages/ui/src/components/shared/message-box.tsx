@@ -1,44 +1,52 @@
 import React from "react"
 
-type Message = {
+import { Spinner } from "../ui/spinner"
+
+export type Message = {
   id: string
   role: "user" | "assistant"
   text: string
+  status?: string
+  isWorking?: boolean
 }
 
-const MOCK_MESSAGES: Message[] = [
-  {
-    id: "m1",
-    role: "assistant",
-    text: "Hey there. This is a placeholder assistant message.",
-  },
-  {
-    id: "m2",
-    role: "user",
-    text: "Nice. I only need the component shell right now.",
-  },
-]
+type MessageBoxProps = {
+  messages: Message[]
+}
 
-function MessageBox() {
+function MessageBox({ messages }: MessageBoxProps) {
   return (
     <div className="flex h-72 flex-col gap-3 overflow-auto rounded-md border border-border bg-background p-3">
-      {MOCK_MESSAGES.map((message) => {
+      {messages.map((message) => {
         const isUser = message.role === "user"
 
         return (
           <div
             key={message.id}
-            className={isUser ? "ml-8 self-end" : "mr-8 self-start"}
+            className={isUser ? "ml-8 self-end" : "mr-8 self-start flex flex-col gap-1.5"}
           >
-            <div
-              className={
-                isUser
-                  ? "rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-primary-foreground"
-                  : "rounded-2xl rounded-bl-sm bg-muted px-3 py-2 text-foreground"
-              }
-            >
-              {message.text}
-            </div>
+            {!isUser ? (
+              <div className="overflow-hidden rounded-2xl rounded-bl-sm border border-border/60 bg-muted/70">
+                <div className="inline-flex w-full items-center gap-2 border-b border-border/50 bg-muted/50 px-2.5 py-1 text-xs text-muted-foreground">
+                  {message.isWorking ? (
+                    <Spinner className="size-3" aria-hidden="true" />
+                  ) : (
+                    <span className="size-2 rounded-full bg-muted-foreground/60" aria-hidden="true" />
+                  )}
+                  <span>{message.status ?? "Idle"}</span>
+                </div>
+                {message.text.trim().length > 0 ? (
+                  <div className="px-3 py-2 text-foreground">{message.text}</div>
+                ) : null}
+              </div>
+            ) : null}
+            {isUser && message.text.trim().length > 0 ? (
+              <div
+                className="rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-primary-foreground"
+              >
+                {message.text}
+              </div>
+            ) : null}
           </div>
         )
       })}
