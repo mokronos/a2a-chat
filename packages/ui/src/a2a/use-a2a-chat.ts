@@ -12,6 +12,7 @@ import {
   getTaskText,
   normalizeBaseUrl,
 } from "./helpers"
+import { createProxyTransport } from "./proxy"
 import { connectJsonRpc, resubscribeToTask, sendTaskMessage } from "./service"
 import type { A2AClient, A2AConversationState, ConnectionState } from "./types"
 
@@ -31,6 +32,13 @@ type ChatStore = {
 const connectionKey = ["a2a", "connection"] as const
 const chatKey = ["a2a", "chat"] as const
 const TERMINAL_STATES = new Set(["completed", "failed", "canceled", "rejected"])
+
+type UseA2AChatOptions = {
+  initialUrl?: string
+  initialPort?: string
+  proxyBasePath?: string
+  autoConnect?: boolean
+}
 
 function isTerminalTask(task: Task) {
   return TERMINAL_STATES.has(task.status.state)
@@ -77,14 +85,22 @@ function createResubscribeSignal(controller: AbortController, timeoutMs: number)
   }
 }
 
-export function useA2AChat() {
+export function useA2AChat(options: UseA2AChatOptions = {}) {
+  const {
+    initialUrl = "http://localhost",
+    initialPort = "8000",
+    proxyBasePath,
+    autoConnect = false,
+  } = options
   const queryClient = useQueryClient()
-  const [url, setUrl] = React.useState("http://localhost")
-  const [port, setPort] = React.useState("8000")
+  const [url, setUrl] = React.useState(initialUrl)
+  const [port, setPort] = React.useState(initialPort)
   const [taskInput, setTaskInput] = React.useState("")
   const runnerControllersRef = React.useRef(new Map<string, AbortController>())
+  const didAutoConnectRef = React.useRef(false)
 
   const baseUrl = React.useMemo(() => normalizeBaseUrl(url, port), [url, port])
+  const transport = React.useMemo(() => createProxyTransport(proxyBasePath), [proxyBasePath])
 
   const connectionQuery = useQuery({
     queryKey: connectionKey,
@@ -257,7 +273,7 @@ export function useA2AChat() {
 
   const connectMutation = useMutation({
     mutationFn: async (targetUrl: string) =>
-      Effect.runPromise(connectJsonRpc(targetUrl)),
+      Effect.runPromise(connectJsonRpc(targetUrl, transport)),
     onMutate: (targetUrl) => {
       setConnectionStore((current) => ({
         ...current,
@@ -395,6 +411,20 @@ export function useA2AChat() {
   const handleConnect = React.useCallback(() => {
     connectMutation.mutate(baseUrl)
   }, [baseUrl, connectMutation])
+
+  React.useEffect(() => {
+    if (!autoConnect || connectMutation.isPending || didAutoConnectRef.current) {
+      return
+    }
+
+    const connection = connectionQuery.data
+    if (connection.state === "connected" || connection.state === "connecting") {
+      return
+    }
+
+    didAutoConnectRef.current = true
+    connectMutation.mutate(baseUrl)
+  }, [autoConnect, baseUrl, connectMutation, connectionQuery.data])
 
   const handleSubmitTask = React.useCallback(() => {
     const taskText = taskInput.trim()

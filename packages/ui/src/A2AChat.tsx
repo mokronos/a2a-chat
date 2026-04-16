@@ -18,10 +18,15 @@ import { cn } from "./lib/utils"
 import { useA2AChat } from "./a2a/use-a2a-chat"
 import type { ConnectionState } from "./a2a/types"
 
-type A2AChatProps = {
+export type A2AChatProps = {
   className?: string
   title?: string
   description?: string
+  initialUrl?: string
+  initialPort?: string
+  proxyBasePath?: string
+  autoConnect?: boolean
+  showConnectionForm?: boolean
 }
 
 function getStatusClasses(state: ConnectionState) {
@@ -44,6 +49,11 @@ function A2AChatCard({
   className,
   title = "A2A Chat",
   description = "Reusable chat shell component",
+  initialUrl,
+  initialPort,
+  proxyBasePath,
+  autoConnect,
+  showConnectionForm = true,
 }: A2AChatProps) {
   const {
     url,
@@ -59,7 +69,12 @@ function A2AChatCard({
     messages,
     handleConnect,
     handleSubmitTask,
-  } = useA2AChat()
+  } = useA2AChat({
+    initialUrl,
+    initialPort,
+    proxyBasePath,
+    autoConnect,
+  })
 
   return (
     <Card className={cn("w-full max-w-2xl", className)}>
@@ -67,30 +82,32 @@ function A2AChatCard({
         <CardTitle>{title}</CardTitle>
         <CardDescription>{description}</CardDescription>
 
-        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_120px_auto]">
-          <Input
-            value={url}
-            onChange={(event) => setUrl(event.target.value)}
-            placeholder="http://localhost"
-            aria-label="A2A server URL"
-          />
-          <Input
-            value={port}
-            onChange={(event) => setPort(event.target.value)}
-            placeholder="8000"
-            aria-label="A2A server port"
-            inputMode="numeric"
-          />
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleConnect}
-            disabled={connectionState === "connecting"}
-            className="h-9"
-          >
-            {connectionState === "connecting" ? "Connecting..." : "Connect"}
-          </Button>
-        </div>
+        {showConnectionForm ? (
+          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_120px_auto]">
+            <Input
+              value={url}
+              onChange={(event) => setUrl(event.target.value)}
+              placeholder="http://localhost"
+              aria-label="A2A server URL"
+            />
+            <Input
+              value={port}
+              onChange={(event) => setPort(event.target.value)}
+              placeholder="8000"
+              aria-label="A2A server port"
+              inputMode="numeric"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleConnect}
+              disabled={connectionState === "connecting"}
+              className="h-9"
+            >
+              {connectionState === "connecting" ? "Connecting..." : "Connect"}
+            </Button>
+          </div>
+        ) : null}
 
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <div

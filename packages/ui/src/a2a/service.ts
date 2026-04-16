@@ -2,11 +2,11 @@ import { Effect } from "effect"
 import type { MessageSendParams } from "@a2a-js/sdk"
 
 import { createJsonRpcClient } from "./helpers"
-import type { A2AClient } from "./types"
+import type { A2AClient, A2AProxyTransport } from "./types"
 
-export const connectJsonRpc = (baseUrl: string) =>
+export const connectJsonRpc = (baseUrl: string, transport: A2AProxyTransport) =>
   Effect.tryPromise({
-    try: () => createJsonRpcClient(baseUrl),
+    try: () => createJsonRpcClient(baseUrl, transport),
     catch: (cause) =>
       cause instanceof Error ? cause : new Error("Could not connect to the A2A server"),
   })

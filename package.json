@@ -1,6 +1,10 @@
 {
   "name": "a2a-chat",
   "private": true,
+  "scripts": {
+    "dev:inspector": "bun run --cwd apps/playground dev",
+    "build:inspector": "bun run --cwd apps/playground build"
+  },
   "workspaces": [
     "packages/*",
     "apps/*"

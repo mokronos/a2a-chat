@@ -1,7 +1,9 @@
 import type { AgentCard, Message as A2AProtocolMessage, Task } from "@a2a-js/sdk"
 import { Client, JsonRpcTransport } from "@a2a-js/sdk/client"
 
+import { createAgentCardProxyUrl, createJsonRpcProxyUrl } from "./proxy"
 import type { A2AClient, A2AConversationState } from "./types"
+import type { A2AProxyTransport } from "./types"
 
 const JSON_RPC_TRANSPORT = "JSONRPC"
 
@@ -96,14 +98,15 @@ export function resolveJsonRpcEndpoint(baseUrl: string, agentCard: unknown): str
 }
 
 export async function createJsonRpcClient(
-  baseUrl: string
+  baseUrl: string,
+  transport: A2AProxyTransport
 ): Promise<{
   client: A2AClient
   agentName: string | null
   endpoint: string
   acceptedOutputModes: string[]
 }> {
-  const cardUrl = `${baseUrl}/.well-known/agent-card.json`
+  const cardUrl = createAgentCardProxyUrl(transport, baseUrl)
   const cardResponse = await fetch(cardUrl)
 
   if (!cardResponse.ok) {
@@ -111,8 +114,9 @@ export async function createJsonRpcClient(
   }
 
   const agentCard = (await cardResponse.json()) as CompatibleAgentCard
-  const endpoint = resolveJsonRpcEndpoint(baseUrl, agentCard)
-  const client = new Client(new JsonRpcTransport({ endpoint }), agentCard)
+  const upstreamEndpoint = resolveJsonRpcEndpoint(baseUrl, agentCard)
+  const proxyEndpoint = createJsonRpcProxyUrl(transport, upstreamEndpoint)
+  const client = new Client(new JsonRpcTransport({ endpoint: proxyEndpoint }), agentCard)
   const agentName = typeof agentCard.name === "string" ? agentCard.name : null
   const acceptedOutputModes = Array.isArray(agentCard.defaultOutputModes)
     ? agentCard.defaultOutputModes.filter(
@@ -120,7 +124,7 @@ export async function createJsonRpcClient(
       )
     : []
 
-  return { client, agentName, endpoint, acceptedOutputModes }
+  return { client, agentName, endpoint: upstreamEndpoint, acceptedOutputModes }
 }
 
 export function buildA2AMessage(
