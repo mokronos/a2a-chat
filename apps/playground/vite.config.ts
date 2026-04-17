@@ -95,6 +95,46 @@ function proxyPlugin(): Plugin {
           return
         }
 
+        if (req.url.startsWith(`${proxyBasePath}/agents`) && req.method === "GET") {
+          const target = getTargetFromRequest(req.url)
+          if (!target) {
+            sendJson(res, 400, { error: "Invalid target URL" })
+            return
+          }
+
+          const normalizedTarget = target.endsWith("/") ? target.slice(0, -1) : target
+          const agentsUrl = `${normalizedTarget}/agents`
+
+          try {
+            const response = await fetch(agentsUrl)
+            const payload = await response.text()
+            if (!response.ok) {
+              console.error("[a2a-proxy] agents error", {
+                target,
+                agentsUrl,
+                status: response.status,
+                body: payload,
+              })
+            }
+            res.statusCode = response.status
+            res.setHeader("Content-Type", response.headers.get("content-type") ?? "application/json")
+            res.end(payload)
+          } catch (error) {
+            console.error("[a2a-proxy] agents proxy failure", {
+              target,
+              agentsUrl,
+              error,
+            })
+            sendJson(res, 502, {
+              error:
+                error instanceof Error
+                  ? `Failed to fetch agents: ${error.message}`
+                  : "Failed to fetch agents",
+            })
+          }
+          return
+        }
+
         if (req.url.startsWith(`${proxyBasePath}/jsonrpc`) && req.method === "POST") {
           const target = getTargetFromRequest(req.url)
           if (!target) {

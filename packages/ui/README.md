@@ -24,3 +24,4 @@ export function App() {
 - `initialUrl?: string` (default: `http://localhost`)
 - `autoConnect?: boolean` (default: `false`)
 - `showConnectionForm?: boolean` (default: `true`)
+- `agentSuggestions?: Array<{ label: string; url: string; description?: string }>`

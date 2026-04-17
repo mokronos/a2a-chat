@@ -18,6 +18,12 @@ import { cn } from "./lib/utils"
 import { useA2AChat } from "./a2a/use-a2a-chat"
 import type { ConnectionState } from "./a2a/types"
 
+export type A2AAgentSuggestion = {
+  label: string
+  url: string
+  description?: string
+}
+
 export type A2AChatProps = {
   className?: string
   title?: string
@@ -26,6 +32,7 @@ export type A2AChatProps = {
   proxyBasePath?: string
   autoConnect?: boolean
   showConnectionForm?: boolean
+  agentSuggestions?: A2AAgentSuggestion[]
 }
 
 function getStatusClasses(state: ConnectionState) {
@@ -52,6 +59,7 @@ function A2AChatCard({
   proxyBasePath,
   autoConnect,
   showConnectionForm = true,
+  agentSuggestions = [],
 }: A2AChatProps) {
   const {
     url,
@@ -84,7 +92,23 @@ function A2AChatCard({
               onChange={(event) => setUrl(event.target.value)}
               placeholder="http://localhost:8000"
               aria-label="A2A server URL"
+              list={agentSuggestions.length > 0 ? "a2a-agent-suggestions" : undefined}
             />
+            {agentSuggestions.length > 0 ? (
+              <datalist id="a2a-agent-suggestions">
+                {agentSuggestions.map((suggestion) => (
+                  <option
+                    key={suggestion.url}
+                    value={suggestion.url}
+                    label={
+                      suggestion.description
+                        ? `${suggestion.label} - ${suggestion.description}`
+                        : suggestion.label
+                    }
+                  />
+                ))}
+              </datalist>
+            ) : null}
             <Button
               type="button"
               variant="outline"
