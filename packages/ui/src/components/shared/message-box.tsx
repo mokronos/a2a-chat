@@ -15,8 +15,22 @@ type MessageBoxProps = {
 }
 
 function MessageBox({ messages }: MessageBoxProps) {
+  const containerRef = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    const container = containerRef.current
+    if (!container) {
+      return
+    }
+
+    container.scrollTop = container.scrollHeight
+  }, [messages])
+
   return (
-    <div className="flex h-72 flex-col gap-3 overflow-auto rounded-md border border-border bg-background p-3">
+    <div
+      ref={containerRef}
+      className="flex h-72 flex-col gap-3 overflow-auto rounded-md border border-border bg-background p-3"
+    >
       {messages.map((message) => {
         const isUser = message.role === "user"
 
