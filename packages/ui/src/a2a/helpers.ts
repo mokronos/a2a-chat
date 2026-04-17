@@ -153,28 +153,43 @@ export function getTaskText(task: Task, streamNotes: string[] = []): string {
 }
 
 export function extractTask(value: unknown): Task | null {
+  const normalizeTask = (candidate: Record<string, unknown>): Task | null => {
+    const directState =
+      isRecord(candidate.status) && typeof candidate.status.state === "string"
+        ? candidate.status.state
+        : null
+
+    if (typeof candidate.id !== "string" || !directState) {
+      return null
+    }
+
+    const contextId =
+      typeof candidate.contextId === "string"
+        ? candidate.contextId
+        : typeof candidate.context_id === "string"
+          ? candidate.context_id
+          : undefined
+
+    return {
+      ...(candidate as unknown as Task),
+      contextId,
+    }
+  }
+
   if (!isRecord(value)) {
     return null
   }
 
-  const directState =
-    isRecord(value.status) && typeof value.status.state === "string"
-      ? value.status.state
-      : null
-
-  if (typeof value.id === "string" && directState) {
-    return value as unknown as Task
+  const directTask = normalizeTask(value)
+  if (directTask) {
+    return directTask
   }
 
   const nested = value.task
   if (isRecord(nested)) {
-    const nestedState =
-      isRecord(nested.status) && typeof nested.status.state === "string"
-        ? nested.status.state
-        : null
-
-    if (typeof nested.id === "string" && nestedState) {
-      return nested as unknown as Task
+    const nestedTask = normalizeTask(nested)
+    if (nestedTask) {
+      return nestedTask
     }
   }
 

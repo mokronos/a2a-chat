@@ -88,4 +88,18 @@ describe("A2A JSONRPC helpers", () => {
     expect(task?.id).toBe("task-1")
     expect(task?.status.state).toBe("submitted")
   })
+
+  it("extracts snake_case context id as contextId", () => {
+    const task = extractTask({
+      task: {
+        id: "task-2",
+        context_id: "ctx-2",
+        status: { state: "working", timestamp: "2026-01-01T00:00:00Z" },
+      },
+    })
+
+    expect(task?.id).toBe("task-2")
+    expect(task?.contextId).toBe("ctx-2")
+    expect(task?.status.state).toBe("working")
+  })
 })
