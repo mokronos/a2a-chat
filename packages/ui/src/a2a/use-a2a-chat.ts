@@ -98,7 +98,7 @@ function createResubscribeSignal(controller: AbortController, timeoutMs: number)
 
 export function useA2AChat(options: UseA2AChatOptions = {}) {
   const {
-    initialUrl = "http://localhost",
+    initialUrl = "http://localhost:8000",
     proxyBasePath,
     autoConnect = false,
   } = options

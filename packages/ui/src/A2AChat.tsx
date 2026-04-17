@@ -86,7 +86,13 @@ function A2AChatCard({
         <CardDescription>{description}</CardDescription>
 
         {showConnectionForm ? (
-          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]">
+          <form
+            className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]"
+            onSubmit={(event) => {
+              event.preventDefault()
+              handleConnect()
+            }}
+          >
             <Input
               value={url}
               onChange={(event) => setUrl(event.target.value)}
@@ -110,15 +116,14 @@ function A2AChatCard({
               </datalist>
             ) : null}
             <Button
-              type="button"
+              type="submit"
               variant="outline"
-              onClick={handleConnect}
               disabled={connectionState === "connecting"}
               className="h-9"
             >
               {connectionState === "connecting" ? "Connecting..." : "Connect"}
             </Button>
-          </div>
+          </form>
         ) : null}
 
         <div className="mt-2 flex flex-wrap items-center gap-2">

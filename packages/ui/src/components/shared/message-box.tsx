@@ -16,14 +16,24 @@ type MessageBoxProps = {
 
 function MessageBox({ messages }: MessageBoxProps) {
   const containerRef = React.useRef<HTMLDivElement>(null)
+  const endRef = React.useRef<HTMLDivElement>(null)
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     const container = containerRef.current
     if (!container) {
       return
     }
 
     container.scrollTop = container.scrollHeight
+
+    const frameId = globalThis.requestAnimationFrame(() => {
+      container.scrollTop = container.scrollHeight
+      endRef.current?.scrollIntoView({ block: "end" })
+    })
+
+    return () => {
+      globalThis.cancelAnimationFrame(frameId)
+    }
   }, [messages])
 
   return (
@@ -64,6 +74,7 @@ function MessageBox({ messages }: MessageBoxProps) {
           </div>
         )
       })}
+      <div ref={endRef} aria-hidden="true" />
     </div>
   )
 }
