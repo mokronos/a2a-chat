@@ -20,18 +20,34 @@ type ConnectionStore = {
   state: ConnectionState
   message: string
   client: A2AClient | null
+  connectedUrl: string | null
+  pendingUrl: string | null
   acceptedOutputModes: string[]
-  conversationState: A2AConversationState
   agentName: string | null
 }
 
-type ChatStore = {
+type TaskSession = {
+  id: string
+  title: string
   messages: Message[]
+  conversationState: A2AConversationState
+  createdAt: number
+  updatedAt: number
+}
+
+type UrlChatState = {
+  activeSessionId: string
+  sessions: TaskSession[]
+}
+
+type ChatStore = {
+  byUrl: Record<string, UrlChatState>
 }
 
 const connectionKey = ["a2a", "connection"] as const
 const chatKey = ["a2a", "chat"] as const
 const TERMINAL_STATES = new Set(["completed", "failed", "canceled", "rejected"])
+const DEFAULT_TASK_TITLE = "New Task"
 
 type UseA2AChatOptions = {
   initialUrl?: string
@@ -68,15 +84,38 @@ function getConnectionInitialState(): ConnectionStore {
     state: "idle",
     message: "Not connected",
     client: null,
+    connectedUrl: null,
+    pendingUrl: null,
     acceptedOutputModes: ["application/json"],
-    conversationState: {},
     agentName: null,
+  }
+}
+
+function createTaskSession(title = DEFAULT_TASK_TITLE): TaskSession {
+  const now = Date.now()
+
+  return {
+    id: createId("task"),
+    title,
+    messages: [],
+    conversationState: {},
+    createdAt: now,
+    updatedAt: now,
+  }
+}
+
+function getUrlChatInitialState(): UrlChatState {
+  const firstSession = createTaskSession()
+
+  return {
+    activeSessionId: firstSession.id,
+    sessions: [firstSession],
   }
 }
 
 function getChatInitialState(): ChatStore {
   return {
-    messages: [],
+    byUrl: {},
   }
 }
 
@@ -96,6 +135,15 @@ function createResubscribeSignal(controller: AbortController, timeoutMs: number)
   }
 }
 
+function getSessionTitleFromText(text: string): string {
+  const normalized = text.trim().replace(/\s+/g, " ")
+  if (normalized.length === 0) {
+    return DEFAULT_TASK_TITLE
+  }
+
+  return normalized.length > 36 ? `${normalized.slice(0, 33)}...` : normalized
+}
+
 export function useA2AChat(options: UseA2AChatOptions = {}) {
   const {
     initialUrl = "http://localhost:8000",
@@ -106,7 +154,7 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
   const [url, setUrl] = React.useState(initialUrl)
   const [taskInput, setTaskInput] = React.useState("")
   const runnerControllersRef = React.useRef(new Map<string, AbortController>())
-  const didAutoConnectRef = React.useRef(false)
+  const didAutoConnectRef = React.useRef(new Set<string>())
 
   const baseUrl = React.useMemo(() => normalizeBaseUrl(url), [url])
   const transport = React.useMemo(() => createProxyTransport(proxyBasePath), [proxyBasePath])
@@ -138,18 +186,85 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
 
   const setChatStore = React.useCallback(
     (updater: (current: ChatStore) => ChatStore) => {
-      queryClient.setQueryData(chatKey, (current?: ChatStore) =>
-        updater(current ?? getChatInitialState())
-      )
+      queryClient.setQueryData(chatKey, (current?: ChatStore) => updater(current ?? getChatInitialState()))
     },
     [queryClient]
   )
 
+  const ensureUrlChatState = React.useCallback(
+    (urlKey: string) => {
+      setChatStore((current) => {
+        if (current.byUrl[urlKey]) {
+          return current
+        }
+
+        return {
+          ...current,
+          byUrl: {
+            ...current.byUrl,
+            [urlKey]: getUrlChatInitialState(),
+          },
+        }
+      })
+    },
+    [setChatStore]
+  )
+
+  const updateTaskSession = React.useCallback(
+    (urlKey: string, sessionId: string, updater: (current: TaskSession) => TaskSession) => {
+      setChatStore((current) => {
+        const urlState = current.byUrl[urlKey]
+        if (!urlState) {
+          return current
+        }
+
+        let didUpdate = false
+        const nextSessions = urlState.sessions.map((session) => {
+          if (session.id !== sessionId) {
+            return session
+          }
+
+          didUpdate = true
+          const updatedSession = updater(session)
+          if (updatedSession.updatedAt === session.updatedAt) {
+            return {
+              ...updatedSession,
+              updatedAt: Date.now(),
+            }
+          }
+
+          return updatedSession
+        })
+
+        if (!didUpdate) {
+          return current
+        }
+
+        return {
+          ...current,
+          byUrl: {
+            ...current.byUrl,
+            [urlKey]: {
+              ...urlState,
+              sessions: nextSessions,
+            },
+          },
+        }
+      })
+    },
+    [setChatStore]
+  )
+
   const updateAssistantMessage = React.useCallback(
-    (messageId: string, updater: (current: Message) => Message) => {
-      setChatStore((current) => ({
-        ...current,
-        messages: current.messages.map((item) => {
+    (
+      urlKey: string,
+      sessionId: string,
+      messageId: string,
+      updater: (current: Message) => Message
+    ) => {
+      updateTaskSession(urlKey, sessionId, (currentSession) => ({
+        ...currentSession,
+        messages: currentSession.messages.map((item) => {
           if (item.id !== messageId || item.role !== "assistant") {
             return item
           }
@@ -158,18 +273,29 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
         }),
       }))
     },
-    [setChatStore]
+    [updateTaskSession]
   )
 
+  React.useEffect(() => {
+    ensureUrlChatState(baseUrl)
+  }, [baseUrl, ensureUrlChatState])
+
   const startTaskResubscribeLoop = React.useCallback(
-    (client: A2AClient, initialTask: Task, assistantMessageId: string) => {
-      const existing = runnerControllersRef.current.get(initialTask.id)
+    (
+      client: A2AClient,
+      urlKey: string,
+      sessionId: string,
+      initialTask: Task,
+      assistantMessageId: string
+    ) => {
+      const controllerKey = `${urlKey}::${initialTask.id}`
+      const existing = runnerControllersRef.current.get(controllerKey)
       if (existing) {
         existing.abort()
       }
 
       const controller = new AbortController()
-      runnerControllersRef.current.set(initialTask.id, controller)
+      runnerControllersRef.current.set(controllerKey, controller)
 
       void (async () => {
         const streamNotes: string[] = []
@@ -183,9 +309,7 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
           const { signal, release } = createResubscribeSignal(controller, 3000)
 
           try {
-            const stream = await Effect.runPromise(
-              resubscribeToTask(client, currentTask.id, signal)
-            )
+            const stream = await Effect.runPromise(resubscribeToTask(client, currentTask.id, signal))
 
             for await (const event of stream) {
               if (controller.signal.aborted) {
@@ -195,15 +319,15 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
               const taskEvent = extractTask(event)
               if (taskEvent) {
                 currentTask = taskEvent
-                setConnectionStore((current) => ({
-                  ...current,
+                updateTaskSession(urlKey, sessionId, (currentSession) => ({
+                  ...currentSession,
                   conversationState: {
                     contextId: taskEvent.contextId,
                     taskId: taskEvent.id,
                   },
                 }))
-                updateAssistantMessage(assistantMessageId, (current) => ({
-                  ...current,
+                updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => ({
+                  ...currentMessage,
                   text: getTaskText(currentTask, streamNotes),
                   status: formatTaskStatus(currentTask.status.state),
                   isWorking: !isTerminalTask(currentTask),
@@ -218,8 +342,8 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
                 const artifactNotes = extractTextFromParts(event.artifact.parts)
                 if (artifactNotes.length > 0) {
                   streamNotes.push(...artifactNotes)
-                  updateAssistantMessage(assistantMessageId, (current) => ({
-                    ...current,
+                  updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => ({
+                    ...currentMessage,
                     text: getTaskText(currentTask, streamNotes),
                     status: formatTaskStatus(currentTask.status.state),
                     isWorking: !isTerminalTask(currentTask),
@@ -233,8 +357,8 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
                   ...currentTask,
                   status: event.status,
                 }
-                updateAssistantMessage(assistantMessageId, (current) => ({
-                  ...current,
+                updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => ({
+                  ...currentMessage,
                   text: getTaskText(currentTask, streamNotes),
                   status: formatTaskStatus(currentTask.status.state),
                   isWorking: !isTerminalTask(currentTask),
@@ -258,17 +382,17 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
         }
 
         if (!controller.signal.aborted && !isTerminalTask(currentTask)) {
-          updateAssistantMessage(assistantMessageId, (current) => ({
-            ...current,
+          updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => ({
+            ...currentMessage,
             status: "Waiting For Events",
             isWorking: true,
           }))
         }
 
-        runnerControllersRef.current.delete(initialTask.id)
+        runnerControllersRef.current.delete(controllerKey)
       })()
     },
-    [setConnectionStore, updateAssistantMessage]
+    [updateAssistantMessage, updateTaskSession]
   )
 
   React.useEffect(() => {
@@ -281,28 +405,30 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
   }, [])
 
   const connectMutation = useMutation({
-    mutationFn: async (targetUrl: string) =>
-      Effect.runPromise(connectJsonRpc(targetUrl, transport)),
+    mutationFn: async (targetUrl: string) => Effect.runPromise(connectJsonRpc(targetUrl, transport)),
     onMutate: (targetUrl) => {
+      ensureUrlChatState(targetUrl)
       setConnectionStore((current) => ({
         ...current,
         state: "connecting",
         message: `Checking ${targetUrl}...`,
         client: null,
+        connectedUrl: null,
+        pendingUrl: targetUrl,
         acceptedOutputModes: ["application/json"],
-        conversationState: {},
         agentName: null,
       }))
     },
-    onSuccess: ({ client, endpoint, acceptedOutputModes, agentName }) => {
+    onSuccess: ({ client, endpoint, acceptedOutputModes, agentName }, targetUrl) => {
       setConnectionStore((current) => ({
         ...current,
         state: "connected",
         message: `Connected via JSONRPC (${endpoint})`,
         client,
+        connectedUrl: targetUrl,
+        pendingUrl: null,
         acceptedOutputModes:
           acceptedOutputModes.length > 0 ? acceptedOutputModes : ["application/json"],
-        conversationState: {},
         agentName,
       }))
     },
@@ -312,18 +438,39 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
         ...current,
         state: "error",
         message,
+        client: null,
+        connectedUrl: null,
+        pendingUrl: current.pendingUrl,
+        agentName: null,
       }))
     },
   })
 
   const sendTaskMutation = useMutation({
-    mutationFn: async (variables: { taskText: string; assistantMessageId: string }) => {
+    mutationFn: async (variables: {
+      taskText: string
+      assistantMessageId: string
+      urlKey: string
+      taskSessionId: string
+    }) => {
       const connection = queryClient.getQueryData<ConnectionStore>(connectionKey)
-      if (!connection || connection.state !== "connected" || !connection.client) {
+      if (
+        !connection ||
+        connection.state !== "connected" ||
+        !connection.client ||
+        connection.connectedUrl !== variables.urlKey
+      ) {
         throw new Error("Not connected")
       }
 
-      const payload = buildA2AMessage(variables.taskText, connection.conversationState)
+      const chatStore = queryClient.getQueryData<ChatStore>(chatKey) ?? getChatInitialState()
+      const urlState = chatStore.byUrl[variables.urlKey]
+      const targetSession = urlState?.sessions.find((session) => session.id === variables.taskSessionId)
+      if (!targetSession) {
+        throw new Error("Task session not found")
+      }
+
+      const payload = buildA2AMessage(variables.taskText, targetSession.conversationState)
       const response = await Effect.runPromise(
         sendTaskMessage(connection.client, {
           message: payload,
@@ -342,13 +489,19 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
         initialTask,
         assistantMessageId: variables.assistantMessageId,
         client: connection.client,
+        urlKey: variables.urlKey,
+        taskSessionId: variables.taskSessionId,
       }
     },
-    onMutate: ({ taskText, assistantMessageId }) => {
-      setChatStore((current) => ({
-        ...current,
+    onMutate: ({ taskText, assistantMessageId, urlKey, taskSessionId }) => {
+      updateTaskSession(urlKey, taskSessionId, (currentSession) => ({
+        ...currentSession,
+        title:
+          currentSession.title === DEFAULT_TASK_TITLE && currentSession.messages.length === 0
+            ? getSessionTitleFromText(taskText)
+            : currentSession.title,
         messages: [
-          ...current.messages,
+          ...currentSession.messages,
           { id: createId("msg"), role: "user", text: taskText },
           {
             id: assistantMessageId,
@@ -361,7 +514,7 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
       }))
       setTaskInput("")
     },
-    onSuccess: ({ response, initialTask, assistantMessageId, client }) => {
+    onSuccess: ({ response, initialTask, assistantMessageId, client, urlKey, taskSessionId }) => {
       if (!initialTask) {
         if (response.kind !== "task") {
           const directText = extractTextFromParts(response.parts).join("\n")
@@ -369,8 +522,8 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
             directText.length > 0
               ? `Expected a task response but got a direct message:\n${directText}`
               : "Expected a task response but got a direct message."
-          updateAssistantMessage(assistantMessageId, (current) => ({
-            ...current,
+          updateAssistantMessage(urlKey, taskSessionId, assistantMessageId, (currentMessage) => ({
+            ...currentMessage,
             text: fallbackText,
             status: "Completed",
             isWorking: false,
@@ -378,8 +531,8 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
           return
         }
 
-        updateAssistantMessage(assistantMessageId, (current) => ({
-          ...current,
+        updateAssistantMessage(urlKey, taskSessionId, assistantMessageId, (currentMessage) => ({
+          ...currentMessage,
           text: "Task sent, but no task payload could be parsed from the response.",
           status: "Failed",
           isWorking: false,
@@ -387,48 +540,74 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
         return
       }
 
-      updateAssistantMessage(assistantMessageId, (current) => ({
-        ...current,
+      updateAssistantMessage(urlKey, taskSessionId, assistantMessageId, (currentMessage) => ({
+        ...currentMessage,
         status: formatTaskStatus(initialTask.status.state),
         isWorking: !isTerminalTask(initialTask),
       }))
 
-      setConnectionStore((current) => ({
-        ...current,
+      updateTaskSession(urlKey, taskSessionId, (currentSession) => ({
+        ...currentSession,
         conversationState: {
           contextId: initialTask.contextId,
           taskId: initialTask.id,
         },
       }))
 
-      startTaskResubscribeLoop(client, initialTask, assistantMessageId)
+      startTaskResubscribeLoop(client, urlKey, taskSessionId, initialTask, assistantMessageId)
     },
     onError: (error, variables) => {
-      const message = getErrorMessage(error, "Failed to send task or read task updates from the server.")
-      updateAssistantMessage(variables.assistantMessageId, (current) => ({
-        ...current,
-        text: message,
-        status: "Failed",
-        isWorking: false,
-      }))
+      const message = getErrorMessage(
+        error,
+        "Failed to send task or read task updates from the server."
+      )
+      updateAssistantMessage(
+        variables.urlKey,
+        variables.taskSessionId,
+        variables.assistantMessageId,
+        (currentMessage) => ({
+          ...currentMessage,
+          text: message,
+          status: "Failed",
+          isWorking: false,
+        })
+      )
     },
   })
+
+  const activeUrlState = chatQuery.data.byUrl[baseUrl] ?? getUrlChatInitialState()
+  const activeTaskSession =
+    activeUrlState.sessions.find((session) => session.id === activeUrlState.activeSessionId) ??
+    activeUrlState.sessions[0] ??
+    null
+
+  const taskSessions = React.useMemo(
+    () =>
+      [...activeUrlState.sessions]
+        .sort((a, b) => b.updatedAt - a.updatedAt)
+        .map((session) => ({
+          id: session.id,
+          title: session.title,
+          updatedAt: session.updatedAt,
+        })),
+    [activeUrlState.sessions]
+  )
 
   const handleConnect = React.useCallback(() => {
     connectMutation.mutate(baseUrl)
   }, [baseUrl, connectMutation])
 
   React.useEffect(() => {
-    if (!autoConnect || connectMutation.isPending || didAutoConnectRef.current) {
+    if (!autoConnect || connectMutation.isPending || didAutoConnectRef.current.has(baseUrl)) {
       return
     }
 
     const connection = connectionQuery.data
-    if (connection.state === "connected" || connection.state === "connecting") {
+    if (connection.state === "connected" && connection.connectedUrl === baseUrl) {
       return
     }
 
-    didAutoConnectRef.current = true
+    didAutoConnectRef.current.add(baseUrl)
     connectMutation.mutate(baseUrl)
   }, [autoConnect, baseUrl, connectMutation, connectionQuery.data])
 
@@ -438,7 +617,9 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
     if (
       taskText.length === 0 ||
       sendTaskMutation.isPending ||
+      !activeTaskSession ||
       connection.state !== "connected" ||
+      connection.connectedUrl !== baseUrl ||
       !connection.client
     ) {
       return
@@ -447,22 +628,88 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
     sendTaskMutation.mutate({
       taskText,
       assistantMessageId: createId("msg"),
+      urlKey: baseUrl,
+      taskSessionId: activeTaskSession.id,
     })
-  }, [connectionQuery.data, sendTaskMutation, taskInput])
+  }, [activeTaskSession, baseUrl, connectionQuery.data, sendTaskMutation, taskInput])
 
-  const isSending = sendTaskMutation.isPending
+  const handleCreateTaskSession = React.useCallback(() => {
+    setChatStore((current) => {
+      const urlState = current.byUrl[baseUrl] ?? getUrlChatInitialState()
+      const nextSession = createTaskSession()
+
+      return {
+        ...current,
+        byUrl: {
+          ...current.byUrl,
+          [baseUrl]: {
+            activeSessionId: nextSession.id,
+            sessions: [...urlState.sessions, nextSession],
+          },
+        },
+      }
+    })
+  }, [baseUrl, setChatStore])
+
+  const handleSelectTaskSession = React.useCallback(
+    (sessionId: string) => {
+      setChatStore((current) => {
+        const urlState = current.byUrl[baseUrl]
+        if (!urlState || !urlState.sessions.some((session) => session.id === sessionId)) {
+          return current
+        }
+
+        if (urlState.activeSessionId === sessionId) {
+          return current
+        }
+
+        return {
+          ...current,
+          byUrl: {
+            ...current.byUrl,
+            [baseUrl]: {
+              ...urlState,
+              activeSessionId: sessionId,
+            },
+          },
+        }
+      })
+    },
+    [baseUrl, setChatStore]
+  )
+
+  const activeConnection = connectionQuery.data
+  const isConnectedToCurrentUrl =
+    activeConnection.state === "connected" && activeConnection.connectedUrl === baseUrl
+  const isConnectingCurrentUrl =
+    activeConnection.state === "connecting" && activeConnection.pendingUrl === baseUrl
+  const isErrorForCurrentUrl =
+    activeConnection.state === "error" && activeConnection.pendingUrl === baseUrl
+  const connectionState: ConnectionState = isConnectedToCurrentUrl
+    ? "connected"
+    : isConnectingCurrentUrl
+      ? "connecting"
+      : isErrorForCurrentUrl
+        ? "error"
+        : "idle"
+  const connectionMessage =
+    connectionState === "idle" ? "Not connected" : activeConnection.message
 
   return {
     url,
     setUrl,
-    connectionState: connectionQuery.data.state,
-    connectionMessage: connectionQuery.data.message,
-    agentName: connectionQuery.data.agentName,
+    connectionState,
+    connectionMessage,
+    agentName: isConnectedToCurrentUrl ? activeConnection.agentName : null,
     taskInput,
     setTaskInput,
-    isSending,
-    messages: chatQuery.data.messages,
+    isSending: sendTaskMutation.isPending,
+    messages: activeTaskSession?.messages ?? [],
+    taskSessions,
+    activeTaskSessionId: activeTaskSession?.id ?? null,
     handleConnect,
     handleSubmitTask,
+    handleCreateTaskSession,
+    handleSelectTaskSession,
   }
 }

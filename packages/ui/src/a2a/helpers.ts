@@ -170,8 +170,13 @@ export function extractTask(value: unknown): Task | null {
           ? candidate.context_id
           : undefined
 
+    const taskCandidate = candidate as unknown as Task
+    if (typeof contextId !== "string") {
+      return taskCandidate
+    }
+
     return {
-      ...(candidate as unknown as Task),
+      ...taskCandidate,
       contextId,
     }
   }

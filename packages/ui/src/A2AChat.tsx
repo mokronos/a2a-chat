@@ -71,8 +71,12 @@ function A2AChatCard({
     setTaskInput,
     isSending,
     messages,
+    taskSessions,
+    activeTaskSessionId,
     handleConnect,
     handleSubmitTask,
+    handleCreateTaskSession,
+    handleSelectTaskSession,
   } = useA2AChat({
     initialUrl,
     proxyBasePath,
@@ -136,6 +140,27 @@ function A2AChatCard({
             {connectionMessage}
           </div>
           {agentName ? <div className="text-xs text-muted-foreground">Agent: {agentName}</div> : null}
+        </div>
+
+        <div className="mt-3 flex items-center gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={handleCreateTaskSession}>
+            New Task
+          </Button>
+          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-1">
+            {taskSessions.map((session) => (
+              <Button
+                key={session.id}
+                type="button"
+                variant={session.id === activeTaskSessionId ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleSelectTaskSession(session.id)}
+                className="shrink-0"
+                title={session.title}
+              >
+                {session.title}
+              </Button>
+            ))}
+          </div>
         </div>
       </CardHeader>
 
