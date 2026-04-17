@@ -35,7 +35,6 @@ const TERMINAL_STATES = new Set(["completed", "failed", "canceled", "rejected"])
 
 type UseA2AChatOptions = {
   initialUrl?: string
-  initialPort?: string
   proxyBasePath?: string
   autoConnect?: boolean
 }
@@ -50,6 +49,18 @@ function formatTaskStatus(status: string) {
     .filter((token) => token.length > 0)
     .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
     .join(" ")
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message
+  }
+
+  if (typeof error === "string" && error.trim().length > 0) {
+    return error
+  }
+
+  return fallback
 }
 
 function getConnectionInitialState(): ConnectionStore {
@@ -88,18 +99,16 @@ function createResubscribeSignal(controller: AbortController, timeoutMs: number)
 export function useA2AChat(options: UseA2AChatOptions = {}) {
   const {
     initialUrl = "http://localhost",
-    initialPort = "8000",
     proxyBasePath,
     autoConnect = false,
   } = options
   const queryClient = useQueryClient()
   const [url, setUrl] = React.useState(initialUrl)
-  const [port, setPort] = React.useState(initialPort)
   const [taskInput, setTaskInput] = React.useState("")
   const runnerControllersRef = React.useRef(new Map<string, AbortController>())
   const didAutoConnectRef = React.useRef(false)
 
-  const baseUrl = React.useMemo(() => normalizeBaseUrl(url, port), [url, port])
+  const baseUrl = React.useMemo(() => normalizeBaseUrl(url), [url])
   const transport = React.useMemo(() => createProxyTransport(proxyBasePath), [proxyBasePath])
 
   const connectionQuery = useQuery({
@@ -298,11 +307,7 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
       }))
     },
     onError: (error) => {
-      const rawMessage = error instanceof Error ? error.message : "Could not connect to the server"
-      const message =
-        rawMessage === "Failed to fetch"
-          ? "Network/CORS error. Check server is running and allows requests from your app origin."
-          : rawMessage
+      const message = getErrorMessage(error, "Could not connect to the server")
       setConnectionStore((current) => ({
         ...current,
         state: "error",
@@ -398,10 +403,11 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
 
       startTaskResubscribeLoop(client, initialTask, assistantMessageId)
     },
-    onError: (_error, variables) => {
+    onError: (error, variables) => {
+      const message = getErrorMessage(error, "Failed to send task or read task updates from the server.")
       updateAssistantMessage(variables.assistantMessageId, (current) => ({
         ...current,
-        text: "Failed to send task or read task updates from the server.",
+        text: message,
         status: "Failed",
         isWorking: false,
       }))
@@ -449,8 +455,6 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
   return {
     url,
     setUrl,
-    port,
-    setPort,
     connectionState: connectionQuery.data.state,
     connectionMessage: connectionQuery.data.message,
     agentName: connectionQuery.data.agentName,

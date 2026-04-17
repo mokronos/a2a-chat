@@ -62,15 +62,29 @@ function proxyPlugin(): Plugin {
             return
           }
 
-          const agentCardUrl = new URL("/.well-known/agent-card.json", target).toString()
+          const normalizedTarget = target.endsWith("/") ? target.slice(0, -1) : target
+          const agentCardUrl = `${normalizedTarget}/.well-known/agent-card.json`
 
           try {
             const response = await fetch(agentCardUrl)
             const payload = await response.text()
+            if (!response.ok) {
+              console.error("[a2a-proxy] agent-card error", {
+                target,
+                agentCardUrl,
+                status: response.status,
+                body: payload,
+              })
+            }
             res.statusCode = response.status
             res.setHeader("Content-Type", response.headers.get("content-type") ?? "application/json")
             res.end(payload)
           } catch (error) {
+            console.error("[a2a-proxy] agent-card proxy failure", {
+              target,
+              agentCardUrl,
+              error,
+            })
             sendJson(res, 502, {
               error:
                 error instanceof Error
@@ -109,10 +123,22 @@ function proxyPlugin(): Plugin {
               body: requestBody,
             })
             const payload = await response.text()
+            if (!response.ok) {
+              console.error("[a2a-proxy] jsonrpc error", {
+                target,
+                status: response.status,
+                requestBody: Buffer.from(requestBody).toString("utf8"),
+                responseBody: payload,
+              })
+            }
             res.statusCode = response.status
             res.setHeader("Content-Type", response.headers.get("content-type") ?? "application/json")
             res.end(payload)
           } catch (error) {
+            console.error("[a2a-proxy] jsonrpc proxy failure", {
+              target,
+              error,
+            })
             sendJson(res, 502, {
               error:
                 error instanceof Error

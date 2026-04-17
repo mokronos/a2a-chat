@@ -27,21 +27,10 @@ export function createId(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`
 }
 
-export function normalizeBaseUrl(url: string, port: string) {
+export function normalizeBaseUrl(url: string) {
   const rawUrl = url.trim()
   const withProtocol = /^https?:\/\//i.test(rawUrl) ? rawUrl : `http://${rawUrl}`
-  const normalizedUrl = withProtocol.replace(/\/$/, "")
-  const trimmedPort = port.trim()
-
-  if (trimmedPort.length === 0) {
-    return normalizedUrl
-  }
-
-  if (/:[0-9]+$/.test(normalizedUrl)) {
-    return normalizedUrl
-  }
-
-  return `${normalizedUrl}:${trimmedPort}`
+  return withProtocol.replace(/\/$/, "")
 }
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
@@ -137,7 +126,6 @@ export function buildA2AMessage(
     role: "user",
     parts: [{ kind: "text", text }],
     contextId: conversationState.contextId,
-    taskId: conversationState.taskId,
   }
 }
 

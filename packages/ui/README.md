@@ -22,6 +22,5 @@ export function App() {
 
 - `proxyBasePath?: string` (default: `/api/a2a`)
 - `initialUrl?: string` (default: `http://localhost`)
-- `initialPort?: string` (default: `8000`)
 - `autoConnect?: boolean` (default: `false`)
 - `showConnectionForm?: boolean` (default: `true`)

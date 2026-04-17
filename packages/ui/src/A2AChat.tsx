@@ -23,7 +23,6 @@ export type A2AChatProps = {
   title?: string
   description?: string
   initialUrl?: string
-  initialPort?: string
   proxyBasePath?: string
   autoConnect?: boolean
   showConnectionForm?: boolean
@@ -50,7 +49,6 @@ function A2AChatCard({
   title = "A2A Chat",
   description = "Reusable chat shell component",
   initialUrl,
-  initialPort,
   proxyBasePath,
   autoConnect,
   showConnectionForm = true,
@@ -58,8 +56,6 @@ function A2AChatCard({
   const {
     url,
     setUrl,
-    port,
-    setPort,
     connectionState,
     connectionMessage,
     agentName,
@@ -71,7 +67,6 @@ function A2AChatCard({
     handleSubmitTask,
   } = useA2AChat({
     initialUrl,
-    initialPort,
     proxyBasePath,
     autoConnect,
   })
@@ -83,19 +78,12 @@ function A2AChatCard({
         <CardDescription>{description}</CardDescription>
 
         {showConnectionForm ? (
-          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_120px_auto]">
+          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]">
             <Input
               value={url}
               onChange={(event) => setUrl(event.target.value)}
-              placeholder="http://localhost"
+              placeholder="http://localhost:8000"
               aria-label="A2A server URL"
-            />
-            <Input
-              value={port}
-              onChange={(event) => setPort(event.target.value)}
-              placeholder="8000"
-              aria-label="A2A server port"
-              inputMode="numeric"
             />
             <Button
               type="button"
