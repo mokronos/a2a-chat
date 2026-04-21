@@ -135,8 +135,28 @@ export function extractTextFromParts(parts: unknown): string[] {
   }
 
   return parts.flatMap((part) => {
-    if (isRecord(part) && typeof part.text === "string") {
+    if (!isRecord(part)) {
+      return []
+    }
+
+    if (part.kind === "text" && typeof part.text === "string" && part.text.trim().length > 0) {
       return [part.text]
+    }
+
+    if (
+      typeof part.kind === "undefined" &&
+      typeof part.text === "string" &&
+      part.text.trim().length > 0
+    ) {
+      return [part.text]
+    }
+
+    if (
+      part.part_kind === "text" &&
+      typeof part.content === "string" &&
+      part.content.trim().length > 0
+    ) {
+      return [part.content]
     }
 
     return []
@@ -144,12 +164,23 @@ export function extractTextFromParts(parts: unknown): string[] {
 }
 
 export function getTaskText(task: Task, streamNotes: string[] = []): string {
+  const statusNotes =
+    task.status.message && Array.isArray(task.status.message.parts)
+      ? extractTextFromParts(task.status.message.parts)
+      : []
+  const historyNotes =
+    task.history?.flatMap((message) =>
+      message.role === "agent" ? extractTextFromParts(message.parts) : []
+    ) ?? []
   const fragments = [
+    ...statusNotes,
+    ...historyNotes,
     ...streamNotes,
-    ...(task.artifacts?.flatMap((artifact) => extractTextFromParts(artifact.parts)) ?? []),
   ]
+    .map((fragment) => fragment.trim())
+    .filter((fragment) => fragment.length > 0)
 
-  return fragments.join("\n")
+  return Array.from(new Set(fragments)).join("\n\n")
 }
 
 export function extractTask(value: unknown): Task | null {
@@ -195,6 +226,22 @@ export function extractTask(value: unknown): Task | null {
     const nestedTask = normalizeTask(nested)
     if (nestedTask) {
       return nestedTask
+    }
+  }
+
+  const result = value.result
+  if (isRecord(result)) {
+    const directResultTask = normalizeTask(result)
+    if (directResultTask) {
+      return directResultTask
+    }
+
+    const nestedResultTask = result.task
+    if (isRecord(nestedResultTask)) {
+      const normalizedNestedResultTask = normalizeTask(nestedResultTask)
+      if (normalizedNestedResultTask) {
+        return normalizedNestedResultTask
+      }
     }
   }
 

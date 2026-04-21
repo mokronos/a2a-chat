@@ -3,17 +3,22 @@ import { Effect } from "effect"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { Task } from "@a2a-js/sdk"
 
-import type { Message } from "../components/shared/message-box"
+import type {
+  Message,
+  MessageStatusHistoryEntry,
+  MessageTimelineEvent,
+} from "../components/shared/message-box"
 import {
   buildA2AMessage,
   createId,
   extractTask,
   extractTextFromParts,
   getTaskText,
+  isRecord,
   normalizeBaseUrl,
 } from "./helpers"
 import { createProxyTransport } from "./proxy"
-import { connectJsonRpc, resubscribeToTask, sendTaskMessage } from "./service"
+import { connectJsonRpc, getTaskById, resubscribeToTask, sendTaskMessage } from "./service"
 import type { A2AClient, A2AConversationState, ConnectionState } from "./types"
 
 type ConnectionStore = {
@@ -38,6 +43,8 @@ type TaskSession = {
 type UrlChatState = {
   activeSessionId: string
   sessions: TaskSession[]
+  agentName: string | null
+  lastConnectedAt: number | null
 }
 
 type ChatStore = {
@@ -79,6 +86,182 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return fallback
 }
 
+function getResponseKind(response: unknown): string {
+  if (extractTask(response)) {
+    return "task"
+  }
+
+  if (isRecord(response) && typeof response.kind === "string" && response.kind.length > 0) {
+    return response.kind
+  }
+
+  if (
+    isRecord(response) &&
+    isRecord(response.result) &&
+    typeof response.result.kind === "string" &&
+    response.result.kind.length > 0
+  ) {
+    return response.result.kind
+  }
+
+  return "unknown"
+}
+
+function extractResponseMessageText(response: unknown): string {
+  if (isRecord(response) && Array.isArray(response.parts)) {
+    return extractTextFromParts(response.parts).join("\n")
+  }
+
+  if (isRecord(response) && isRecord(response.result) && Array.isArray(response.result.parts)) {
+    return extractTextFromParts(response.result.parts).join("\n")
+  }
+
+  return ""
+}
+
+type StatusUpdateEvent = {
+  kind: "status-update"
+  taskId?: string
+  status: Task["status"]
+}
+
+type ArtifactUpdateEvent = {
+  kind: "artifact-update"
+  taskId?: string
+  artifact?: {
+    parts?: unknown
+  }
+  lastChunk?: boolean
+}
+
+function normalizeStreamEvent(event: unknown): unknown {
+  if (!isRecord(event)) {
+    return event
+  }
+
+  if (isRecord(event.task)) {
+    return event.task
+  }
+
+  if (isRecord(event.statusUpdate)) {
+    return {
+      kind: "status-update",
+      ...event.statusUpdate,
+    }
+  }
+
+  if (isRecord(event.artifactUpdate)) {
+    return {
+      kind: "artifact-update",
+      ...event.artifactUpdate,
+    }
+  }
+
+  return event
+}
+
+function getStatusUpdateEvent(event: unknown): StatusUpdateEvent | null {
+  const normalized = normalizeStreamEvent(event)
+  if (!isRecord(normalized) || normalized.kind !== "status-update" || !isRecord(normalized.status)) {
+    return null
+  }
+
+  return {
+    kind: "status-update",
+    taskId: typeof normalized.taskId === "string" ? normalized.taskId : undefined,
+    status: normalized.status as Task["status"],
+  }
+}
+
+function getArtifactUpdateEvent(event: unknown): ArtifactUpdateEvent | null {
+  const normalized = normalizeStreamEvent(event)
+  if (!isRecord(normalized) || normalized.kind !== "artifact-update") {
+    return null
+  }
+
+  return {
+    kind: "artifact-update",
+    taskId: typeof normalized.taskId === "string" ? normalized.taskId : undefined,
+    artifact: isRecord(normalized.artifact)
+      ? {
+          parts: normalized.artifact.parts,
+        }
+      : undefined,
+    lastChunk: normalized.lastChunk === true,
+  }
+}
+
+function parseArtifactEventText(rawText: string): string[] {
+  const payload = rawText.trim()
+  if (payload.length === 0) {
+    return []
+  }
+
+  try {
+    const parsed = JSON.parse(payload)
+    if (!isRecord(parsed)) {
+      return []
+    }
+
+    if (parsed.event_kind === "agent_run_result" && typeof parsed.output === "string") {
+      return [parsed.output]
+    }
+
+    if (
+      parsed.event_kind === "part_end" &&
+      isRecord(parsed.part) &&
+      parsed.part.part_kind === "text" &&
+      typeof parsed.part.content === "string"
+    ) {
+      return [parsed.part.content]
+    }
+
+    return []
+  } catch {
+    return []
+  }
+}
+
+function parseArtifactEventThinking(rawText: string): string[] {
+  const payload = rawText.trim()
+  if (payload.length === 0) {
+    return []
+  }
+
+  try {
+    const parsed = JSON.parse(payload)
+    if (!isRecord(parsed)) {
+      return []
+    }
+
+    if (
+      parsed.event_kind === "part_end" &&
+      isRecord(parsed.part) &&
+      parsed.part.part_kind === "thinking" &&
+      typeof parsed.part.content === "string"
+    ) {
+      return [parsed.part.content]
+    }
+
+    return []
+  } catch {
+    return []
+  }
+}
+
+function extractAssistantTextFromArtifactUpdate(event: ArtifactUpdateEvent): {
+  output: string[]
+  thinking: string[]
+} {
+  const parts = event.artifact?.parts
+  const fragments = extractTextFromParts(parts)
+
+  return {
+    output: fragments.flatMap((fragment) => parseArtifactEventText(fragment)),
+    thinking: fragments.flatMap((fragment) => parseArtifactEventThinking(fragment)),
+  }
+}
+
 function getConnectionInitialState(): ConnectionStore {
   return {
     state: "idle",
@@ -110,6 +293,8 @@ function getUrlChatInitialState(): UrlChatState {
   return {
     activeSessionId: firstSession.id,
     sessions: [firstSession],
+    agentName: null,
+    lastConnectedAt: null,
   }
 }
 
@@ -142,6 +327,137 @@ function getSessionTitleFromText(text: string): string {
   }
 
   return normalized.length > 36 ? `${normalized.slice(0, 33)}...` : normalized
+}
+
+function truncateText(value: string, maxLength: number): string {
+  if (value.length <= maxLength) {
+    return value
+  }
+
+  return `${value.slice(0, Math.max(0, maxLength - 3))}...`
+}
+
+function safeSerialize(value: unknown): string | undefined {
+  try {
+    const serialized = JSON.stringify(value, null, 2)
+    return truncateText(serialized, 4000)
+  } catch {
+    return undefined
+  }
+}
+
+function summarizeArtifactParts(parts: unknown): { summary: string; details?: string } {
+  if (!Array.isArray(parts) || parts.length === 0) {
+    return { summary: "No artifact parts in update." }
+  }
+
+  const fragments: string[] = []
+  for (const part of parts) {
+    if (!isRecord(part) || typeof part.kind !== "string") {
+      continue
+    }
+
+    if (part.kind === "text") {
+      const value = typeof part.text === "string" ? part.text.trim() : ""
+      fragments.push(value.length > 0 ? `text: ${truncateText(value, 80)}` : "text: [empty]")
+      continue
+    }
+
+    if (part.kind === "data") {
+      const value = safeSerialize(part.data)
+      fragments.push(value ? `data: ${truncateText(value.replace(/\s+/g, " "), 80)}` : "data")
+      continue
+    }
+
+    if (part.kind === "file") {
+      const fileName =
+        isRecord(part.file) && typeof part.file.name === "string"
+          ? part.file.name
+          : "file"
+      fragments.push(`file: ${fileName}`)
+      continue
+    }
+
+    fragments.push(`part: ${part.kind}`)
+  }
+
+  if (fragments.length === 0) {
+    return { summary: `${parts.length} part(s)` }
+  }
+
+  const summary = truncateText(fragments.join(" | "), 180)
+  return {
+    summary,
+    details: `parts: ${parts.length}`,
+  }
+}
+
+function buildTimelineEvent(event: unknown): Omit<MessageTimelineEvent, "id" | "at"> {
+  const normalizedEvent = normalizeStreamEvent(event)
+  const raw = safeSerialize(normalizedEvent)
+  const task = extractTask(normalizedEvent)
+
+  if (task) {
+    const state = formatTaskStatus(task.status.state)
+    return {
+      kind: "task-update",
+      summary: `Task ${task.id} is ${state}.`,
+      details: task.contextId ? `contextId: ${task.contextId}` : undefined,
+      raw,
+    }
+  }
+
+  if (isRecord(normalizedEvent) && typeof normalizedEvent.kind === "string") {
+    if (normalizedEvent.kind === "status-update") {
+      const statusState =
+        isRecord(normalizedEvent.status) && typeof normalizedEvent.status.state === "string"
+          ? formatTaskStatus(normalizedEvent.status.state)
+          : "Unknown"
+      return {
+        kind: "status-update",
+        summary: `Status changed to ${statusState}.`,
+        details:
+          typeof normalizedEvent.taskId === "string"
+            ? `taskId: ${normalizedEvent.taskId}`
+            : undefined,
+        raw,
+      }
+    }
+
+    if (normalizedEvent.kind === "artifact-update") {
+      const parts =
+        isRecord(normalizedEvent.artifact) && Array.isArray(normalizedEvent.artifact.parts)
+          ? normalizedEvent.artifact.parts
+          : []
+      const artifactSummary = summarizeArtifactParts(parts)
+      return {
+        kind: "artifact-update",
+        summary: artifactSummary.summary,
+        details: artifactSummary.details,
+        raw,
+      }
+    }
+
+    return {
+      kind: normalizedEvent.kind,
+      summary: "Received event payload.",
+      raw,
+    }
+  }
+
+  return {
+    kind: "event",
+    summary: "Received event payload.",
+    raw,
+  }
+}
+
+function createStatusEntry(label: string): MessageStatusHistoryEntry {
+  return {
+    id: createId("status"),
+    label,
+    at: Date.now(),
+  }
 }
 
 export function useA2AChat(options: UseA2AChatOptions = {}) {
@@ -276,9 +592,90 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
     [updateTaskSession]
   )
 
-  React.useEffect(() => {
-    ensureUrlChatState(baseUrl)
-  }, [baseUrl, ensureUrlChatState])
+  const setAssistantStatus = React.useCallback(
+    (
+      urlKey: string,
+      sessionId: string,
+      messageId: string,
+      nextStatus: string,
+      isWorking: boolean
+    ) => {
+      updateAssistantMessage(urlKey, sessionId, messageId, (currentMessage) => {
+        const statusHistory = currentMessage.statusHistory ?? []
+        const lastStatus = statusHistory.at(-1)?.label
+        const nextStatusHistory =
+          lastStatus === nextStatus
+            ? statusHistory
+            : [...statusHistory, createStatusEntry(nextStatus)]
+
+        return {
+          ...currentMessage,
+          status: nextStatus,
+          isWorking,
+          statusHistory: nextStatusHistory,
+        }
+      })
+    },
+    [updateAssistantMessage]
+  )
+
+  const appendAssistantEvent = React.useCallback(
+    (
+      urlKey: string,
+      sessionId: string,
+      messageId: string,
+      event: Omit<MessageTimelineEvent, "id" | "at">
+    ) => {
+      updateAssistantMessage(urlKey, sessionId, messageId, (currentMessage) => ({
+        ...currentMessage,
+        events: [
+          ...(currentMessage.events ?? []),
+          {
+            ...event,
+            id: createId("evt"),
+            at: Date.now(),
+          },
+        ],
+      }))
+    },
+    [updateAssistantMessage]
+  )
+
+  const hydrateTaskOutput = React.useCallback(
+    async (
+      client: A2AClient,
+      urlKey: string,
+      sessionId: string,
+      assistantMessageId: string,
+      taskId: string
+    ): Promise<Task | null> => {
+      try {
+        const snapshot = await Effect.runPromise(getTaskById(client, taskId))
+        const snapshotText = getTaskText(snapshot)
+
+        appendAssistantEvent(urlKey, sessionId, assistantMessageId, {
+          kind: "task-snapshot",
+          summary: "Fetched final task snapshot.",
+          raw: safeSerialize(snapshot),
+        })
+
+        if (snapshotText.length > 0) {
+          updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => ({
+            ...currentMessage,
+            text: snapshotText,
+          }))
+        }
+        return snapshot
+      } catch (error) {
+        appendAssistantEvent(urlKey, sessionId, assistantMessageId, {
+          kind: "task-snapshot-error",
+          summary: getErrorMessage(error, "Could not fetch final task snapshot."),
+        })
+        return null
+      }
+    },
+    [appendAssistantEvent, updateAssistantMessage]
+  )
 
   const startTaskResubscribeLoop = React.useCallback(
     (
@@ -298,7 +695,6 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
       runnerControllersRef.current.set(controllerKey, controller)
 
       void (async () => {
-        const streamNotes: string[] = []
         let currentTask = initialTask
 
         for (let attempt = 0; attempt < 120; attempt += 1) {
@@ -316,7 +712,14 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
                 break
               }
 
-              const taskEvent = extractTask(event)
+              appendAssistantEvent(
+                urlKey,
+                sessionId,
+                assistantMessageId,
+                buildTimelineEvent(event)
+              )
+
+              const taskEvent = extractTask(normalizeStreamEvent(event))
               if (taskEvent) {
                 currentTask = taskEvent
                 updateTaskSession(urlKey, sessionId, (currentSession) => ({
@@ -328,42 +731,108 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
                 }))
                 updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => ({
                   ...currentMessage,
-                  text: getTaskText(currentTask, streamNotes),
-                  status: formatTaskStatus(currentTask.status.state),
-                  isWorking: !isTerminalTask(currentTask),
+                  text: getTaskText(currentTask),
                 }))
+                setAssistantStatus(
+                  urlKey,
+                  sessionId,
+                  assistantMessageId,
+                  formatTaskStatus(currentTask.status.state),
+                  !isTerminalTask(currentTask)
+                )
                 if (isTerminalTask(currentTask)) {
+                  const snapshot = await hydrateTaskOutput(
+                    client,
+                    urlKey,
+                    sessionId,
+                    assistantMessageId,
+                    currentTask.id
+                  )
+                  if (snapshot) {
+                    currentTask = snapshot
+                  }
                   break
                 }
                 continue
               }
 
-              if (event.kind === "artifact-update" && event.taskId === currentTask.id) {
-                const artifactNotes = extractTextFromParts(event.artifact.parts)
-                if (artifactNotes.length > 0) {
-                  streamNotes.push(...artifactNotes)
-                  updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => ({
-                    ...currentMessage,
-                    text: getTaskText(currentTask, streamNotes),
-                    status: formatTaskStatus(currentTask.status.state),
-                    isWorking: !isTerminalTask(currentTask),
-                  }))
+              const artifactUpdate = getArtifactUpdateEvent(event)
+              if (artifactUpdate && artifactUpdate.taskId === currentTask.id) {
+                const { output, thinking } = extractAssistantTextFromArtifactUpdate(artifactUpdate)
+                if (output.length > 0 || thinking.length > 0) {
+                  updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => {
+                    const textFragments = [currentMessage.text, ...output]
+                      .map((fragment) => fragment.trim())
+                      .filter((fragment) => fragment.length > 0)
+                    const thinkingFragments = [currentMessage.thinkingText ?? "", ...thinking]
+                      .map((fragment) => fragment.trim())
+                      .filter((fragment) => fragment.length > 0)
+
+                    return {
+                      ...currentMessage,
+                      text: Array.from(new Set(textFragments)).join("\n\n"),
+                      thinkingText:
+                        thinkingFragments.length > 0
+                          ? Array.from(new Set(thinkingFragments)).join("\n\n")
+                          : currentMessage.thinkingText,
+                    }
+                  })
                 }
+
+                if (artifactUpdate.lastChunk) {
+                  const snapshot = await hydrateTaskOutput(
+                    client,
+                    urlKey,
+                    sessionId,
+                    assistantMessageId,
+                    currentTask.id
+                  )
+                  if (snapshot) {
+                    currentTask = snapshot
+                    setAssistantStatus(
+                      urlKey,
+                      sessionId,
+                      assistantMessageId,
+                      formatTaskStatus(currentTask.status.state),
+                      !isTerminalTask(currentTask)
+                    )
+                    if (isTerminalTask(currentTask)) {
+                      break
+                    }
+                  }
+                }
+
                 continue
               }
 
-              if (event.kind === "status-update" && event.taskId === currentTask.id) {
+              const statusUpdate = getStatusUpdateEvent(event)
+              if (statusUpdate && statusUpdate.taskId === currentTask.id) {
                 currentTask = {
                   ...currentTask,
-                  status: event.status,
+                  status: statusUpdate.status,
                 }
                 updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => ({
                   ...currentMessage,
-                  text: getTaskText(currentTask, streamNotes),
-                  status: formatTaskStatus(currentTask.status.state),
-                  isWorking: !isTerminalTask(currentTask),
+                  text: getTaskText(currentTask),
                 }))
+                setAssistantStatus(
+                  urlKey,
+                  sessionId,
+                  assistantMessageId,
+                  formatTaskStatus(currentTask.status.state),
+                  !isTerminalTask(currentTask)
+                )
                 if (isTerminalTask(currentTask)) {
+                  const snapshot = await hydrateTaskOutput(
+                    client,
+                    urlKey,
+                    sessionId,
+                    assistantMessageId,
+                    currentTask.id
+                  )
+                  if (snapshot) {
+                    currentTask = snapshot
+                  }
                   break
                 }
               }
@@ -382,17 +851,19 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
         }
 
         if (!controller.signal.aborted && !isTerminalTask(currentTask)) {
-          updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => ({
-            ...currentMessage,
-            status: "Waiting For Events",
-            isWorking: true,
-          }))
+          setAssistantStatus(urlKey, sessionId, assistantMessageId, "Waiting For Events", true)
         }
 
         runnerControllersRef.current.delete(controllerKey)
       })()
     },
-    [updateAssistantMessage, updateTaskSession]
+    [
+      appendAssistantEvent,
+      hydrateTaskOutput,
+      setAssistantStatus,
+      updateAssistantMessage,
+      updateTaskSession,
+    ]
   )
 
   React.useEffect(() => {
@@ -420,6 +891,22 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
       }))
     },
     onSuccess: ({ client, endpoint, acceptedOutputModes, agentName }, targetUrl) => {
+      setChatStore((current) => {
+        const urlState = current.byUrl[targetUrl] ?? getUrlChatInitialState()
+
+        return {
+          ...current,
+          byUrl: {
+            ...current.byUrl,
+            [targetUrl]: {
+              ...urlState,
+              agentName: agentName && agentName.trim().length > 0 ? agentName.trim() : null,
+              lastConnectedAt: Date.now(),
+            },
+          },
+        }
+      })
+
       setConnectionStore((current) => ({
         ...current,
         state: "connected",
@@ -509,42 +996,59 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
             text: "",
             status: "Sending Task",
             isWorking: true,
+            statusHistory: [createStatusEntry("Sending Task")],
+            events: [],
           },
         ],
       }))
       setTaskInput("")
     },
     onSuccess: ({ response, initialTask, assistantMessageId, client, urlKey, taskSessionId }) => {
+      const responseKind = getResponseKind(response)
+      appendAssistantEvent(urlKey, taskSessionId, assistantMessageId, {
+        kind: "send-response",
+        summary: `Received ${responseKind} response from sendMessage.`,
+        raw: safeSerialize(response),
+      })
+
       if (!initialTask) {
-        if (response.kind !== "task") {
-          const directText = extractTextFromParts(response.parts).join("\n")
+        if (responseKind !== "task") {
+          const directText = extractResponseMessageText(response)
           const fallbackText =
             directText.length > 0
-              ? `Expected a task response but got a direct message:\n${directText}`
+              ? directText
               : "Expected a task response but got a direct message."
           updateAssistantMessage(urlKey, taskSessionId, assistantMessageId, (currentMessage) => ({
             ...currentMessage,
             text: fallbackText,
-            status: "Completed",
-            isWorking: false,
           }))
+          setAssistantStatus(urlKey, taskSessionId, assistantMessageId, "Completed", false)
           return
         }
 
         updateAssistantMessage(urlKey, taskSessionId, assistantMessageId, (currentMessage) => ({
           ...currentMessage,
           text: "Task sent, but no task payload could be parsed from the response.",
-          status: "Failed",
-          isWorking: false,
         }))
+        setAssistantStatus(urlKey, taskSessionId, assistantMessageId, "Failed", false)
         return
       }
 
-      updateAssistantMessage(urlKey, taskSessionId, assistantMessageId, (currentMessage) => ({
-        ...currentMessage,
-        status: formatTaskStatus(initialTask.status.state),
-        isWorking: !isTerminalTask(initialTask),
-      }))
+      const initialTaskText = getTaskText(initialTask)
+      if (initialTaskText.length > 0) {
+        updateAssistantMessage(urlKey, taskSessionId, assistantMessageId, (currentMessage) => ({
+          ...currentMessage,
+          text: initialTaskText,
+        }))
+      }
+
+      setAssistantStatus(
+        urlKey,
+        taskSessionId,
+        assistantMessageId,
+        formatTaskStatus(initialTask.status.state),
+        !isTerminalTask(initialTask)
+      )
 
       updateTaskSession(urlKey, taskSessionId, (currentSession) => ({
         ...currentSession,
@@ -553,6 +1057,11 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
           taskId: initialTask.id,
         },
       }))
+
+      if (isTerminalTask(initialTask)) {
+        void hydrateTaskOutput(client, urlKey, taskSessionId, assistantMessageId, initialTask.id)
+        return
+      }
 
       startTaskResubscribeLoop(client, urlKey, taskSessionId, initialTask, assistantMessageId)
     },
@@ -568,34 +1077,60 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
         (currentMessage) => ({
           ...currentMessage,
           text: message,
-          status: "Failed",
-          isWorking: false,
         })
+      )
+      setAssistantStatus(
+        variables.urlKey,
+        variables.taskSessionId,
+        variables.assistantMessageId,
+        "Failed",
+        false
       )
     },
   })
 
-  const activeUrlState = chatQuery.data.byUrl[baseUrl] ?? getUrlChatInitialState()
-  const activeTaskSession =
-    activeUrlState.sessions.find((session) => session.id === activeUrlState.activeSessionId) ??
-    activeUrlState.sessions[0] ??
-    null
+  const activeUrlState = chatQuery.data.byUrl[baseUrl] ?? null
+  const recentAgents = React.useMemo(
+    () =>
+      Object.entries(chatQuery.data.byUrl)
+        .map(([connectedUrl, state]) => ({
+          url: connectedUrl,
+          agentName: state.agentName,
+          lastConnectedAt: state.lastConnectedAt,
+        }))
+        .filter((entry) => entry.lastConnectedAt !== null)
+        .sort((a, b) => (b.lastConnectedAt ?? 0) - (a.lastConnectedAt ?? 0)),
+    [chatQuery.data.byUrl]
+  )
+  const activeTaskSession = activeUrlState
+    ? activeUrlState.sessions.find((session) => session.id === activeUrlState.activeSessionId) ??
+      activeUrlState.sessions[0] ??
+      null
+    : null
 
   const taskSessions = React.useMemo(
     () =>
-      [...activeUrlState.sessions]
+      [...(activeUrlState?.sessions ?? [])]
         .sort((a, b) => b.updatedAt - a.updatedAt)
         .map((session) => ({
           id: session.id,
           title: session.title,
           updatedAt: session.updatedAt,
         })),
-    [activeUrlState.sessions]
+    [activeUrlState?.sessions]
   )
 
   const handleConnect = React.useCallback(() => {
     connectMutation.mutate(baseUrl)
   }, [baseUrl, connectMutation])
+
+  const handleSelectRecentAgent = React.useCallback(
+    (agentUrl: string) => {
+      setUrl(agentUrl)
+      ensureUrlChatState(agentUrl)
+    },
+    [ensureUrlChatState]
+  )
 
   React.useEffect(() => {
     if (!autoConnect || connectMutation.isPending || didAutoConnectRef.current.has(baseUrl)) {
@@ -635,7 +1170,11 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
 
   const handleCreateTaskSession = React.useCallback(() => {
     setChatStore((current) => {
-      const urlState = current.byUrl[baseUrl] ?? getUrlChatInitialState()
+      const urlState = current.byUrl[baseUrl]
+      if (!urlState) {
+        return current
+      }
+
       const nextSession = createTaskSession()
 
       return {
@@ -678,6 +1217,51 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
     [baseUrl, setChatStore]
   )
 
+  const handleDeleteTaskSession = React.useCallback(
+    (sessionId: string) => {
+      setChatStore((current) => {
+        const urlState = current.byUrl[baseUrl]
+        if (!urlState || !urlState.sessions.some((session) => session.id === sessionId)) {
+          return current
+        }
+
+        const remainingSessions = urlState.sessions.filter((session) => session.id !== sessionId)
+        if (remainingSessions.length === 0) {
+          const nextSession = createTaskSession()
+          return {
+            ...current,
+            byUrl: {
+              ...current.byUrl,
+              [baseUrl]: {
+                ...urlState,
+                activeSessionId: nextSession.id,
+                sessions: [nextSession],
+              },
+            },
+          }
+        }
+
+        const nextActiveSessionId =
+          urlState.activeSessionId === sessionId
+            ? [...remainingSessions].sort((a, b) => b.updatedAt - a.updatedAt)[0]?.id ?? remainingSessions[0].id
+            : urlState.activeSessionId
+
+        return {
+          ...current,
+          byUrl: {
+            ...current.byUrl,
+            [baseUrl]: {
+              ...urlState,
+              activeSessionId: nextActiveSessionId,
+              sessions: remainingSessions,
+            },
+          },
+        }
+      })
+    },
+    [baseUrl, setChatStore]
+  )
+
   const activeConnection = connectionQuery.data
   const isConnectedToCurrentUrl =
     activeConnection.state === "connected" && activeConnection.connectedUrl === baseUrl
@@ -705,11 +1289,14 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
     setTaskInput,
     isSending: sendTaskMutation.isPending,
     messages: activeTaskSession?.messages ?? [],
+    recentAgents,
     taskSessions,
     activeTaskSessionId: activeTaskSession?.id ?? null,
     handleConnect,
+    handleSelectRecentAgent,
     handleSubmitTask,
     handleCreateTaskSession,
     handleSelectTaskSession,
+    handleDeleteTaskSession,
   }
 }

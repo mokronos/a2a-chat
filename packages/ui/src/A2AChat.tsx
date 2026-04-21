@@ -1,5 +1,6 @@
 import React from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { PlusIcon, Trash2Icon } from "lucide-react"
 
 import { InputBox } from "./components/shared/input-box"
 import { MessageBox } from "./components/shared/message-box"
@@ -7,7 +8,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "./components/ui/card"
@@ -51,6 +51,14 @@ function getStatusClasses(state: ConnectionState) {
   return "border-border bg-muted text-muted-foreground"
 }
 
+function getAgentButtonLabel(agentName: string | null, agentUrl: string): string {
+  if (agentName && agentName.trim().length > 0) {
+    return agentName.trim()
+  }
+
+  return agentUrl
+}
+
 function A2AChatCard({
   className,
   title = "A2A Chat",
@@ -71,12 +79,15 @@ function A2AChatCard({
     setTaskInput,
     isSending,
     messages,
+    recentAgents,
     taskSessions,
     activeTaskSessionId,
     handleConnect,
+    handleSelectRecentAgent,
     handleSubmitTask,
     handleCreateTaskSession,
     handleSelectTaskSession,
+    handleDeleteTaskSession,
   } = useA2AChat({
     initialUrl,
     proxyBasePath,
@@ -84,7 +95,7 @@ function A2AChatCard({
   })
 
   return (
-    <Card className={cn("w-full max-w-2xl", className)}>
+    <Card className={cn("w-full max-w-5xl", className)}>
       <CardHeader className="border-b border-border">
         <CardTitle>{title}</CardTitle>
         <CardDescription>{description}</CardDescription>
@@ -142,44 +153,94 @@ function A2AChatCard({
           {agentName ? <div className="text-xs text-muted-foreground">Agent: {agentName}</div> : null}
         </div>
 
-        <div className="mt-3 flex items-center gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={handleCreateTaskSession}>
-            New Task
-          </Button>
-          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-1">
-            {taskSessions.map((session) => (
-              <Button
-                key={session.id}
-                type="button"
-                variant={session.id === activeTaskSessionId ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleSelectTaskSession(session.id)}
-                className="shrink-0"
-                title={session.title}
-              >
-                {session.title}
-              </Button>
-            ))}
-          </div>
-        </div>
       </CardHeader>
 
       <CardContent>
-        <MessageBox messages={messages} />
-      </CardContent>
+        <div className="grid gap-4 md:grid-cols-[15rem_1fr]">
+          <aside className="flex flex-col gap-4 border-b border-border pb-4 md:border-r md:border-b-0 md:pb-0 md:pr-4">
+            <div className="flex flex-col gap-2">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Recent Agents
+              </div>
+              <div className="flex max-h-40 flex-col gap-1 overflow-y-auto">
+                {recentAgents.length > 0 ? (
+                  recentAgents.map((agent) => (
+                    <Button
+                      key={agent.url}
+                      type="button"
+                      variant={agent.url === url ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleSelectRecentAgent(agent.url)}
+                      className="justify-start"
+                      title={agent.url}
+                    >
+                      <span className="truncate">{getAgentButtonLabel(agent.agentName, agent.url)}</span>
+                    </Button>
+                  ))
+                ) : (
+                  <div className="text-xs text-muted-foreground">No recent agent connections yet.</div>
+                )}
+              </div>
+            </div>
 
-      <Separator />
+            <div className="flex min-h-0 flex-1 flex-col gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCreateTaskSession}
+                disabled={connectionState !== "connected"}
+                className="w-full justify-start"
+                aria-label="New task"
+                title="New task"
+              >
+                <PlusIcon />
+                <span>New Task</span>
+              </Button>
+              <div className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Tasks
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col gap-1 overflow-y-auto pb-1">
+                {taskSessions.map((session) => (
+                  <div key={session.id} className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      variant={session.id === activeTaskSessionId ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleSelectTaskSession(session.id)}
+                      className="min-w-0 flex-1 justify-start"
+                      title={session.title}
+                    >
+                      <span className="truncate">{session.title}</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => handleDeleteTaskSession(session.id)}
+                      aria-label={`Delete task ${session.title}`}
+                      title={`Delete task ${session.title}`}
+                    >
+                      <Trash2Icon />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </aside>
 
-      <CardFooter>
-        <div className="w-full">
-          <InputBox
-            value={taskInput}
-            onChange={setTaskInput}
-            onSubmit={handleSubmitTask}
-            disabled={connectionState !== "connected" || isSending}
-          />
+          <div className="flex flex-col gap-3">
+            <MessageBox messages={messages} />
+            <Separator />
+            <InputBox
+              value={taskInput}
+              onChange={setTaskInput}
+              onSubmit={handleSubmitTask}
+              disabled={connectionState !== "connected" || isSending}
+            />
+          </div>
         </div>
-      </CardFooter>
+      </CardContent>
     </Card>
   )
 }

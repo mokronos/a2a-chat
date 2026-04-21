@@ -24,3 +24,10 @@ export const resubscribeToTask = (
   signal: AbortSignal
 ) =>
   Effect.sync(() => client.resubscribeTask({ id: taskId }, { signal }))
+
+export const getTaskById = (client: A2AClient, taskId: string) =>
+  Effect.tryPromise({
+    try: () => client.getTask({ id: taskId }),
+    catch: (cause) =>
+      cause instanceof Error ? cause : new Error("Could not fetch task from A2A server"),
+  })
