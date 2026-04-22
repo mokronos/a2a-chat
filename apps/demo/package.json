@@ -1,0 +1,19 @@
+{
+  "name": "demo",
+  "private": true,
+  "scripts": {
+      "dev": "bun run --hot hserver.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@effect/platform": "^0.96.0",
+    "@effect/platform-bun": "^0.89.0",
+    "effect": "^3.21.1",
+    "hono": "^4.12.14"
+  }
+}
