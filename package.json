@@ -10,6 +10,7 @@
     "apps/*"
   ],
   "devDependencies": {
+    "@effect/language-service": "^0.85.1",
     "@types/bun": "latest",
     "typescript": "^5"
   }
