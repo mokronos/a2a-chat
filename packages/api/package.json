@@ -1,0 +1,18 @@
+{
+  "name": "@a2a-chat/api",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "dependencies": {
+    "@effect/platform": "^0.96.0",
+    "@effect/platform-bun": "^0.89.0",
+    "effect": "^3.21.1"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "exports": {
+      ".": "./src/index.ts",
+      "./handlers": "./src/handlers.ts"
+  }
+}
