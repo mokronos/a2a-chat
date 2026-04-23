@@ -4,6 +4,7 @@
     "@types/bun": "latest"
   },
   "dependencies": {
+    "@a2a-js/sdk": "^0.3.13",
     "@effect/platform": "^0.96.0",
     "@effect/platform-bun": "^0.89.0",
     "effect": "^3.21.1"
@@ -12,7 +13,6 @@
     "typescript": "^5"
   },
   "exports": {
-      ".": "./src/index.ts",
-      "./handlers": "./src/handlers.ts"
+    ".": "./src/index.ts"
   }
 }
