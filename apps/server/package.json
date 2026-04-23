@@ -2,7 +2,8 @@
   "name": "demo",
   "private": true,
   "scripts": {
-      "dev": "bun run --hot src/server.ts"
+    "build:web": "bun run --cwd ../../packages/ui build && bun build ./web/main.tsx --outfile ./public/assets/app.js --target browser --format esm && cp ../../packages/ui/dist/styles.css ./public/assets/styles.css",
+    "dev": "bun run build:web && bun run --hot src/server.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"
@@ -11,9 +12,11 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@a2a-chat/api": "workspace:*",
+    "@mokronos/a2a-chat-ui": "workspace:*",
     "@effect/platform": "^0.96.0",
-    "@effect/platform-bun": "^0.89.0",
     "effect": "^3.21.1",
-    "@a2a-chat/api": "workspace:*"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   }
 }

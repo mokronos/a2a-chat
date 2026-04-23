@@ -15,8 +15,10 @@
       "dependencies": {
         "@a2a-chat/api": "workspace:*",
         "@effect/platform": "^0.96.0",
-        "@effect/platform-bun": "^0.89.0",
+        "@mokronos/a2a-chat-ui": "workspace:*",
         "effect": "^3.21.1",
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0",
       },
       "devDependencies": {
         "@types/bun": "latest",

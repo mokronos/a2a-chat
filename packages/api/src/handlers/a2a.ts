@@ -31,7 +31,7 @@ export const a2aProxyHandler = HttpApiBuilder.group(InspectorApi, "a2aProxy", (h
                 return Effect.succeed(toBadRequest("Invalid 'target' query parameter"))
             }
 
-            const agentCardUrl = new URL("/.well-known/agent.json", targetUrl)
+            const agentCardUrl = new URL("/.well-known/agent-card.json", targetUrl)
 
             return Effect.tryPromise(() => fetch(agentCardUrl.toString())).pipe(
                 Effect.map((response) => HttpServerResponse.fromWeb(response)),
