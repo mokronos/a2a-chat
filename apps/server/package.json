@@ -1,22 +1,27 @@
 {
-  "name": "demo",
+  "name": "a2a-chat-server",
+  "version": "0.0.0",
   "private": true,
+  "bin": {
+    "a2a-chat-server": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "public"
+  ],
   "scripts": {
+    "build": "bun run build:web && bun run build:cli",
+    "build:cli": "bun build ./src/server.ts --outfile ./dist/cli.js --target bun --banner '#!/usr/bin/env bun' && chmod +x ./dist/cli.js",
     "build:web": "bun run --cwd ../../packages/ui build && bun build ./web/main.tsx --outfile ./public/assets/app.js --target browser --format esm && cp ../../packages/ui/dist/styles.css ./public/assets/styles.css",
-    "dev": "bun run build:web && bun run --hot src/server.ts"
+    "dev": "bun run build:web && bun run --hot src/server.ts",
+    "prepack": "bun run build"
   },
   "devDependencies": {
-    "@types/bun": "latest"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
-  },
-  "dependencies": {
-    "@a2a-chat/api": "workspace:*",
-    "@mokronos/a2a-chat-ui": "workspace:*",
+    "@types/bun": "latest",
     "@effect/platform": "^0.96.0",
     "effect": "^3.21.1",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "typescript": "^5"
   }
 }

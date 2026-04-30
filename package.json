@@ -3,7 +3,15 @@
   "private": true,
   "scripts": {
     "dev:inspector": "bun run --cwd apps/server dev",
-    "build:inspector": "bun run --cwd apps/server build:web"
+    "build:inspector": "bun run --cwd apps/server build:web",
+    "dev": "bun run --cwd apps/server dev",
+    "build": "bun run build:server",
+    "build:server": "bun run --cwd apps/server build",
+    "build:ui": "bun run --cwd packages/ui build",
+    "bunx:server": "bunx --package a2a-chat-server@file:$PWD/apps/server a2a-chat-server",
+    "pack:server": "bun pm pack --cwd apps/server",
+    "typecheck": "bun run --cwd packages/ui typecheck && bun tsc --noEmit",
+    "dev:server": "bun run --cwd apps/server dev"
   },
   "workspaces": [
     "packages/*",
