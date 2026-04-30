@@ -15,7 +15,7 @@ bun run index.ts
 To run the playground app:
 
 ```bash
-bun run --cwd apps/playground dev
+bun run --cwd apps/server dev
 ```
 
 Or from the workspace root (recommended):

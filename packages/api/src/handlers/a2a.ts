@@ -23,6 +23,11 @@ function toBadGateway(message: string) {
     return HttpServerResponse.json({ error: message }, { status: 502 })
 }
 
+export function resolveAgentCardUrl(targetUrl: URL): URL {
+    const targetBase = targetUrl.toString().endsWith("/") ? targetUrl : new URL(`${targetUrl.toString()}/`)
+    return new URL(".well-known/agent-card.json", targetBase)
+}
+
 export const a2aProxyHandler = HttpApiBuilder.group(InspectorApi, "a2aProxy", (handlers) =>
     handlers
         .handleRaw("agentCard", ({ urlParams }) => {
@@ -31,7 +36,7 @@ export const a2aProxyHandler = HttpApiBuilder.group(InspectorApi, "a2aProxy", (h
                 return Effect.succeed(toBadRequest("Invalid 'target' query parameter"))
             }
 
-            const agentCardUrl = new URL("/.well-known/agent-card.json", targetUrl)
+            const agentCardUrl = resolveAgentCardUrl(targetUrl)
 
             return Effect.tryPromise(() => fetch(agentCardUrl.toString())).pipe(
                 Effect.map((response) => HttpServerResponse.fromWeb(response)),
