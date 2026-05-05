@@ -7,7 +7,7 @@ from fasta2a.schema import Message, Part
 
 
 async def main() -> None:
-    http_client = httpx.AsyncClient(base_url='http://localhost:8000', timeout=None)
+    http_client = httpx.AsyncClient(base_url='http://127.0.0.1:8787/agents/e0b7dd03-5318-458a-b198-24b21425e2c4', timeout=None)
     client = A2AClient(http_client=http_client)
 
     message = Message(
