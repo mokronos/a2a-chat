@@ -66,11 +66,57 @@ describe("A2A JSONRPC helpers", () => {
       }
       const fetchUrl = capturedFetchUrl as string
       expect(fetchUrl).toBe("/api/a2a/agent-card?target=http%3A%2F%2Flocalhost%3A8000")
-      expect(endpoint).toBe("http://localhost:8000/rpc")
+      expect(endpoint).toBe("/api/a2a/jsonrpc?target=http%3A%2F%2Flocalhost%3A8000%2Frpc")
       expect(agentName).toBe("Test Agent")
 
       const card = await client.getAgentCard()
       expect(card.name).toBe("Test Agent")
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+  })
+
+  it("builds a direct JSONRPC client without proxy routes", async () => {
+    const baseUrl = "http://localhost:8000/agents/agent-1/a2a"
+    const transport = createProxyTransport(false)
+    const originalFetch = globalThis.fetch
+    let capturedFetchUrl: string | null = null
+
+    const mockFetch = Object.assign(
+      async (input: RequestInfo | URL) => {
+        capturedFetchUrl = typeof input === "string" ? input : input.toString()
+
+        return new Response(
+          JSON.stringify({
+            name: "Direct Agent",
+            supportedInterfaces: [
+              {
+                protocolBinding: "JSONRPC",
+                url: "/agents/agent-1/a2a",
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        )
+      },
+      {
+        preconnect: () => {},
+      }
+    )
+
+    globalThis.fetch = mockFetch as typeof fetch
+
+    try {
+      const { agentName, endpoint } = await createJsonRpcClient(baseUrl, transport)
+
+      expect(capturedFetchUrl).toBe("http://localhost:8000/agents/agent-1/a2a/.well-known/agent-card.json")
+      expect(endpoint).toBe("http://localhost:8000/agents/agent-1/a2a")
+      expect(agentName).toBe("Direct Agent")
     } finally {
       globalThis.fetch = originalFetch
     }

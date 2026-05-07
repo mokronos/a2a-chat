@@ -2,9 +2,14 @@ import type { Client } from "@a2a-js/sdk/client"
 
 export type ConnectionState = "idle" | "connecting" | "connected" | "error"
 
-export type A2AProxyTransport = {
-  basePath: string
-}
+export type A2AProxyTransport =
+  | {
+      mode: "proxy"
+      basePath: string
+    }
+  | {
+      mode: "direct"
+    }
 
 export type A2AConversationState = {
   contextId?: string

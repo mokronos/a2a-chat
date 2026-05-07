@@ -15,8 +15,11 @@ export type MessageTimelineEvent = {
   summary: string
   details?: string
   raw?: string
+  rawEvent?: unknown
   at: number
 }
+
+export type MessageTimelineEventRenderer = (event: MessageTimelineEvent) => React.ReactNode
 
 export type Message = {
   id: string
@@ -31,6 +34,7 @@ export type Message = {
 
 type MessageBoxProps = {
   messages: Message[]
+  eventRenderers?: MessageTimelineEventRenderer[]
 }
 
 function formatEventTime(timestamp: number): string {
@@ -42,7 +46,21 @@ function formatEventTime(timestamp: number): string {
   })
 }
 
-function MessageBox({ messages }: MessageBoxProps) {
+function renderEventContent(
+  event: MessageTimelineEvent,
+  eventRenderers: MessageTimelineEventRenderer[]
+) {
+  for (const renderEvent of eventRenderers) {
+    const rendered = renderEvent(event)
+    if (rendered) {
+      return rendered
+    }
+  }
+
+  return null
+}
+
+function MessageBox({ messages, eventRenderers = [] }: MessageBoxProps) {
   const containerRef = React.useRef<HTMLDivElement>(null)
   const endRef = React.useRef<HTMLDivElement>(null)
   const [expandedStatusHistory, setExpandedStatusHistory] = React.useState<Record<string, boolean>>({})
@@ -120,23 +138,29 @@ function MessageBox({ messages }: MessageBoxProps) {
                   <div className="border-b border-border/40 bg-background/50 px-2.5 py-2">
                     <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Event Timeline</div>
                     <div className="flex flex-col gap-1.5">
-                      {timelineEvents.map((eventItem) => (
-                        <details key={eventItem.id} className="rounded-md border border-border/40 bg-background/70 px-2 py-1">
-                          <summary className="cursor-pointer list-none text-[11px] text-muted-foreground">
-                            <span className="font-mono">{formatEventTime(eventItem.at)}</span>{" "}
-                            <span className="font-medium text-foreground">{eventItem.kind}</span>{" "}
-                            <span>{eventItem.summary}</span>
-                          </summary>
-                          {eventItem.details ? (
-                            <div className="mt-1 text-[11px] text-muted-foreground">{eventItem.details}</div>
-                          ) : null}
-                          {eventItem.raw ? (
-                            <pre className="mt-1 overflow-x-auto rounded-sm bg-muted/40 p-1 text-[10px] text-muted-foreground">
-                              {eventItem.raw}
-                            </pre>
-                          ) : null}
-                        </details>
-                      ))}
+                      {timelineEvents.map((eventItem) => {
+                        const customContent = renderEventContent(eventItem, eventRenderers)
+
+                        return (
+                          <details key={eventItem.id} className="rounded-md border border-border/40 bg-background/70 px-2 py-1">
+                            <summary className="cursor-pointer list-none text-[11px] text-muted-foreground">
+                              <span className="font-mono">{formatEventTime(eventItem.at)}</span>{" "}
+                              <span className="font-medium text-foreground">{eventItem.kind}</span>{" "}
+                              <span>{eventItem.summary}</span>
+                            </summary>
+                            {eventItem.details ? (
+                              <div className="mt-1 text-[11px] text-muted-foreground">{eventItem.details}</div>
+                            ) : null}
+                            {customContent ? (
+                              <div className="mt-1">{customContent}</div>
+                            ) : eventItem.raw ? (
+                              <pre className="mt-1 overflow-x-auto rounded-sm bg-muted/40 p-1 text-[10px] text-muted-foreground">
+                                {eventItem.raw}
+                              </pre>
+                            ) : null}
+                          </details>
+                        )
+                      })}
                     </div>
                   </div>
                 ) : null}

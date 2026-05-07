@@ -1,3 +1,4 @@
+import { AGENT_CARD_PATH } from "@a2a-js/sdk"
 import type { AgentCard, Message as A2AProtocolMessage, Task } from "@a2a-js/sdk"
 import { Client, JsonRpcTransport } from "@a2a-js/sdk/client"
 
@@ -38,15 +39,8 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function resolveEndpointUrl(baseUrl: string, url: string) {
-  if (/^https?:\/\//i.test(url)) {
-    return url
-  }
-
-  if (url.startsWith("/")) {
-    return `${baseUrl}${url}`
-  }
-
-  return `${baseUrl}/${url}`
+  const normalizedBaseUrl = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`
+  return new URL(url, normalizedBaseUrl).toString()
 }
 
 export function resolveJsonRpcEndpoint(baseUrl: string, agentCard: unknown): string {
@@ -95,7 +89,10 @@ export async function createJsonRpcClient(
   endpoint: string
   acceptedOutputModes: string[]
 }> {
-  const cardUrl = createAgentCardProxyUrl(transport, baseUrl)
+  const cardUrl =
+    transport.mode === "proxy"
+      ? createAgentCardProxyUrl(transport, baseUrl)
+      : `${normalizeBaseUrl(baseUrl)}/${AGENT_CARD_PATH}`
   const cardResponse = await fetch(cardUrl)
 
   if (!cardResponse.ok) {
@@ -104,8 +101,10 @@ export async function createJsonRpcClient(
 
   const agentCard = (await cardResponse.json()) as CompatibleAgentCard
   const upstreamEndpoint = resolveJsonRpcEndpoint(baseUrl, agentCard)
-  const proxyEndpoint = createJsonRpcProxyUrl(transport, upstreamEndpoint)
-  const client = new Client(new JsonRpcTransport({ endpoint: proxyEndpoint }), agentCard)
+  // In direct mode the caller already chose the browser-visible endpoint.
+  // Agent cards may advertise an internal absolute URL that would bypass the proxy and fail with CORS.
+  const endpoint = transport.mode === "proxy" ? createJsonRpcProxyUrl(transport, upstreamEndpoint) : baseUrl
+  const client = new Client(new JsonRpcTransport({ endpoint }), agentCard)
   const agentName = typeof agentCard.name === "string" ? agentCard.name : null
   const acceptedOutputModes = Array.isArray(agentCard.defaultOutputModes)
     ? agentCard.defaultOutputModes.filter(
@@ -113,7 +112,7 @@ export async function createJsonRpcClient(
       )
     : []
 
-  return { client, agentName, endpoint: upstreamEndpoint, acceptedOutputModes }
+  return { client, agentName, endpoint, acceptedOutputModes }
 }
 
 export function buildA2AMessage(

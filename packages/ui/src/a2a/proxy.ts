@@ -12,8 +12,15 @@ export function normalizeProxyBasePath(basePath?: string): string {
   return rawPath.replace(/\/+$/, "")
 }
 
-export function createProxyTransport(basePath?: string): A2AProxyTransport {
+export function createProxyTransport(basePath?: string | false): A2AProxyTransport {
+  if (!basePath) {
+    return {
+      mode: "direct",
+    }
+  }
+
   return {
+    mode: "proxy",
     basePath: normalizeProxyBasePath(basePath),
   }
 }

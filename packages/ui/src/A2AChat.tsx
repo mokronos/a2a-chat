@@ -4,6 +4,7 @@ import { PlusIcon, Trash2Icon } from "lucide-react"
 
 import { InputBox } from "./components/shared/input-box"
 import { MessageBox } from "./components/shared/message-box"
+import type { MessageTimelineEventRenderer } from "./components/shared/message-box"
 import {
   Card,
   CardContent,
@@ -16,6 +17,7 @@ import { Input } from "./components/ui/input"
 import { Separator } from "./components/ui/separator"
 import { cn } from "./lib/utils"
 import { useA2AChat } from "./a2a/use-a2a-chat"
+import { inspectorEventRenderers } from "./a2a/inspector-event-renderers"
 import type { ConnectionState } from "./a2a/types"
 
 export type A2AAgentSuggestion = {
@@ -29,10 +31,11 @@ export type A2AChatProps = {
   title?: string
   description?: string
   initialUrl?: string
-  proxyBasePath?: string
+  proxyBasePath?: string | false
   autoConnect?: boolean
   showConnectionForm?: boolean
   agentSuggestions?: A2AAgentSuggestion[]
+  eventRenderers?: MessageTimelineEventRenderer[]
 }
 
 function getStatusClasses(state: ConnectionState) {
@@ -68,6 +71,7 @@ function A2AChatCard({
   autoConnect,
   showConnectionForm = true,
   agentSuggestions = [],
+  eventRenderers = inspectorEventRenderers,
 }: A2AChatProps) {
   const {
     url,
@@ -230,7 +234,7 @@ function A2AChatCard({
           </aside>
 
           <div className="flex flex-col gap-3">
-            <MessageBox messages={messages} />
+            <MessageBox messages={messages} eventRenderers={eventRenderers} />
             <Separator />
             <InputBox
               value={taskInput}

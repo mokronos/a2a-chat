@@ -11,12 +11,11 @@ export const connectJsonRpc = (baseUrl: string, transport: A2AProxyTransport) =>
       cause instanceof Error ? cause : new Error("Could not connect to the A2A server"),
   })
 
-export const sendTaskMessage = (client: A2AClient, params: MessageSendParams) =>
-  Effect.tryPromise({
-    try: () => client.sendMessage(params),
-    catch: (cause) =>
-      cause instanceof Error ? cause : new Error("Could not send message to A2A server"),
-  })
+export const sendTaskMessageStream = (
+  client: A2AClient,
+  params: MessageSendParams,
+  signal: AbortSignal
+) => Effect.sync(() => client.sendMessageStream(params, { signal }))
 
 export const resubscribeToTask = (
   client: A2AClient,

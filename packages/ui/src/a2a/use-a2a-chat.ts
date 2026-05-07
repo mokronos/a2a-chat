@@ -18,7 +18,12 @@ import {
   normalizeBaseUrl,
 } from "./helpers"
 import { createProxyTransport } from "./proxy"
-import { connectJsonRpc, getTaskById, resubscribeToTask, sendTaskMessage } from "./service"
+import {
+  connectJsonRpc,
+  getTaskById,
+  resubscribeToTask,
+  sendTaskMessageStream,
+} from "./service"
 import type { A2AClient, A2AConversationState, ConnectionState } from "./types"
 
 type ConnectionStore = {
@@ -58,8 +63,53 @@ const DEFAULT_TASK_TITLE = "New Task"
 
 type UseA2AChatOptions = {
   initialUrl?: string
-  proxyBasePath?: string
+  proxyBasePath?: string | false
   autoConnect?: boolean
+}
+
+type TaskStreamProcessResult = {
+  task: Task | null
+  done: boolean
+}
+
+type SendTaskVariables = {
+  taskText: string
+  assistantMessageId: string
+  urlKey: string
+  taskSessionId: string
+}
+
+type TaskSessionSummary = {
+  id: string
+  title: string
+  updatedAt: number
+}
+
+type RecentAgentSummary = {
+  url: string
+  agentName: string | null
+  lastConnectedAt: number | null
+}
+
+export type UseA2AChatResult = {
+  url: string
+  setUrl: React.Dispatch<React.SetStateAction<string>>
+  connectionState: ConnectionState
+  connectionMessage: string
+  agentName: string | null
+  taskInput: string
+  setTaskInput: React.Dispatch<React.SetStateAction<string>>
+  isSending: boolean
+  messages: Message[]
+  recentAgents: RecentAgentSummary[]
+  taskSessions: TaskSessionSummary[]
+  activeTaskSessionId: string | null
+  handleConnect: () => void
+  handleSelectRecentAgent: (agentUrl: string) => void
+  handleSubmitTask: () => void
+  handleCreateTaskSession: () => void
+  handleSelectTaskSession: (sessionId: string) => void
+  handleDeleteTaskSession: (sessionId: string) => void
 }
 
 function isTerminalTask(task: Task) {
@@ -84,27 +134,6 @@ function getErrorMessage(error: unknown, fallback: string): string {
   }
 
   return fallback
-}
-
-function getResponseKind(response: unknown): string {
-  if (extractTask(response)) {
-    return "task"
-  }
-
-  if (isRecord(response) && typeof response.kind === "string" && response.kind.length > 0) {
-    return response.kind
-  }
-
-  if (
-    isRecord(response) &&
-    isRecord(response.result) &&
-    typeof response.result.kind === "string" &&
-    response.result.kind.length > 0
-  ) {
-    return response.result.kind
-  }
-
-  return "unknown"
 }
 
 function extractResponseMessageText(response: unknown): string {
@@ -169,7 +198,7 @@ function getStatusUpdateEvent(event: unknown): StatusUpdateEvent | null {
   return {
     kind: "status-update",
     taskId: typeof normalized.taskId === "string" ? normalized.taskId : undefined,
-    status: normalized.status as Task["status"],
+    status: normalized.status as unknown as Task["status"],
   }
 }
 
@@ -392,6 +421,75 @@ function summarizeArtifactParts(parts: unknown): { summary: string; details?: st
   }
 }
 
+function getFirstDataPart(parts: unknown): Record<string, unknown> | null {
+  if (!Array.isArray(parts)) {
+    return null
+  }
+
+  for (const part of parts) {
+    if (isRecord(part) && part.kind === "data" && isRecord(part.data)) {
+      return part.data
+    }
+  }
+
+  return null
+}
+
+function summarizeStatusUpdateEvent(event: Record<string, unknown>): string | null {
+  if (!isRecord(event.status) || !isRecord(event.status.message)) {
+    return null
+  }
+
+  const data = getFirstDataPart(event.status.message.parts)
+  if (!data || typeof data.type !== "string") {
+    return null
+  }
+
+  return summarizeToolData(data)
+}
+
+function getLatestAgentDataPartFromTask(task: Task): Record<string, unknown> | null {
+  const history = Array.isArray(task.history) ? task.history : []
+
+  for (const message of [...history].reverse()) {
+    if (!isRecord(message) || message.role !== "agent") {
+      continue
+    }
+
+    const data = getFirstDataPart(message.parts)
+    if (data) {
+      return data
+    }
+  }
+
+  return null
+}
+
+function summarizeToolData(data: Record<string, unknown>): string | null {
+  if (typeof data.type !== "string") {
+    return null
+  }
+
+  const toolName = typeof data.toolName === "string" ? data.toolName : "tool"
+  if (data.type === "tool-call") {
+    return `Calling ${toolName}.`
+  }
+
+  if (data.type === "tool-result") {
+    return `Received ${toolName} result.`
+  }
+
+  if (data.type === "finish-step" && typeof data.finishReason === "string") {
+    return `Finished model step: ${data.finishReason}.`
+  }
+
+  if (data.type === "finish" && typeof data.finishReason === "string") {
+    return `Finished run: ${data.finishReason}.`
+  }
+
+  return null
+}
+
 function buildTimelineEvent(event: unknown): Omit<MessageTimelineEvent, "id" | "at"> {
   const normalizedEvent = normalizeStreamEvent(event)
   const raw = safeSerialize(normalizedEvent)
@@ -399,11 +497,13 @@ function buildTimelineEvent(event: unknown): Omit<MessageTimelineEvent, "id" | "
 
   if (task) {
     const state = formatTaskStatus(task.status.state)
+    const taskSummary = summarizeToolData(getLatestAgentDataPartFromTask(task) ?? {})
     return {
       kind: "task-update",
-      summary: `Task ${task.id} is ${state}.`,
+      summary: taskSummary ?? `Task ${task.id} is ${state}.`,
       details: task.contextId ? `contextId: ${task.contextId}` : undefined,
       raw,
+      rawEvent: normalizedEvent,
     }
   }
 
@@ -413,14 +513,16 @@ function buildTimelineEvent(event: unknown): Omit<MessageTimelineEvent, "id" | "
         isRecord(normalizedEvent.status) && typeof normalizedEvent.status.state === "string"
           ? formatTaskStatus(normalizedEvent.status.state)
           : "Unknown"
+      const statusSummary = summarizeStatusUpdateEvent(normalizedEvent)
       return {
         kind: "status-update",
-        summary: `Status changed to ${statusState}.`,
+        summary: statusSummary ?? `Status changed to ${statusState}.`,
         details:
           typeof normalizedEvent.taskId === "string"
             ? `taskId: ${normalizedEvent.taskId}`
             : undefined,
         raw,
+        rawEvent: normalizedEvent,
       }
     }
 
@@ -435,6 +537,7 @@ function buildTimelineEvent(event: unknown): Omit<MessageTimelineEvent, "id" | "
         summary: artifactSummary.summary,
         details: artifactSummary.details,
         raw,
+        rawEvent: normalizedEvent,
       }
     }
 
@@ -442,6 +545,7 @@ function buildTimelineEvent(event: unknown): Omit<MessageTimelineEvent, "id" | "
       kind: normalizedEvent.kind,
       summary: "Received event payload.",
       raw,
+      rawEvent: normalizedEvent,
     }
   }
 
@@ -449,6 +553,7 @@ function buildTimelineEvent(event: unknown): Omit<MessageTimelineEvent, "id" | "
     kind: "event",
     summary: "Received event payload.",
     raw,
+    rawEvent: normalizedEvent,
   }
 }
 
@@ -460,7 +565,7 @@ function createStatusEntry(label: string): MessageStatusHistoryEntry {
   }
 }
 
-export function useA2AChat(options: UseA2AChatOptions = {}) {
+export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
   const {
     initialUrl = "http://localhost:8000",
     proxyBasePath,
@@ -657,6 +762,7 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
           kind: "task-snapshot",
           summary: "Fetched final task snapshot.",
           raw: safeSerialize(snapshot),
+          rawEvent: snapshot,
         })
 
         if (snapshotText.length > 0) {
@@ -675,6 +781,141 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
       }
     },
     [appendAssistantEvent, updateAssistantMessage]
+  )
+
+  const processTaskStreamEvent = React.useCallback(
+    async (
+      client: A2AClient,
+      urlKey: string,
+      sessionId: string,
+      assistantMessageId: string,
+      currentTask: Task | null,
+      event: unknown
+    ): Promise<TaskStreamProcessResult> => {
+      appendAssistantEvent(urlKey, sessionId, assistantMessageId, buildTimelineEvent(event))
+
+      const taskEvent = extractTask(normalizeStreamEvent(event))
+      if (taskEvent) {
+        updateTaskSession(urlKey, sessionId, (currentSession) => ({
+          ...currentSession,
+          conversationState: {
+            contextId: taskEvent.contextId,
+            taskId: taskEvent.id,
+          },
+        }))
+        updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => ({
+          ...currentMessage,
+          text: getTaskText(taskEvent),
+        }))
+        setAssistantStatus(
+          urlKey,
+          sessionId,
+          assistantMessageId,
+          formatTaskStatus(taskEvent.status.state),
+          !isTerminalTask(taskEvent)
+        )
+        if (isTerminalTask(taskEvent)) {
+          const snapshot = await hydrateTaskOutput(
+            client,
+            urlKey,
+            sessionId,
+            assistantMessageId,
+            taskEvent.id
+          )
+          return { task: snapshot ?? taskEvent, done: true }
+        }
+        return { task: taskEvent, done: false }
+      }
+
+      if (!currentTask) {
+        return { task: null, done: false }
+      }
+
+      const artifactUpdate = getArtifactUpdateEvent(event)
+      if (artifactUpdate && artifactUpdate.taskId === currentTask.id) {
+        const { output, thinking } = extractAssistantTextFromArtifactUpdate(artifactUpdate)
+        if (output.length > 0 || thinking.length > 0) {
+          updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => {
+            const textFragments = [currentMessage.text, ...output]
+              .map((fragment) => fragment.trim())
+              .filter((fragment) => fragment.length > 0)
+            const thinkingFragments = [currentMessage.thinkingText ?? "", ...thinking]
+              .map((fragment) => fragment.trim())
+              .filter((fragment) => fragment.length > 0)
+
+            return {
+              ...currentMessage,
+              text: Array.from(new Set(textFragments)).join("\n\n"),
+              thinkingText:
+                thinkingFragments.length > 0
+                  ? Array.from(new Set(thinkingFragments)).join("\n\n")
+                  : currentMessage.thinkingText,
+            }
+          })
+        }
+
+        if (artifactUpdate.lastChunk) {
+          const snapshot = await hydrateTaskOutput(
+            client,
+            urlKey,
+            sessionId,
+            assistantMessageId,
+            currentTask.id
+          )
+          if (snapshot) {
+            setAssistantStatus(
+              urlKey,
+              sessionId,
+              assistantMessageId,
+              formatTaskStatus(snapshot.status.state),
+              !isTerminalTask(snapshot)
+            )
+            return { task: snapshot, done: isTerminalTask(snapshot) }
+          }
+        }
+
+        return { task: currentTask, done: false }
+      }
+
+      const statusUpdate = getStatusUpdateEvent(event)
+      if (statusUpdate && statusUpdate.taskId === currentTask.id) {
+        const nextTask: Task = {
+          ...currentTask,
+          status: statusUpdate.status,
+        }
+        updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => ({
+          ...currentMessage,
+          text: getTaskText(nextTask),
+        }))
+        setAssistantStatus(
+          urlKey,
+          sessionId,
+          assistantMessageId,
+          formatTaskStatus(nextTask.status.state),
+          !isTerminalTask(nextTask)
+        )
+        if (isTerminalTask(nextTask)) {
+          const snapshot = await hydrateTaskOutput(
+            client,
+            urlKey,
+            sessionId,
+            assistantMessageId,
+            nextTask.id
+          )
+          return { task: snapshot ?? nextTask, done: true }
+        }
+        return { task: nextTask, done: false }
+      }
+
+      return { task: currentTask, done: false }
+    },
+    [
+      appendAssistantEvent,
+      hydrateTaskOutput,
+      setAssistantStatus,
+      updateAssistantMessage,
+      updateTaskSession,
+    ]
   )
 
   const startTaskResubscribeLoop = React.useCallback(
@@ -712,129 +953,19 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
                 break
               }
 
-              appendAssistantEvent(
+              const result = await processTaskStreamEvent(
+                client,
                 urlKey,
                 sessionId,
                 assistantMessageId,
-                buildTimelineEvent(event)
+                currentTask,
+                event
               )
-
-              const taskEvent = extractTask(normalizeStreamEvent(event))
-              if (taskEvent) {
-                currentTask = taskEvent
-                updateTaskSession(urlKey, sessionId, (currentSession) => ({
-                  ...currentSession,
-                  conversationState: {
-                    contextId: taskEvent.contextId,
-                    taskId: taskEvent.id,
-                  },
-                }))
-                updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => ({
-                  ...currentMessage,
-                  text: getTaskText(currentTask),
-                }))
-                setAssistantStatus(
-                  urlKey,
-                  sessionId,
-                  assistantMessageId,
-                  formatTaskStatus(currentTask.status.state),
-                  !isTerminalTask(currentTask)
-                )
-                if (isTerminalTask(currentTask)) {
-                  const snapshot = await hydrateTaskOutput(
-                    client,
-                    urlKey,
-                    sessionId,
-                    assistantMessageId,
-                    currentTask.id
-                  )
-                  if (snapshot) {
-                    currentTask = snapshot
-                  }
-                  break
-                }
-                continue
+              if (result.task) {
+                currentTask = result.task
               }
-
-              const artifactUpdate = getArtifactUpdateEvent(event)
-              if (artifactUpdate && artifactUpdate.taskId === currentTask.id) {
-                const { output, thinking } = extractAssistantTextFromArtifactUpdate(artifactUpdate)
-                if (output.length > 0 || thinking.length > 0) {
-                  updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => {
-                    const textFragments = [currentMessage.text, ...output]
-                      .map((fragment) => fragment.trim())
-                      .filter((fragment) => fragment.length > 0)
-                    const thinkingFragments = [currentMessage.thinkingText ?? "", ...thinking]
-                      .map((fragment) => fragment.trim())
-                      .filter((fragment) => fragment.length > 0)
-
-                    return {
-                      ...currentMessage,
-                      text: Array.from(new Set(textFragments)).join("\n\n"),
-                      thinkingText:
-                        thinkingFragments.length > 0
-                          ? Array.from(new Set(thinkingFragments)).join("\n\n")
-                          : currentMessage.thinkingText,
-                    }
-                  })
-                }
-
-                if (artifactUpdate.lastChunk) {
-                  const snapshot = await hydrateTaskOutput(
-                    client,
-                    urlKey,
-                    sessionId,
-                    assistantMessageId,
-                    currentTask.id
-                  )
-                  if (snapshot) {
-                    currentTask = snapshot
-                    setAssistantStatus(
-                      urlKey,
-                      sessionId,
-                      assistantMessageId,
-                      formatTaskStatus(currentTask.status.state),
-                      !isTerminalTask(currentTask)
-                    )
-                    if (isTerminalTask(currentTask)) {
-                      break
-                    }
-                  }
-                }
-
-                continue
-              }
-
-              const statusUpdate = getStatusUpdateEvent(event)
-              if (statusUpdate && statusUpdate.taskId === currentTask.id) {
-                currentTask = {
-                  ...currentTask,
-                  status: statusUpdate.status,
-                }
-                updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => ({
-                  ...currentMessage,
-                  text: getTaskText(currentTask),
-                }))
-                setAssistantStatus(
-                  urlKey,
-                  sessionId,
-                  assistantMessageId,
-                  formatTaskStatus(currentTask.status.state),
-                  !isTerminalTask(currentTask)
-                )
-                if (isTerminalTask(currentTask)) {
-                  const snapshot = await hydrateTaskOutput(
-                    client,
-                    urlKey,
-                    sessionId,
-                    assistantMessageId,
-                    currentTask.id
-                  )
-                  if (snapshot) {
-                    currentTask = snapshot
-                  }
-                  break
-                }
+              if (result.done) {
+                break
               }
             }
           } catch {
@@ -857,13 +988,7 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
         runnerControllersRef.current.delete(controllerKey)
       })()
     },
-    [
-      appendAssistantEvent,
-      hydrateTaskOutput,
-      setAssistantStatus,
-      updateAssistantMessage,
-      updateTaskSession,
-    ]
+    [processTaskStreamEvent, setAssistantStatus]
   )
 
   React.useEffect(() => {
@@ -933,13 +1058,8 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
     },
   })
 
-  const sendTaskMutation = useMutation({
-    mutationFn: async (variables: {
-      taskText: string
-      assistantMessageId: string
-      urlKey: string
-      taskSessionId: string
-    }) => {
+  const sendTaskMutation = useMutation<void, Error, SendTaskVariables>({
+    mutationFn: async (variables) => {
       const connection = queryClient.getQueryData<ConnectionStore>(connectionKey)
       if (
         !connection ||
@@ -957,28 +1077,101 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
         throw new Error("Task session not found")
       }
 
-      const payload = buildA2AMessage(variables.taskText, targetSession.conversationState)
-      const response = await Effect.runPromise(
-        sendTaskMessage(connection.client, {
-          message: payload,
-          configuration: {
-            acceptedOutputModes: connection.acceptedOutputModes,
-            blocking: false,
-          },
-        })
-      )
+      const streamController = new AbortController()
+      const streamControllerKey = `${variables.urlKey}::${variables.assistantMessageId}`
+      runnerControllersRef.current.set(streamControllerKey, streamController)
 
-      const parsedTask = extractTask(response)
-      const initialTask = parsedTask ?? (response.kind === "task" ? response : null)
+      let currentTask: Task | null = null
+      let directResponseText = ""
 
-      return {
-        response,
-        initialTask,
-        assistantMessageId: variables.assistantMessageId,
-        client: connection.client,
-        urlKey: variables.urlKey,
-        taskSessionId: variables.taskSessionId,
+      try {
+        const payload = buildA2AMessage(variables.taskText, targetSession.conversationState)
+        const stream = await Effect.runPromise(
+          sendTaskMessageStream(
+            connection.client,
+            {
+              message: payload,
+              configuration: {
+                acceptedOutputModes: connection.acceptedOutputModes,
+              },
+            },
+            streamController.signal
+          )
+        )
+
+        for await (const event of stream) {
+          if (streamController.signal.aborted) {
+            break
+          }
+
+          const eventText = extractResponseMessageText(event)
+          if (eventText.length > 0) {
+            directResponseText = eventText
+          }
+
+          const result = await processTaskStreamEvent(
+            connection.client,
+            variables.urlKey,
+            variables.taskSessionId,
+            variables.assistantMessageId,
+            currentTask,
+            event
+          )
+          currentTask = result.task
+          if (currentTask && runnerControllersRef.current.get(streamControllerKey) === streamController) {
+            runnerControllersRef.current.delete(streamControllerKey)
+            runnerControllersRef.current.set(`${variables.urlKey}::${currentTask.id}`, streamController)
+          }
+          if (result.done) {
+            break
+          }
+        }
+      } catch (error) {
+        if (!streamController.signal.aborted && currentTask && !isTerminalTask(currentTask)) {
+          startTaskResubscribeLoop(
+            connection.client,
+            variables.urlKey,
+            variables.taskSessionId,
+            currentTask,
+            variables.assistantMessageId
+          )
+          return
+        }
+        throw error
+      } finally {
+        if (runnerControllersRef.current.get(streamControllerKey) === streamController) {
+          runnerControllersRef.current.delete(streamControllerKey)
+        }
+        if (currentTask && runnerControllersRef.current.get(`${variables.urlKey}::${currentTask.id}`) === streamController) {
+          runnerControllersRef.current.delete(`${variables.urlKey}::${currentTask.id}`)
+        }
       }
+
+      if (currentTask) {
+        return
+      }
+
+      if (directResponseText.length > 0) {
+        updateAssistantMessage(
+          variables.urlKey,
+          variables.taskSessionId,
+          variables.assistantMessageId,
+          (currentMessage) => ({
+            ...currentMessage,
+            text: directResponseText,
+          })
+        )
+        setAssistantStatus(
+          variables.urlKey,
+          variables.taskSessionId,
+          variables.assistantMessageId,
+          "Completed",
+          false
+        )
+        return
+      }
+
+      throw new Error("Task stream ended without returning a task or message.")
     },
     onMutate: ({ taskText, assistantMessageId, urlKey, taskSessionId }) => {
       updateTaskSession(urlKey, taskSessionId, (currentSession) => ({
@@ -1002,68 +1195,6 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
         ],
       }))
       setTaskInput("")
-    },
-    onSuccess: ({ response, initialTask, assistantMessageId, client, urlKey, taskSessionId }) => {
-      const responseKind = getResponseKind(response)
-      appendAssistantEvent(urlKey, taskSessionId, assistantMessageId, {
-        kind: "send-response",
-        summary: `Received ${responseKind} response from sendMessage.`,
-        raw: safeSerialize(response),
-      })
-
-      if (!initialTask) {
-        if (responseKind !== "task") {
-          const directText = extractResponseMessageText(response)
-          const fallbackText =
-            directText.length > 0
-              ? directText
-              : "Expected a task response but got a direct message."
-          updateAssistantMessage(urlKey, taskSessionId, assistantMessageId, (currentMessage) => ({
-            ...currentMessage,
-            text: fallbackText,
-          }))
-          setAssistantStatus(urlKey, taskSessionId, assistantMessageId, "Completed", false)
-          return
-        }
-
-        updateAssistantMessage(urlKey, taskSessionId, assistantMessageId, (currentMessage) => ({
-          ...currentMessage,
-          text: "Task sent, but no task payload could be parsed from the response.",
-        }))
-        setAssistantStatus(urlKey, taskSessionId, assistantMessageId, "Failed", false)
-        return
-      }
-
-      const initialTaskText = getTaskText(initialTask)
-      if (initialTaskText.length > 0) {
-        updateAssistantMessage(urlKey, taskSessionId, assistantMessageId, (currentMessage) => ({
-          ...currentMessage,
-          text: initialTaskText,
-        }))
-      }
-
-      setAssistantStatus(
-        urlKey,
-        taskSessionId,
-        assistantMessageId,
-        formatTaskStatus(initialTask.status.state),
-        !isTerminalTask(initialTask)
-      )
-
-      updateTaskSession(urlKey, taskSessionId, (currentSession) => ({
-        ...currentSession,
-        conversationState: {
-          contextId: initialTask.contextId,
-          taskId: initialTask.id,
-        },
-      }))
-
-      if (isTerminalTask(initialTask)) {
-        void hydrateTaskOutput(client, urlKey, taskSessionId, assistantMessageId, initialTask.id)
-        return
-      }
-
-      startTaskResubscribeLoop(client, urlKey, taskSessionId, initialTask, assistantMessageId)
     },
     onError: (error, variables) => {
       const message = getErrorMessage(
@@ -1182,6 +1313,7 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
         byUrl: {
           ...current.byUrl,
           [baseUrl]: {
+            ...urlState,
             activeSessionId: nextSession.id,
             sessions: [...urlState.sessions, nextSession],
           },
@@ -1243,7 +1375,7 @@ export function useA2AChat(options: UseA2AChatOptions = {}) {
 
         const nextActiveSessionId =
           urlState.activeSessionId === sessionId
-            ? [...remainingSessions].sort((a, b) => b.updatedAt - a.updatedAt)[0]?.id ?? remainingSessions[0].id
+            ? [...remainingSessions].sort((a, b) => b.updatedAt - a.updatedAt)[0]?.id ?? urlState.activeSessionId
             : urlState.activeSessionId
 
         return {
