@@ -45,6 +45,20 @@ type TaskSession = {
   updatedAt: number
 }
 
+export type PersistedTaskSession = {
+  id: string
+  title: string
+  messages: Message[]
+  conversationState: A2AConversationState
+  createdAt: number
+  updatedAt: number
+}
+
+export type A2AChatPersistenceAdapter = {
+  loadSessions: (input: { url: string }) => Promise<PersistedTaskSession[]>
+  deleteSession?: (input: { url: string; sessionId: string }) => Promise<void>
+}
+
 type UrlChatState = {
   activeSessionId: string
   sessions: TaskSession[]
@@ -65,6 +79,7 @@ type UseA2AChatOptions = {
   initialUrl?: string
   proxyBasePath?: string | false
   autoConnect?: boolean
+  persistence?: A2AChatPersistenceAdapter
 }
 
 type TaskStreamProcessResult = {
@@ -197,7 +212,12 @@ function getStatusUpdateEvent(event: unknown): StatusUpdateEvent | null {
 
   return {
     kind: "status-update",
-    taskId: typeof normalized.taskId === "string" ? normalized.taskId : undefined,
+    taskId:
+      typeof normalized.taskId === "string"
+        ? normalized.taskId
+        : typeof normalized.task_id === "string"
+          ? normalized.task_id
+          : undefined,
     status: normalized.status as unknown as Task["status"],
   }
 }
@@ -210,7 +230,12 @@ function getArtifactUpdateEvent(event: unknown): ArtifactUpdateEvent | null {
 
   return {
     kind: "artifact-update",
-    taskId: typeof normalized.taskId === "string" ? normalized.taskId : undefined,
+    taskId:
+      typeof normalized.taskId === "string"
+        ? normalized.taskId
+        : typeof normalized.task_id === "string"
+          ? normalized.task_id
+          : undefined,
     artifact: isRecord(normalized.artifact)
       ? {
           parts: normalized.artifact.parts,
@@ -220,74 +245,53 @@ function getArtifactUpdateEvent(event: unknown): ArtifactUpdateEvent | null {
   }
 }
 
-function parseArtifactEventText(rawText: string): string[] {
-  const payload = rawText.trim()
-  if (payload.length === 0) {
-    return []
-  }
-
-  try {
-    const parsed = JSON.parse(payload)
-    if (!isRecord(parsed)) {
-      return []
-    }
-
-    if (parsed.event_kind === "agent_run_result" && typeof parsed.output === "string") {
-      return [parsed.output]
-    }
-
-    if (
-      parsed.event_kind === "part_end" &&
-      isRecord(parsed.part) &&
-      parsed.part.part_kind === "text" &&
-      typeof parsed.part.content === "string"
-    ) {
-      return [parsed.part.content]
-    }
-
-    return []
-  } catch {
-    return []
-  }
-}
-
-function parseArtifactEventThinking(rawText: string): string[] {
-  const payload = rawText.trim()
-  if (payload.length === 0) {
-    return []
-  }
-
-  try {
-    const parsed = JSON.parse(payload)
-    if (!isRecord(parsed)) {
-      return []
-    }
-
-    if (
-      parsed.event_kind === "part_end" &&
-      isRecord(parsed.part) &&
-      parsed.part.part_kind === "thinking" &&
-      typeof parsed.part.content === "string"
-    ) {
-      return [parsed.part.content]
-    }
-
-    return []
-  } catch {
-    return []
-  }
-}
-
 function extractAssistantTextFromArtifactUpdate(event: ArtifactUpdateEvent): {
-  output: string[]
-  thinking: string[]
+  outputChunks: string[]
+  outputSnapshot: string | null
+  thinkingChunks: string[]
 } {
   const parts = event.artifact?.parts
   const fragments = extractTextFromParts(parts)
+  const outputChunks: string[] = []
+  let outputSnapshot: string | null = null
+  const thinkingChunks: string[] = []
+
+  for (const fragment of fragments) {
+    const payload = fragment.trim()
+    if (payload.length === 0) {
+      continue
+    }
+
+    try {
+      const parsed = JSON.parse(payload)
+      if (!isRecord(parsed)) {
+        continue
+      }
+
+      if (parsed.event_kind === "agent_run_result" && typeof parsed.output === "string") {
+        outputSnapshot = parsed.output
+        continue
+      }
+
+      if (parsed.event_kind === "part_end" && isRecord(parsed.part)) {
+        if (parsed.part.part_kind === "text" && typeof parsed.part.content === "string") {
+          outputChunks.push(parsed.part.content)
+          continue
+        }
+
+        if (parsed.part.part_kind === "thinking" && typeof parsed.part.content === "string") {
+          thinkingChunks.push(parsed.part.content)
+        }
+      }
+    } catch {
+      outputChunks.push(fragment)
+    }
+  }
 
   return {
-    output: fragments.flatMap((fragment) => parseArtifactEventText(fragment)),
-    thinking: fragments.flatMap((fragment) => parseArtifactEventThinking(fragment)),
+    outputChunks,
+    outputSnapshot,
+    thinkingChunks,
   }
 }
 
@@ -570,6 +574,7 @@ export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
     initialUrl = "http://localhost:8000",
     proxyBasePath,
     autoConnect = false,
+    persistence,
   } = options
   const queryClient = useQueryClient()
   const [url, setUrl] = React.useState(initialUrl)
@@ -674,6 +679,45 @@ export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
       })
     },
     [setChatStore]
+  )
+
+  const hydratePersistedSessions = React.useCallback(
+    async (urlKey: string) => {
+      if (!persistence) {
+        return
+      }
+
+      const persistedSessions = await persistence.loadSessions({ url: urlKey })
+      if (persistedSessions.length === 0) {
+        ensureUrlChatState(urlKey)
+        return
+      }
+
+      setChatStore((current) => {
+        const urlState = current.byUrl[urlKey] ?? getUrlChatInitialState()
+        const existingById = new Map(urlState.sessions.map((session) => [session.id, session]))
+        const nextSessions = persistedSessions.map((session) => ({
+          ...(existingById.get(session.id) ?? {}),
+          ...session,
+        }))
+        const activeSessionId = nextSessions.some((session) => session.id === urlState.activeSessionId)
+          ? urlState.activeSessionId
+          : nextSessions[0]?.id ?? urlState.activeSessionId
+
+        return {
+          ...current,
+          byUrl: {
+            ...current.byUrl,
+            [urlKey]: {
+              ...urlState,
+              activeSessionId,
+              sessions: nextSessions,
+            },
+          },
+        }
+      })
+    },
+    [ensureUrlChatState, persistence, setChatStore]
   )
 
   const updateAssistantMessage = React.useCallback(
@@ -792,7 +836,10 @@ export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
       currentTask: Task | null,
       event: unknown
     ): Promise<TaskStreamProcessResult> => {
-      appendAssistantEvent(urlKey, sessionId, assistantMessageId, buildTimelineEvent(event))
+      const artifactUpdate = getArtifactUpdateEvent(event)
+      if (!artifactUpdate) {
+        appendAssistantEvent(urlKey, sessionId, assistantMessageId, buildTimelineEvent(event))
+      }
 
       const taskEvent = extractTask(normalizeStreamEvent(event))
       if (taskEvent) {
@@ -831,25 +878,18 @@ export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
         return { task: null, done: false }
       }
 
-      const artifactUpdate = getArtifactUpdateEvent(event)
       if (artifactUpdate && artifactUpdate.taskId === currentTask.id) {
-        const { output, thinking } = extractAssistantTextFromArtifactUpdate(artifactUpdate)
-        if (output.length > 0 || thinking.length > 0) {
+        const { outputChunks, outputSnapshot, thinkingChunks } =
+          extractAssistantTextFromArtifactUpdate(artifactUpdate)
+        if (outputSnapshot !== null || outputChunks.length > 0 || thinkingChunks.length > 0) {
           updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => {
-            const textFragments = [currentMessage.text, ...output]
-              .map((fragment) => fragment.trim())
-              .filter((fragment) => fragment.length > 0)
-            const thinkingFragments = [currentMessage.thinkingText ?? "", ...thinking]
-              .map((fragment) => fragment.trim())
-              .filter((fragment) => fragment.length > 0)
+            const nextText = outputSnapshot ?? `${currentMessage.text}${outputChunks.join("")}`
+            const nextThinkingText = `${currentMessage.thinkingText ?? ""}${thinkingChunks.join("")}`
 
             return {
               ...currentMessage,
-              text: Array.from(new Set(textFragments)).join("\n\n"),
-              thinkingText:
-                thinkingFragments.length > 0
-                  ? Array.from(new Set(thinkingFragments)).join("\n\n")
-                  : currentMessage.thinkingText,
+              text: nextText,
+              thinkingText: nextThinkingText.length > 0 ? nextThinkingText : currentMessage.thinkingText,
             }
           })
         }
@@ -1043,6 +1083,8 @@ export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
           acceptedOutputModes.length > 0 ? acceptedOutputModes : ["application/json"],
         agentName,
       }))
+
+      void hydratePersistedSessions(targetUrl)
     },
     onError: (error) => {
       const message = getErrorMessage(error, "Could not connect to the server")
@@ -1173,6 +1215,9 @@ export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
 
       throw new Error("Task stream ended without returning a task or message.")
     },
+    onSuccess: async (_result, variables) => {
+      await hydratePersistedSessions(variables.urlKey)
+    },
     onMutate: ({ taskText, assistantMessageId, urlKey, taskSessionId }) => {
       updateTaskSession(urlKey, taskSessionId, (currentSession) => ({
         ...currentSession,
@@ -1277,6 +1322,10 @@ export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
     connectMutation.mutate(baseUrl)
   }, [autoConnect, baseUrl, connectMutation, connectionQuery.data])
 
+  React.useEffect(() => {
+    void hydratePersistedSessions(baseUrl)
+  }, [baseUrl, hydratePersistedSessions])
+
   const handleSubmitTask = React.useCallback(() => {
     const taskText = taskInput.trim()
     const connection = connectionQuery.data
@@ -1351,6 +1400,11 @@ export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
 
   const handleDeleteTaskSession = React.useCallback(
     (sessionId: string) => {
+      const deletePersistedSession = persistence?.deleteSession
+      if (deletePersistedSession) {
+        void deletePersistedSession({ url: baseUrl, sessionId })
+      }
+
       setChatStore((current) => {
         const urlState = current.byUrl[baseUrl]
         if (!urlState || !urlState.sessions.some((session) => session.id === sessionId)) {
@@ -1391,7 +1445,7 @@ export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
         }
       })
     },
-    [baseUrl, setChatStore]
+    [baseUrl, persistence, setChatStore]
   )
 
   const activeConnection = connectionQuery.data

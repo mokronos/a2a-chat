@@ -17,6 +17,7 @@ import { Input } from "./components/ui/input"
 import { Separator } from "./components/ui/separator"
 import { cn } from "./lib/utils"
 import { useA2AChat } from "./a2a/use-a2a-chat"
+import type { A2AChatPersistenceAdapter } from "./a2a/use-a2a-chat"
 import { inspectorEventRenderers } from "./a2a/inspector-event-renderers"
 import type { ConnectionState } from "./a2a/types"
 
@@ -36,6 +37,7 @@ export type A2AChatProps = {
   showConnectionForm?: boolean
   agentSuggestions?: A2AAgentSuggestion[]
   eventRenderers?: MessageTimelineEventRenderer[]
+  persistence?: A2AChatPersistenceAdapter
 }
 
 function getStatusClasses(state: ConnectionState) {
@@ -72,6 +74,7 @@ function A2AChatCard({
   showConnectionForm = true,
   agentSuggestions = [],
   eventRenderers = inspectorEventRenderers,
+  persistence,
 }: A2AChatProps) {
   const {
     url,
@@ -96,6 +99,7 @@ function A2AChatCard({
     initialUrl,
     proxyBasePath,
     autoConnect,
+    persistence,
   })
 
   return (

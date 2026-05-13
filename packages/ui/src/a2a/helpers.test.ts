@@ -114,7 +114,7 @@ describe("A2A JSONRPC helpers", () => {
     try {
       const { agentName, endpoint } = await createJsonRpcClient(baseUrl, transport)
 
-      expect(capturedFetchUrl).toBe("http://localhost:8000/agents/agent-1/a2a/.well-known/agent-card.json")
+      expect(capturedFetchUrl as string | null).toBe("http://localhost:8000/agents/agent-1/a2a/.well-known/agent-card.json")
       expect(endpoint).toBe("http://localhost:8000/agents/agent-1/a2a")
       expect(agentName).toBe("Direct Agent")
     } finally {

@@ -26,11 +26,19 @@ export function createProxyTransport(basePath?: string | false): A2AProxyTranspo
 }
 
 export function createAgentCardProxyUrl(transport: A2AProxyTransport, targetUrl: string): string {
+  if (transport.mode === "direct") {
+    return targetUrl
+  }
+
   const params = new URLSearchParams({ target: targetUrl })
   return `${transport.basePath}/agent-card?${params.toString()}`
 }
 
 export function createJsonRpcProxyUrl(transport: A2AProxyTransport, endpoint: string): string {
+  if (transport.mode === "direct") {
+    return endpoint
+  }
+
   const params = new URLSearchParams({ target: endpoint })
   return `${transport.basePath}/jsonrpc?${params.toString()}`
 }
