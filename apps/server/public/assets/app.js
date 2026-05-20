@@ -17337,7 +17337,7 @@ var require_jsx_dev_runtime = __commonJS((exports, module) => {
 });
 
 // web/main.tsx
-var import_react14 = __toESM(require_react(), 1);
+var import_react15 = __toESM(require_react(), 1);
 var import_client2 = __toESM(require_client(), 1);
 
 // ../../packages/ui/dist/index.js
@@ -36120,6 +36120,9 @@ var fnUntraced2 = fnUntraced;
 var ensureSuccessType = () => (effect) => effect;
 var ensureErrorType = () => (effect) => effect;
 var ensureRequirementsType = () => (effect) => effect;
+// ../../node_modules/.bun/@a2a-js+sdk@0.3.13+c43b725b96c226ad/node_modules/@a2a-js/sdk/dist/chunk-3QDLXHKS.js
+var AGENT_CARD_PATH = ".well-known/agent-card.json";
+
 // ../../node_modules/.bun/@a2a-js+sdk@0.3.13+c43b725b96c226ad/node_modules/@a2a-js/sdk/dist/chunk-WMQQYH7W.js
 async function* parseSseStream(response) {
   if (!response.body) {
@@ -36167,9 +36170,6 @@ async function* readFrom(stream) {
     reader.releaseLock();
   }
 }
-
-// ../../node_modules/.bun/@a2a-js+sdk@0.3.13+c43b725b96c226ad/node_modules/@a2a-js/sdk/dist/chunk-3QDLXHKS.js
-var AGENT_CARD_PATH = ".well-known/agent-card.json";
 
 // ../../node_modules/.bun/@a2a-js+sdk@0.3.13+c43b725b96c226ad/node_modules/@a2a-js/sdk/dist/chunk-EGOOH5HP.js
 var A2A_ERROR_CODE = {
@@ -38956,7 +38956,9 @@ var CaseInsensitiveMap = class extends Map {
 };
 
 // ../../packages/ui/dist/index.js
+var import_react14 = __toESM(require_react(), 1);
 var import_jsx_runtime11 = __toESM(require_jsx_runtime(), 1);
+var import_jsx_runtime12 = __toESM(require_jsx_runtime(), 1);
 function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
@@ -39045,7 +39047,16 @@ function formatEventTime(timestamp) {
     hour12: false
   });
 }
-function MessageBox({ messages }) {
+function renderEventContent(event, eventRenderers) {
+  for (const renderEvent of eventRenderers) {
+    const rendered = renderEvent(event);
+    if (rendered) {
+      return rendered;
+    }
+  }
+  return null;
+}
+function MessageBox({ messages, eventRenderers = [] }) {
   const containerRef = import_react8.default.useRef(null);
   const endRef = import_react8.default.useRef(null);
   const [expandedStatusHistory, setExpandedStatusHistory] = import_react8.default.useState({});
@@ -39102,17 +39113,20 @@ function MessageBox({ messages }) {
               ] }, statusItem.id)) }) }) : null,
               timelineEvents.length > 0 ? /* @__PURE__ */ import_jsx_runtime7.jsxs("div", { className: "border-b border-border/40 bg-background/50 px-2.5 py-2", children: [
                 /* @__PURE__ */ import_jsx_runtime7.jsx("div", { className: "mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground", children: "Event Timeline" }),
-                /* @__PURE__ */ import_jsx_runtime7.jsx("div", { className: "flex flex-col gap-1.5", children: timelineEvents.map((eventItem) => /* @__PURE__ */ import_jsx_runtime7.jsxs("details", { className: "rounded-md border border-border/40 bg-background/70 px-2 py-1", children: [
-                  /* @__PURE__ */ import_jsx_runtime7.jsxs("summary", { className: "cursor-pointer list-none text-[11px] text-muted-foreground", children: [
-                    /* @__PURE__ */ import_jsx_runtime7.jsx("span", { className: "font-mono", children: formatEventTime(eventItem.at) }),
-                    " ",
-                    /* @__PURE__ */ import_jsx_runtime7.jsx("span", { className: "font-medium text-foreground", children: eventItem.kind }),
-                    " ",
-                    /* @__PURE__ */ import_jsx_runtime7.jsx("span", { children: eventItem.summary })
-                  ] }),
-                  eventItem.details ? /* @__PURE__ */ import_jsx_runtime7.jsx("div", { className: "mt-1 text-[11px] text-muted-foreground", children: eventItem.details }) : null,
-                  eventItem.raw ? /* @__PURE__ */ import_jsx_runtime7.jsx("pre", { className: "mt-1 overflow-x-auto rounded-sm bg-muted/40 p-1 text-[10px] text-muted-foreground", children: eventItem.raw }) : null
-                ] }, eventItem.id)) })
+                /* @__PURE__ */ import_jsx_runtime7.jsx("div", { className: "flex flex-col gap-1.5", children: timelineEvents.map((eventItem) => {
+                  const customContent = renderEventContent(eventItem, eventRenderers);
+                  return /* @__PURE__ */ import_jsx_runtime7.jsxs("details", { className: "rounded-md border border-border/40 bg-background/70 px-2 py-1", children: [
+                    /* @__PURE__ */ import_jsx_runtime7.jsxs("summary", { className: "cursor-pointer list-none text-[11px] text-muted-foreground", children: [
+                      /* @__PURE__ */ import_jsx_runtime7.jsx("span", { className: "font-mono", children: formatEventTime(eventItem.at) }),
+                      " ",
+                      /* @__PURE__ */ import_jsx_runtime7.jsx("span", { className: "font-medium text-foreground", children: eventItem.kind }),
+                      " ",
+                      /* @__PURE__ */ import_jsx_runtime7.jsx("span", { children: eventItem.summary })
+                    ] }),
+                    eventItem.details ? /* @__PURE__ */ import_jsx_runtime7.jsx("div", { className: "mt-1 text-[11px] text-muted-foreground", children: eventItem.details }) : null,
+                    customContent ? /* @__PURE__ */ import_jsx_runtime7.jsx("div", { className: "mt-1", children: customContent }) : eventItem.raw ? /* @__PURE__ */ import_jsx_runtime7.jsx("pre", { className: "mt-1 overflow-x-auto rounded-sm bg-muted/40 p-1 text-[10px] text-muted-foreground", children: eventItem.raw }) : null
+                  ] }, eventItem.id);
+                }) })
               ] }) : null,
               message.thinkingText && message.thinkingText.trim().length > 0 ? /* @__PURE__ */ import_jsx_runtime7.jsxs("div", { className: "border-t border-border/40 bg-muted/30 px-3 py-2 text-xs text-muted-foreground whitespace-pre-wrap [overflow-wrap:anywhere]", children: [
                 /* @__PURE__ */ import_jsx_runtime7.jsx("span", { className: "font-medium", children: "Thinking:" }),
@@ -39200,7 +39214,13 @@ function normalizeProxyBasePath(basePath) {
   return rawPath.replace(/\/+$/, "");
 }
 function createProxyTransport(basePath) {
+  if (!basePath) {
+    return {
+      mode: "direct"
+    };
+  }
   return {
+    mode: "proxy",
     basePath: normalizeProxyBasePath(basePath)
   };
 }
@@ -39228,13 +39248,8 @@ function isRecord(value) {
   return !!value && typeof value === "object" && !Array.isArray(value);
 }
 function resolveEndpointUrl(baseUrl, url) {
-  if (/^https?:\/\//i.test(url)) {
-    return url;
-  }
-  if (url.startsWith("/")) {
-    return `${baseUrl}${url}`;
-  }
-  return `${baseUrl}/${url}`;
+  const normalizedBaseUrl = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+  return new URL(url, normalizedBaseUrl).toString();
 }
 function resolveJsonRpcEndpoint(baseUrl, agentCard) {
   if (!isRecord(agentCard)) {
@@ -39261,18 +39276,18 @@ function resolveJsonRpcEndpoint(baseUrl, agentCard) {
   return baseUrl;
 }
 async function createJsonRpcClient(baseUrl, transport) {
-  const cardUrl = createAgentCardProxyUrl(transport, baseUrl);
+  const cardUrl = transport.mode === "proxy" ? createAgentCardProxyUrl(transport, baseUrl) : `${normalizeBaseUrl(baseUrl)}/${AGENT_CARD_PATH}`;
   const cardResponse = await fetch(cardUrl);
   if (!cardResponse.ok) {
     throw new Error(`Could not fetch agent card (${cardResponse.status})`);
   }
   const agentCard = await cardResponse.json();
   const upstreamEndpoint = resolveJsonRpcEndpoint(baseUrl, agentCard);
-  const proxyEndpoint = createJsonRpcProxyUrl(transport, upstreamEndpoint);
-  const client = new Client(new JsonRpcTransport({ endpoint: proxyEndpoint }), agentCard);
+  const endpoint = transport.mode === "proxy" ? createJsonRpcProxyUrl(transport, upstreamEndpoint) : baseUrl;
+  const client = new Client(new JsonRpcTransport({ endpoint }), agentCard);
   const agentName = typeof agentCard.name === "string" ? agentCard.name : null;
   const acceptedOutputModes = Array.isArray(agentCard.defaultOutputModes) ? agentCard.defaultOutputModes.filter((mode) => typeof mode === "string" && mode.length > 0) : [];
-  return { client, agentName, endpoint: upstreamEndpoint, acceptedOutputModes };
+  return { client, agentName, endpoint, acceptedOutputModes };
 }
 function buildA2AMessage(text, conversationState) {
   return {
@@ -39365,10 +39380,7 @@ var connectJsonRpc = (baseUrl, transport) => exports_Effect.tryPromise({
   try: () => createJsonRpcClient(baseUrl, transport),
   catch: (cause3) => cause3 instanceof Error ? cause3 : new Error("Could not connect to the A2A server")
 });
-var sendTaskMessage = (client, params) => exports_Effect.tryPromise({
-  try: () => client.sendMessage(params),
-  catch: (cause3) => cause3 instanceof Error ? cause3 : new Error("Could not send message to A2A server")
-});
+var sendTaskMessageStream = (client, params, signal) => exports_Effect.sync(() => client.sendMessageStream(params, { signal }));
 var resubscribeToTask = (client, taskId, signal) => exports_Effect.sync(() => client.resubscribeTask({ id: taskId }, { signal }));
 var getTaskById = (client, taskId) => exports_Effect.tryPromise({
   try: () => client.getTask({ id: taskId }),
@@ -39392,18 +39404,6 @@ function getErrorMessage(error2, fallback) {
     return error2;
   }
   return fallback;
-}
-function getResponseKind(response) {
-  if (extractTask(response)) {
-    return "task";
-  }
-  if (isRecord(response) && typeof response.kind === "string" && response.kind.length > 0) {
-    return response.kind;
-  }
-  if (isRecord(response) && isRecord(response.result) && typeof response.result.kind === "string" && response.result.kind.length > 0) {
-    return response.result.kind;
-  }
-  return "unknown";
 }
 function extractResponseMessageText(response) {
   if (isRecord(response) && Array.isArray(response.parts)) {
@@ -39444,7 +39444,7 @@ function getStatusUpdateEvent(event) {
   }
   return {
     kind: "status-update",
-    taskId: typeof normalized.taskId === "string" ? normalized.taskId : undefined,
+    taskId: typeof normalized.taskId === "string" ? normalized.taskId : typeof normalized.task_id === "string" ? normalized.task_id : undefined,
     status: normalized.status
   };
 }
@@ -39455,58 +39455,50 @@ function getArtifactUpdateEvent(event) {
   }
   return {
     kind: "artifact-update",
-    taskId: typeof normalized.taskId === "string" ? normalized.taskId : undefined,
+    taskId: typeof normalized.taskId === "string" ? normalized.taskId : typeof normalized.task_id === "string" ? normalized.task_id : undefined,
     artifact: isRecord(normalized.artifact) ? {
       parts: normalized.artifact.parts
     } : undefined,
     lastChunk: normalized.lastChunk === true
   };
 }
-function parseArtifactEventText(rawText) {
-  const payload = rawText.trim();
-  if (payload.length === 0) {
-    return [];
-  }
-  try {
-    const parsed = JSON.parse(payload);
-    if (!isRecord(parsed)) {
-      return [];
-    }
-    if (parsed.event_kind === "agent_run_result" && typeof parsed.output === "string") {
-      return [parsed.output];
-    }
-    if (parsed.event_kind === "part_end" && isRecord(parsed.part) && parsed.part.part_kind === "text" && typeof parsed.part.content === "string") {
-      return [parsed.part.content];
-    }
-    return [];
-  } catch {
-    return [];
-  }
-}
-function parseArtifactEventThinking(rawText) {
-  const payload = rawText.trim();
-  if (payload.length === 0) {
-    return [];
-  }
-  try {
-    const parsed = JSON.parse(payload);
-    if (!isRecord(parsed)) {
-      return [];
-    }
-    if (parsed.event_kind === "part_end" && isRecord(parsed.part) && parsed.part.part_kind === "thinking" && typeof parsed.part.content === "string") {
-      return [parsed.part.content];
-    }
-    return [];
-  } catch {
-    return [];
-  }
-}
 function extractAssistantTextFromArtifactUpdate(event) {
   const parts2 = event.artifact?.parts;
   const fragments = extractTextFromParts(parts2);
+  const outputChunks = [];
+  let outputSnapshot = null;
+  const thinkingChunks = [];
+  for (const fragment of fragments) {
+    const payload = fragment.trim();
+    if (payload.length === 0) {
+      continue;
+    }
+    try {
+      const parsed = JSON.parse(payload);
+      if (!isRecord(parsed)) {
+        continue;
+      }
+      if (parsed.event_kind === "agent_run_result" && typeof parsed.output === "string") {
+        outputSnapshot = parsed.output;
+        continue;
+      }
+      if (parsed.event_kind === "part_end" && isRecord(parsed.part)) {
+        if (parsed.part.part_kind === "text" && typeof parsed.part.content === "string") {
+          outputChunks.push(parsed.part.content);
+          continue;
+        }
+        if (parsed.part.part_kind === "thinking" && typeof parsed.part.content === "string") {
+          thinkingChunks.push(parsed.part.content);
+        }
+      }
+    } catch {
+      outputChunks.push(fragment);
+    }
+  }
   return {
-    output: fragments.flatMap((fragment) => parseArtifactEventText(fragment)),
-    thinking: fragments.flatMap((fragment) => parseArtifactEventThinking(fragment))
+    outputChunks,
+    outputSnapshot,
+    thinkingChunks
   };
 }
 function getConnectionInitialState() {
@@ -39614,27 +39606,84 @@ function summarizeArtifactParts(parts2) {
     details: `parts: ${parts2.length}`
   };
 }
+function getFirstDataPart(parts2) {
+  if (!Array.isArray(parts2)) {
+    return null;
+  }
+  for (const part of parts2) {
+    if (isRecord(part) && part.kind === "data" && isRecord(part.data)) {
+      return part.data;
+    }
+  }
+  return null;
+}
+function summarizeStatusUpdateEvent(event) {
+  if (!isRecord(event.status) || !isRecord(event.status.message)) {
+    return null;
+  }
+  const data = getFirstDataPart(event.status.message.parts);
+  if (!data || typeof data.type !== "string") {
+    return null;
+  }
+  return summarizeToolData(data);
+}
+function getLatestAgentDataPartFromTask(task) {
+  const history = Array.isArray(task.history) ? task.history : [];
+  for (const message of [...history].reverse()) {
+    if (!isRecord(message) || message.role !== "agent") {
+      continue;
+    }
+    const data = getFirstDataPart(message.parts);
+    if (data) {
+      return data;
+    }
+  }
+  return null;
+}
+function summarizeToolData(data) {
+  if (typeof data.type !== "string") {
+    return null;
+  }
+  const toolName = typeof data.toolName === "string" ? data.toolName : "tool";
+  if (data.type === "tool-call") {
+    return `Calling ${toolName}.`;
+  }
+  if (data.type === "tool-result") {
+    return `Received ${toolName} result.`;
+  }
+  if (data.type === "finish-step" && typeof data.finishReason === "string") {
+    return `Finished model step: ${data.finishReason}.`;
+  }
+  if (data.type === "finish" && typeof data.finishReason === "string") {
+    return `Finished run: ${data.finishReason}.`;
+  }
+  return null;
+}
 function buildTimelineEvent(event) {
   const normalizedEvent = normalizeStreamEvent(event);
   const raw = safeSerialize(normalizedEvent);
   const task = extractTask(normalizedEvent);
   if (task) {
     const state = formatTaskStatus(task.status.state);
+    const taskSummary = summarizeToolData(getLatestAgentDataPartFromTask(task) ?? {});
     return {
       kind: "task-update",
-      summary: `Task ${task.id} is ${state}.`,
+      summary: taskSummary ?? `Task ${task.id} is ${state}.`,
       details: task.contextId ? `contextId: ${task.contextId}` : undefined,
-      raw
+      raw,
+      rawEvent: normalizedEvent
     };
   }
   if (isRecord(normalizedEvent) && typeof normalizedEvent.kind === "string") {
     if (normalizedEvent.kind === "status-update") {
       const statusState = isRecord(normalizedEvent.status) && typeof normalizedEvent.status.state === "string" ? formatTaskStatus(normalizedEvent.status.state) : "Unknown";
+      const statusSummary = summarizeStatusUpdateEvent(normalizedEvent);
       return {
         kind: "status-update",
-        summary: `Status changed to ${statusState}.`,
+        summary: statusSummary ?? `Status changed to ${statusState}.`,
         details: typeof normalizedEvent.taskId === "string" ? `taskId: ${normalizedEvent.taskId}` : undefined,
-        raw
+        raw,
+        rawEvent: normalizedEvent
       };
     }
     if (normalizedEvent.kind === "artifact-update") {
@@ -39644,19 +39693,22 @@ function buildTimelineEvent(event) {
         kind: "artifact-update",
         summary: artifactSummary.summary,
         details: artifactSummary.details,
-        raw
+        raw,
+        rawEvent: normalizedEvent
       };
     }
     return {
       kind: normalizedEvent.kind,
       summary: "Received event payload.",
-      raw
+      raw,
+      rawEvent: normalizedEvent
     };
   }
   return {
     kind: "event",
     summary: "Received event payload.",
-    raw
+    raw,
+    rawEvent: normalizedEvent
   };
 }
 function createStatusEntry(label) {
@@ -39793,7 +39845,8 @@ function useA2AChat(options = {}) {
       appendAssistantEvent(urlKey, sessionId, assistantMessageId, {
         kind: "task-snapshot",
         summary: "Fetched final task snapshot.",
-        raw: safeSerialize(snapshot)
+        raw: safeSerialize(snapshot),
+        rawEvent: snapshot
       });
       if (snapshotText.length > 0) {
         updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => ({
@@ -39810,6 +39863,81 @@ function useA2AChat(options = {}) {
       return null;
     }
   }, [appendAssistantEvent, updateAssistantMessage]);
+  const processTaskStreamEvent = import_react13.default.useCallback(async (client, urlKey, sessionId, assistantMessageId, currentTask, event) => {
+    const artifactUpdate = getArtifactUpdateEvent(event);
+    if (!artifactUpdate) {
+      appendAssistantEvent(urlKey, sessionId, assistantMessageId, buildTimelineEvent(event));
+    }
+    const taskEvent = extractTask(normalizeStreamEvent(event));
+    if (taskEvent) {
+      updateTaskSession(urlKey, sessionId, (currentSession) => ({
+        ...currentSession,
+        conversationState: {
+          contextId: taskEvent.contextId,
+          taskId: taskEvent.id
+        }
+      }));
+      updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => ({
+        ...currentMessage,
+        text: getTaskText(taskEvent)
+      }));
+      setAssistantStatus(urlKey, sessionId, assistantMessageId, formatTaskStatus(taskEvent.status.state), !isTerminalTask(taskEvent));
+      if (isTerminalTask(taskEvent)) {
+        const snapshot = await hydrateTaskOutput(client, urlKey, sessionId, assistantMessageId, taskEvent.id);
+        return { task: snapshot ?? taskEvent, done: true };
+      }
+      return { task: taskEvent, done: false };
+    }
+    if (!currentTask) {
+      return { task: null, done: false };
+    }
+    if (artifactUpdate && artifactUpdate.taskId === currentTask.id) {
+      const { outputChunks, outputSnapshot, thinkingChunks } = extractAssistantTextFromArtifactUpdate(artifactUpdate);
+      if (outputSnapshot !== null || outputChunks.length > 0 || thinkingChunks.length > 0) {
+        updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => {
+          const nextText = outputSnapshot ?? `${currentMessage.text}${outputChunks.join("")}`;
+          const nextThinkingText = `${currentMessage.thinkingText ?? ""}${thinkingChunks.join("")}`;
+          return {
+            ...currentMessage,
+            text: nextText,
+            thinkingText: nextThinkingText.length > 0 ? nextThinkingText : currentMessage.thinkingText
+          };
+        });
+      }
+      if (artifactUpdate.lastChunk) {
+        const snapshot = await hydrateTaskOutput(client, urlKey, sessionId, assistantMessageId, currentTask.id);
+        if (snapshot) {
+          setAssistantStatus(urlKey, sessionId, assistantMessageId, formatTaskStatus(snapshot.status.state), !isTerminalTask(snapshot));
+          return { task: snapshot, done: isTerminalTask(snapshot) };
+        }
+      }
+      return { task: currentTask, done: false };
+    }
+    const statusUpdate = getStatusUpdateEvent(event);
+    if (statusUpdate && statusUpdate.taskId === currentTask.id) {
+      const nextTask = {
+        ...currentTask,
+        status: statusUpdate.status
+      };
+      updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => ({
+        ...currentMessage,
+        text: getTaskText(nextTask)
+      }));
+      setAssistantStatus(urlKey, sessionId, assistantMessageId, formatTaskStatus(nextTask.status.state), !isTerminalTask(nextTask));
+      if (isTerminalTask(nextTask)) {
+        const snapshot = await hydrateTaskOutput(client, urlKey, sessionId, assistantMessageId, nextTask.id);
+        return { task: snapshot ?? nextTask, done: true };
+      }
+      return { task: nextTask, done: false };
+    }
+    return { task: currentTask, done: false };
+  }, [
+    appendAssistantEvent,
+    hydrateTaskOutput,
+    setAssistantStatus,
+    updateAssistantMessage,
+    updateTaskSession
+  ]);
   const startTaskResubscribeLoop = import_react13.default.useCallback((client, urlKey, sessionId, initialTask, assistantMessageId) => {
     const controllerKey = `${urlKey}::${initialTask.id}`;
     const existing = runnerControllersRef.current.get(controllerKey);
@@ -39831,79 +39959,12 @@ function useA2AChat(options = {}) {
             if (controller.signal.aborted) {
               break;
             }
-            appendAssistantEvent(urlKey, sessionId, assistantMessageId, buildTimelineEvent(event));
-            const taskEvent = extractTask(normalizeStreamEvent(event));
-            if (taskEvent) {
-              currentTask = taskEvent;
-              updateTaskSession(urlKey, sessionId, (currentSession) => ({
-                ...currentSession,
-                conversationState: {
-                  contextId: taskEvent.contextId,
-                  taskId: taskEvent.id
-                }
-              }));
-              updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => ({
-                ...currentMessage,
-                text: getTaskText(currentTask)
-              }));
-              setAssistantStatus(urlKey, sessionId, assistantMessageId, formatTaskStatus(currentTask.status.state), !isTerminalTask(currentTask));
-              if (isTerminalTask(currentTask)) {
-                const snapshot = await hydrateTaskOutput(client, urlKey, sessionId, assistantMessageId, currentTask.id);
-                if (snapshot) {
-                  currentTask = snapshot;
-                }
-                break;
-              }
-              continue;
+            const result = await processTaskStreamEvent(client, urlKey, sessionId, assistantMessageId, currentTask, event);
+            if (result.task) {
+              currentTask = result.task;
             }
-            const artifactUpdate = getArtifactUpdateEvent(event);
-            if (artifactUpdate && artifactUpdate.taskId === currentTask.id) {
-              const { output, thinking } = extractAssistantTextFromArtifactUpdate(artifactUpdate);
-              if (output.length > 0 || thinking.length > 0) {
-                updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => {
-                  const textFragments = [currentMessage.text, ...output].map((fragment) => fragment.trim()).filter((fragment) => fragment.length > 0);
-                  const thinkingFragments = [currentMessage.thinkingText ?? "", ...thinking].map((fragment) => fragment.trim()).filter((fragment) => fragment.length > 0);
-                  return {
-                    ...currentMessage,
-                    text: Array.from(new Set(textFragments)).join(`
-
-`),
-                    thinkingText: thinkingFragments.length > 0 ? Array.from(new Set(thinkingFragments)).join(`
-
-`) : currentMessage.thinkingText
-                  };
-                });
-              }
-              if (artifactUpdate.lastChunk) {
-                const snapshot = await hydrateTaskOutput(client, urlKey, sessionId, assistantMessageId, currentTask.id);
-                if (snapshot) {
-                  currentTask = snapshot;
-                  setAssistantStatus(urlKey, sessionId, assistantMessageId, formatTaskStatus(currentTask.status.state), !isTerminalTask(currentTask));
-                  if (isTerminalTask(currentTask)) {
-                    break;
-                  }
-                }
-              }
-              continue;
-            }
-            const statusUpdate = getStatusUpdateEvent(event);
-            if (statusUpdate && statusUpdate.taskId === currentTask.id) {
-              currentTask = {
-                ...currentTask,
-                status: statusUpdate.status
-              };
-              updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => ({
-                ...currentMessage,
-                text: getTaskText(currentTask)
-              }));
-              setAssistantStatus(urlKey, sessionId, assistantMessageId, formatTaskStatus(currentTask.status.state), !isTerminalTask(currentTask));
-              if (isTerminalTask(currentTask)) {
-                const snapshot = await hydrateTaskOutput(client, urlKey, sessionId, assistantMessageId, currentTask.id);
-                if (snapshot) {
-                  currentTask = snapshot;
-                }
-                break;
-              }
+            if (result.done) {
+              break;
             }
           }
         } catch {} finally {
@@ -39919,13 +39980,7 @@ function useA2AChat(options = {}) {
       }
       runnerControllersRef.current.delete(controllerKey);
     })();
-  }, [
-    appendAssistantEvent,
-    hydrateTaskOutput,
-    setAssistantStatus,
-    updateAssistantMessage,
-    updateTaskSession
-  ]);
+  }, [processTaskStreamEvent, setAssistantStatus]);
   import_react13.default.useEffect(() => {
     return () => {
       for (const controller of runnerControllersRef.current.values()) {
@@ -40000,24 +40055,63 @@ function useA2AChat(options = {}) {
       if (!targetSession) {
         throw new Error("Task session not found");
       }
-      const payload = buildA2AMessage(variables.taskText, targetSession.conversationState);
-      const response = await exports_Effect.runPromise(sendTaskMessage(connection.client, {
-        message: payload,
-        configuration: {
-          acceptedOutputModes: connection.acceptedOutputModes,
-          blocking: false
+      const streamController = new AbortController;
+      const streamControllerKey = `${variables.urlKey}::${variables.assistantMessageId}`;
+      runnerControllersRef.current.set(streamControllerKey, streamController);
+      let currentTask = null;
+      let directResponseText = "";
+      try {
+        const payload = buildA2AMessage(variables.taskText, targetSession.conversationState);
+        const stream = await exports_Effect.runPromise(sendTaskMessageStream(connection.client, {
+          message: payload,
+          configuration: {
+            acceptedOutputModes: connection.acceptedOutputModes
+          }
+        }, streamController.signal));
+        for await (const event of stream) {
+          if (streamController.signal.aborted) {
+            break;
+          }
+          const eventText = extractResponseMessageText(event);
+          if (eventText.length > 0) {
+            directResponseText = eventText;
+          }
+          const result = await processTaskStreamEvent(connection.client, variables.urlKey, variables.taskSessionId, variables.assistantMessageId, currentTask, event);
+          currentTask = result.task;
+          if (currentTask && runnerControllersRef.current.get(streamControllerKey) === streamController) {
+            runnerControllersRef.current.delete(streamControllerKey);
+            runnerControllersRef.current.set(`${variables.urlKey}::${currentTask.id}`, streamController);
+          }
+          if (result.done) {
+            break;
+          }
         }
-      }));
-      const parsedTask = extractTask(response);
-      const initialTask = parsedTask ?? (response.kind === "task" ? response : null);
-      return {
-        response,
-        initialTask,
-        assistantMessageId: variables.assistantMessageId,
-        client: connection.client,
-        urlKey: variables.urlKey,
-        taskSessionId: variables.taskSessionId
-      };
+      } catch (error2) {
+        if (!streamController.signal.aborted && currentTask && !isTerminalTask(currentTask)) {
+          startTaskResubscribeLoop(connection.client, variables.urlKey, variables.taskSessionId, currentTask, variables.assistantMessageId);
+          return;
+        }
+        throw error2;
+      } finally {
+        if (runnerControllersRef.current.get(streamControllerKey) === streamController) {
+          runnerControllersRef.current.delete(streamControllerKey);
+        }
+        if (currentTask && runnerControllersRef.current.get(`${variables.urlKey}::${currentTask.id}`) === streamController) {
+          runnerControllersRef.current.delete(`${variables.urlKey}::${currentTask.id}`);
+        }
+      }
+      if (currentTask) {
+        return;
+      }
+      if (directResponseText.length > 0) {
+        updateAssistantMessage(variables.urlKey, variables.taskSessionId, variables.assistantMessageId, (currentMessage) => ({
+          ...currentMessage,
+          text: directResponseText
+        }));
+        setAssistantStatus(variables.urlKey, variables.taskSessionId, variables.assistantMessageId, "Completed", false);
+        return;
+      }
+      throw new Error("Task stream ended without returning a task or message.");
     },
     onMutate: ({ taskText, assistantMessageId, urlKey, taskSessionId }) => {
       updateTaskSession(urlKey, taskSessionId, (currentSession) => ({
@@ -40038,52 +40132,6 @@ function useA2AChat(options = {}) {
         ]
       }));
       setTaskInput("");
-    },
-    onSuccess: ({ response, initialTask, assistantMessageId, client, urlKey, taskSessionId }) => {
-      const responseKind = getResponseKind(response);
-      appendAssistantEvent(urlKey, taskSessionId, assistantMessageId, {
-        kind: "send-response",
-        summary: `Received ${responseKind} response from sendMessage.`,
-        raw: safeSerialize(response)
-      });
-      if (!initialTask) {
-        if (responseKind !== "task") {
-          const directText = extractResponseMessageText(response);
-          const fallbackText = directText.length > 0 ? directText : "Expected a task response but got a direct message.";
-          updateAssistantMessage(urlKey, taskSessionId, assistantMessageId, (currentMessage) => ({
-            ...currentMessage,
-            text: fallbackText
-          }));
-          setAssistantStatus(urlKey, taskSessionId, assistantMessageId, "Completed", false);
-          return;
-        }
-        updateAssistantMessage(urlKey, taskSessionId, assistantMessageId, (currentMessage) => ({
-          ...currentMessage,
-          text: "Task sent, but no task payload could be parsed from the response."
-        }));
-        setAssistantStatus(urlKey, taskSessionId, assistantMessageId, "Failed", false);
-        return;
-      }
-      const initialTaskText = getTaskText(initialTask);
-      if (initialTaskText.length > 0) {
-        updateAssistantMessage(urlKey, taskSessionId, assistantMessageId, (currentMessage) => ({
-          ...currentMessage,
-          text: initialTaskText
-        }));
-      }
-      setAssistantStatus(urlKey, taskSessionId, assistantMessageId, formatTaskStatus(initialTask.status.state), !isTerminalTask(initialTask));
-      updateTaskSession(urlKey, taskSessionId, (currentSession) => ({
-        ...currentSession,
-        conversationState: {
-          contextId: initialTask.contextId,
-          taskId: initialTask.id
-        }
-      }));
-      if (isTerminalTask(initialTask)) {
-        hydrateTaskOutput(client, urlKey, taskSessionId, assistantMessageId, initialTask.id);
-        return;
-      }
-      startTaskResubscribeLoop(client, urlKey, taskSessionId, initialTask, assistantMessageId);
     },
     onError: (error2, variables) => {
       const message = getErrorMessage(error2, "Failed to send task or read task updates from the server.");
@@ -40149,6 +40197,7 @@ function useA2AChat(options = {}) {
         byUrl: {
           ...current.byUrl,
           [baseUrl]: {
+            ...urlState,
             activeSessionId: nextSession.id,
             sessions: [...urlState.sessions, nextSession]
           }
@@ -40198,7 +40247,7 @@ function useA2AChat(options = {}) {
           }
         };
       }
-      const nextActiveSessionId = urlState.activeSessionId === sessionId ? [...remainingSessions].sort((a, b) => b.updatedAt - a.updatedAt)[0]?.id ?? remainingSessions[0].id : urlState.activeSessionId;
+      const nextActiveSessionId = urlState.activeSessionId === sessionId ? [...remainingSessions].sort((a, b) => b.updatedAt - a.updatedAt)[0]?.id ?? urlState.activeSessionId : urlState.activeSessionId;
       return {
         ...current,
         byUrl: {
@@ -40239,6 +40288,162 @@ function useA2AChat(options = {}) {
     handleDeleteTaskSession
   };
 }
+function isRecord2(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function getStatusMessageData(event) {
+  const rawEvent = event.rawEvent;
+  if (!isRecord2(rawEvent)) {
+    return null;
+  }
+  if (rawEvent.kind === "status-update" && isRecord2(rawEvent.status)) {
+    const data = getFirstDataPartFromMessage(rawEvent.status.message);
+    if (data) {
+      return data;
+    }
+  }
+  if (rawEvent.kind === "task" && Array.isArray(rawEvent.history)) {
+    for (const message of [...rawEvent.history].reverse()) {
+      const data = getFirstDataPartFromMessage(message);
+      if (data) {
+        return data;
+      }
+    }
+  }
+  return null;
+}
+function getFirstDataPartFromMessage(message) {
+  if (!isRecord2(message) || !Array.isArray(message.parts)) {
+    return null;
+  }
+  for (const part of message.parts) {
+    if (isRecord2(part) && part.kind === "data" && isRecord2(part.data)) {
+      return part.data;
+    }
+  }
+  return null;
+}
+function getArtifactText(event) {
+  const rawEvent = event.rawEvent;
+  if (!isRecord2(rawEvent) || rawEvent.kind !== "artifact-update" || !isRecord2(rawEvent.artifact)) {
+    return null;
+  }
+  const parts2 = rawEvent.artifact.parts;
+  if (!Array.isArray(parts2)) {
+    return null;
+  }
+  const text = parts2.flatMap((part) => isRecord2(part) && part.kind === "text" && typeof part.text === "string" ? [part.text] : []).join("");
+  return text.length > 0 ? text : null;
+}
+function formatJson(value) {
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+function CompactJson({ value }) {
+  return /* @__PURE__ */ import_jsx_runtime11.jsx("pre", { className: "overflow-x-auto rounded-sm bg-muted/40 p-1.5 text-[10px] text-muted-foreground", children: formatJson(value) });
+}
+function Field({ label, children }) {
+  return /* @__PURE__ */ import_jsx_runtime11.jsxs("div", { className: "grid gap-0.5", children: [
+    /* @__PURE__ */ import_jsx_runtime11.jsx("div", { className: "text-[10px] font-medium uppercase tracking-wide text-muted-foreground", children: label }),
+    /* @__PURE__ */ import_jsx_runtime11.jsx("div", { className: "text-[11px] text-foreground [overflow-wrap:anywhere]", children })
+  ] });
+}
+function renderSendTaskTool(data) {
+  const input = isRecord2(data.input) ? data.input : {};
+  const agent = typeof input.agent === "string" ? input.agent : "unknown agent";
+  const content = typeof input.content === "string" ? input.content : "";
+  return /* @__PURE__ */ import_jsx_runtime11.jsxs("div", { className: "rounded-md border border-sky-500/25 bg-sky-500/10 p-2", children: [
+    /* @__PURE__ */ import_jsx_runtime11.jsx("div", { className: "text-[11px] font-semibold text-sky-800 dark:text-sky-200", children: "Calling subagent" }),
+    /* @__PURE__ */ import_jsx_runtime11.jsxs("div", { className: "mt-1 grid gap-2", children: [
+      /* @__PURE__ */ import_jsx_runtime11.jsx(Field, { label: "Agent", children: agent }),
+      content.length > 0 ? /* @__PURE__ */ import_jsx_runtime11.jsx(Field, { label: "Message", children: content }) : null
+    ] })
+  ] });
+}
+function renderSendTaskResult(data) {
+  const output = isRecord2(data.output) ? data.output : null;
+  const taskId = output && typeof output.task_id === "string" ? output.task_id : null;
+  return /* @__PURE__ */ import_jsx_runtime11.jsxs("div", { className: "rounded-md border border-emerald-500/25 bg-emerald-500/10 p-2", children: [
+    /* @__PURE__ */ import_jsx_runtime11.jsx("div", { className: "text-[11px] font-semibold text-emerald-800 dark:text-emerald-200", children: "Subagent task created" }),
+    taskId ? /* @__PURE__ */ import_jsx_runtime11.jsx("div", { className: "mt-1 font-mono text-[11px] text-foreground", children: taskId }) : null,
+    !taskId ? /* @__PURE__ */ import_jsx_runtime11.jsx(CompactJson, { value: data.output }) : null
+  ] });
+}
+function renderCheckTaskStatusCall(data) {
+  const input = isRecord2(data.input) ? data.input : {};
+  const taskId = typeof input.task_id === "string" ? input.task_id : "unknown task";
+  return /* @__PURE__ */ import_jsx_runtime11.jsxs("div", { className: "rounded-md border border-violet-500/25 bg-violet-500/10 p-2", children: [
+    /* @__PURE__ */ import_jsx_runtime11.jsx("div", { className: "text-[11px] font-semibold text-violet-800 dark:text-violet-200", children: "Checking subagent status" }),
+    /* @__PURE__ */ import_jsx_runtime11.jsx("div", { className: "mt-1 font-mono text-[11px] text-foreground [overflow-wrap:anywhere]", children: taskId })
+  ] });
+}
+function renderCheckTaskStatusResult(data) {
+  const output = isRecord2(data.output) ? data.output : null;
+  const status = output && isRecord2(output.status) && typeof output.status.state === "string" ? output.status.state : "unknown";
+  const artifacts = output && Array.isArray(output.artifacts) ? output.artifacts : [];
+  const artifactText = artifacts.flatMap((artifact) => {
+    if (!isRecord2(artifact) || !Array.isArray(artifact.parts)) {
+      return [];
+    }
+    return artifact.parts.flatMap((part) => isRecord2(part) && part.kind === "text" && typeof part.text === "string" ? [part.text] : []);
+  }).join("");
+  return /* @__PURE__ */ import_jsx_runtime11.jsxs("div", { className: "rounded-md border border-violet-500/25 bg-violet-500/10 p-2", children: [
+    /* @__PURE__ */ import_jsx_runtime11.jsxs("div", { className: "flex flex-wrap items-center gap-2 text-[11px]", children: [
+      /* @__PURE__ */ import_jsx_runtime11.jsx("span", { className: "font-semibold text-violet-800 dark:text-violet-200", children: "Subagent status" }),
+      /* @__PURE__ */ import_jsx_runtime11.jsx("span", { className: "rounded-full border border-violet-500/30 bg-background/60 px-1.5 py-0.5 font-mono text-[10px] text-foreground", children: status })
+    ] }),
+    artifactText.length > 0 ? /* @__PURE__ */ import_jsx_runtime11.jsx("blockquote", { className: "mt-1 border-l-2 border-violet-500/40 pl-2 text-[11px] text-foreground whitespace-pre-wrap", children: artifactText }) : /* @__PURE__ */ import_jsx_runtime11.jsx("div", { className: "mt-1", children: /* @__PURE__ */ import_jsx_runtime11.jsx(CompactJson, { value: data.output }) })
+  ] });
+}
+function renderGenericToolData(data) {
+  const type = typeof data.type === "string" ? data.type : "tool-event";
+  const toolName = typeof data.toolName === "string" ? data.toolName : "unknown tool";
+  return /* @__PURE__ */ import_jsx_runtime11.jsxs("div", { className: "rounded-md border border-border/50 bg-muted/30 p-2", children: [
+    /* @__PURE__ */ import_jsx_runtime11.jsxs("div", { className: "text-[11px] font-semibold text-foreground", children: [
+      type,
+      ": ",
+      toolName
+    ] }),
+    /* @__PURE__ */ import_jsx_runtime11.jsx("div", { className: "mt-1", children: /* @__PURE__ */ import_jsx_runtime11.jsx(CompactJson, { value: data.input ?? data.output ?? data }) })
+  ] });
+}
+var renderInspectorToolEvent = (event) => {
+  const data = getStatusMessageData(event);
+  if (!data || typeof data.type !== "string") {
+    return null;
+  }
+  const toolName = typeof data.toolName === "string" ? data.toolName : "";
+  if (data.type === "tool-call" && toolName === "send_task") {
+    return renderSendTaskTool(data);
+  }
+  if (data.type === "tool-result" && toolName === "send_task") {
+    return renderSendTaskResult(data);
+  }
+  if (data.type === "tool-call" && toolName === "check_task_status") {
+    return renderCheckTaskStatusCall(data);
+  }
+  if (data.type === "tool-result" && toolName === "check_task_status") {
+    return renderCheckTaskStatusResult(data);
+  }
+  if (data.type === "tool-call" || data.type === "tool-result") {
+    return renderGenericToolData(data);
+  }
+  return null;
+};
+var renderInspectorArtifactEvent = (event) => {
+  const text = getArtifactText(event);
+  if (!text) {
+    return null;
+  }
+  return /* @__PURE__ */ import_jsx_runtime11.jsx("div", { className: "rounded-md border border-border/50 bg-muted/30 px-2 py-1 text-[11px] text-foreground whitespace-pre-wrap [overflow-wrap:anywhere]", children: text });
+};
+var inspectorEventRenderers = [
+  renderInspectorToolEvent,
+  renderInspectorArtifactEvent
+];
 function getStatusClasses(state) {
   if (state === "connected") {
     return "border-emerald-500/40 bg-emerald-500/10 text-emerald-700";
@@ -40265,7 +40470,8 @@ function A2AChatCard({
   proxyBasePath,
   autoConnect,
   showConnectionForm = true,
-  agentSuggestions = []
+  agentSuggestions = [],
+  eventRenderers = inspectorEventRenderers
 }) {
   const {
     url,
@@ -40291,29 +40497,29 @@ function A2AChatCard({
     proxyBasePath,
     autoConnect
   });
-  return /* @__PURE__ */ import_jsx_runtime11.jsxs(Card, { className: cn("w-full max-w-5xl", className), children: [
-    /* @__PURE__ */ import_jsx_runtime11.jsxs(CardHeader, { className: "border-b border-border", children: [
-      /* @__PURE__ */ import_jsx_runtime11.jsx(CardTitle, { children: title }),
-      /* @__PURE__ */ import_jsx_runtime11.jsx(CardDescription, { children: description }),
-      showConnectionForm ? /* @__PURE__ */ import_jsx_runtime11.jsxs("form", {
+  return /* @__PURE__ */ import_jsx_runtime12.jsxs(Card, { className: cn("w-full max-w-5xl", className), children: [
+    /* @__PURE__ */ import_jsx_runtime12.jsxs(CardHeader, { className: "border-b border-border", children: [
+      /* @__PURE__ */ import_jsx_runtime12.jsx(CardTitle, { children: title }),
+      /* @__PURE__ */ import_jsx_runtime12.jsx(CardDescription, { children: description }),
+      showConnectionForm ? /* @__PURE__ */ import_jsx_runtime12.jsxs("form", {
         className: "mt-2 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]",
         onSubmit: (event) => {
           event.preventDefault();
           handleConnect();
         },
         children: [
-          /* @__PURE__ */ import_jsx_runtime11.jsx(Input, {
+          /* @__PURE__ */ import_jsx_runtime12.jsx(Input, {
             value: url,
             onChange: (event) => setUrl(event.target.value),
             placeholder: "http://localhost:8000",
             "aria-label": "A2A server URL",
             list: agentSuggestions.length > 0 ? "a2a-agent-suggestions" : undefined
           }),
-          agentSuggestions.length > 0 ? /* @__PURE__ */ import_jsx_runtime11.jsx("datalist", { id: "a2a-agent-suggestions", children: agentSuggestions.map((suggestion) => /* @__PURE__ */ import_jsx_runtime11.jsx("option", {
+          agentSuggestions.length > 0 ? /* @__PURE__ */ import_jsx_runtime12.jsx("datalist", { id: "a2a-agent-suggestions", children: agentSuggestions.map((suggestion) => /* @__PURE__ */ import_jsx_runtime12.jsx("option", {
             value: suggestion.url,
             label: suggestion.description ? `${suggestion.label} - ${suggestion.description}` : suggestion.label
           }, suggestion.url)) }) : null,
-          /* @__PURE__ */ import_jsx_runtime11.jsx(Button3, {
+          /* @__PURE__ */ import_jsx_runtime12.jsx(Button3, {
             type: "submit",
             variant: "outline",
             disabled: connectionState === "connecting",
@@ -40322,33 +40528,33 @@ function A2AChatCard({
           })
         ]
       }) : null,
-      /* @__PURE__ */ import_jsx_runtime11.jsxs("div", { className: "mt-2 flex flex-wrap items-center gap-2", children: [
-        /* @__PURE__ */ import_jsx_runtime11.jsx("div", {
+      /* @__PURE__ */ import_jsx_runtime12.jsxs("div", { className: "mt-2 flex flex-wrap items-center gap-2", children: [
+        /* @__PURE__ */ import_jsx_runtime12.jsx("div", {
           className: cn("inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium", getStatusClasses(connectionState)),
           children: connectionMessage
         }),
-        agentName ? /* @__PURE__ */ import_jsx_runtime11.jsxs("div", { className: "text-xs text-muted-foreground", children: [
+        agentName ? /* @__PURE__ */ import_jsx_runtime12.jsxs("div", { className: "text-xs text-muted-foreground", children: [
           "Agent: ",
           agentName
         ] }) : null
       ] })
     ] }),
-    /* @__PURE__ */ import_jsx_runtime11.jsx(CardContent, { children: /* @__PURE__ */ import_jsx_runtime11.jsxs("div", { className: "grid gap-4 md:grid-cols-[15rem_1fr]", children: [
-      /* @__PURE__ */ import_jsx_runtime11.jsxs("aside", { className: "flex flex-col gap-4 border-b border-border pb-4 md:border-r md:border-b-0 md:pb-0 md:pr-4", children: [
-        /* @__PURE__ */ import_jsx_runtime11.jsxs("div", { className: "flex flex-col gap-2", children: [
-          /* @__PURE__ */ import_jsx_runtime11.jsx("div", { className: "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground", children: "Recent Agents" }),
-          /* @__PURE__ */ import_jsx_runtime11.jsx("div", { className: "flex max-h-40 flex-col gap-1 overflow-y-auto", children: recentAgents.length > 0 ? recentAgents.map((agent) => /* @__PURE__ */ import_jsx_runtime11.jsx(Button3, {
+    /* @__PURE__ */ import_jsx_runtime12.jsx(CardContent, { children: /* @__PURE__ */ import_jsx_runtime12.jsxs("div", { className: "grid gap-4 md:grid-cols-[15rem_1fr]", children: [
+      /* @__PURE__ */ import_jsx_runtime12.jsxs("aside", { className: "flex flex-col gap-4 border-b border-border pb-4 md:border-r md:border-b-0 md:pb-0 md:pr-4", children: [
+        /* @__PURE__ */ import_jsx_runtime12.jsxs("div", { className: "flex flex-col gap-2", children: [
+          /* @__PURE__ */ import_jsx_runtime12.jsx("div", { className: "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground", children: "Recent Agents" }),
+          /* @__PURE__ */ import_jsx_runtime12.jsx("div", { className: "flex max-h-40 flex-col gap-1 overflow-y-auto", children: recentAgents.length > 0 ? recentAgents.map((agent) => /* @__PURE__ */ import_jsx_runtime12.jsx(Button3, {
             type: "button",
             variant: agent.url === url ? "default" : "outline",
             size: "sm",
             onClick: () => handleSelectRecentAgent(agent.url),
             className: "justify-start",
             title: agent.url,
-            children: /* @__PURE__ */ import_jsx_runtime11.jsx("span", { className: "truncate", children: getAgentButtonLabel(agent.agentName, agent.url) })
-          }, agent.url)) : /* @__PURE__ */ import_jsx_runtime11.jsx("div", { className: "text-xs text-muted-foreground", children: "No recent agent connections yet." }) })
+            children: /* @__PURE__ */ import_jsx_runtime12.jsx("span", { className: "truncate", children: getAgentButtonLabel(agent.agentName, agent.url) })
+          }, agent.url)) : /* @__PURE__ */ import_jsx_runtime12.jsx("div", { className: "text-xs text-muted-foreground", children: "No recent agent connections yet." }) })
         ] }),
-        /* @__PURE__ */ import_jsx_runtime11.jsxs("div", { className: "flex min-h-0 flex-1 flex-col gap-2", children: [
-          /* @__PURE__ */ import_jsx_runtime11.jsxs(Button3, {
+        /* @__PURE__ */ import_jsx_runtime12.jsxs("div", { className: "flex min-h-0 flex-1 flex-col gap-2", children: [
+          /* @__PURE__ */ import_jsx_runtime12.jsxs(Button3, {
             type: "button",
             variant: "outline",
             size: "sm",
@@ -40358,37 +40564,37 @@ function A2AChatCard({
             "aria-label": "New task",
             title: "New task",
             children: [
-              /* @__PURE__ */ import_jsx_runtime11.jsx(Plus, {}),
-              /* @__PURE__ */ import_jsx_runtime11.jsx("span", { children: "New Task" })
+              /* @__PURE__ */ import_jsx_runtime12.jsx(Plus, {}),
+              /* @__PURE__ */ import_jsx_runtime12.jsx("span", { children: "New Task" })
             ]
           }),
-          /* @__PURE__ */ import_jsx_runtime11.jsx("div", { className: "mt-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground", children: "Tasks" }),
-          /* @__PURE__ */ import_jsx_runtime11.jsx("div", { className: "flex min-w-0 flex-1 flex-col gap-1 overflow-y-auto pb-1", children: taskSessions.map((session) => /* @__PURE__ */ import_jsx_runtime11.jsxs("div", { className: "flex items-center gap-1", children: [
-            /* @__PURE__ */ import_jsx_runtime11.jsx(Button3, {
+          /* @__PURE__ */ import_jsx_runtime12.jsx("div", { className: "mt-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground", children: "Tasks" }),
+          /* @__PURE__ */ import_jsx_runtime12.jsx("div", { className: "flex min-w-0 flex-1 flex-col gap-1 overflow-y-auto pb-1", children: taskSessions.map((session) => /* @__PURE__ */ import_jsx_runtime12.jsxs("div", { className: "flex items-center gap-1", children: [
+            /* @__PURE__ */ import_jsx_runtime12.jsx(Button3, {
               type: "button",
               variant: session.id === activeTaskSessionId ? "default" : "outline",
               size: "sm",
               onClick: () => handleSelectTaskSession(session.id),
               className: "min-w-0 flex-1 justify-start",
               title: session.title,
-              children: /* @__PURE__ */ import_jsx_runtime11.jsx("span", { className: "truncate", children: session.title })
+              children: /* @__PURE__ */ import_jsx_runtime12.jsx("span", { className: "truncate", children: session.title })
             }),
-            /* @__PURE__ */ import_jsx_runtime11.jsx(Button3, {
+            /* @__PURE__ */ import_jsx_runtime12.jsx(Button3, {
               type: "button",
               variant: "ghost",
               size: "icon-sm",
               onClick: () => handleDeleteTaskSession(session.id),
               "aria-label": `Delete task ${session.title}`,
               title: `Delete task ${session.title}`,
-              children: /* @__PURE__ */ import_jsx_runtime11.jsx(Trash2, {})
+              children: /* @__PURE__ */ import_jsx_runtime12.jsx(Trash2, {})
             })
           ] }, session.id)) })
         ] })
       ] }),
-      /* @__PURE__ */ import_jsx_runtime11.jsxs("div", { className: "flex flex-col gap-3", children: [
-        /* @__PURE__ */ import_jsx_runtime11.jsx(MessageBox, { messages }),
-        /* @__PURE__ */ import_jsx_runtime11.jsx(Separator, {}),
-        /* @__PURE__ */ import_jsx_runtime11.jsx(InputBox, {
+      /* @__PURE__ */ import_jsx_runtime12.jsxs("div", { className: "flex flex-col gap-3", children: [
+        /* @__PURE__ */ import_jsx_runtime12.jsx(MessageBox, { messages, eventRenderers }),
+        /* @__PURE__ */ import_jsx_runtime12.jsx(Separator, {}),
+        /* @__PURE__ */ import_jsx_runtime12.jsx(InputBox, {
           value: taskInput,
           onChange: setTaskInput,
           onSubmit: handleSubmitTask,
@@ -40400,7 +40606,7 @@ function A2AChatCard({
 }
 function A2AChat(props) {
   const [queryClient] = import_react5.default.useState(() => new QueryClient);
-  return /* @__PURE__ */ import_jsx_runtime11.jsx(QueryClientProvider, { client: queryClient, children: /* @__PURE__ */ import_jsx_runtime11.jsx(A2AChatCard, { ...props }) });
+  return /* @__PURE__ */ import_jsx_runtime12.jsx(QueryClientProvider, { client: queryClient, children: /* @__PURE__ */ import_jsx_runtime12.jsx(A2AChatCard, { ...props }) });
 }
 
 // web/main.tsx
@@ -40409,7 +40615,7 @@ var rootElement = document.getElementById("root");
 if (!rootElement) {
   throw new Error("Missing #root element");
 }
-import_client2.createRoot(rootElement).render(/* @__PURE__ */ jsx_dev_runtime.jsxDEV(import_react14.StrictMode, {
+import_client2.createRoot(rootElement).render(/* @__PURE__ */ jsx_dev_runtime.jsxDEV(import_react15.StrictMode, {
   children: /* @__PURE__ */ jsx_dev_runtime.jsxDEV(A2AChat, {
     proxyBasePath: "/api/a2a",
     initialUrl: "http://localhost:8000"

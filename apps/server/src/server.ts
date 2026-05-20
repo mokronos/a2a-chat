@@ -3,7 +3,7 @@ import { HttpApiBuilder, HttpServer } from "@effect/platform";
 import { Layer } from "effect";
 import { extname, resolve } from "node:path";
 
-const PORT = 3001
+const PORT = 19999
 const PUBLIC_DIR = resolve(import.meta.dir, "..", "public")
 
 const InspectorApiLive = HttpApiBuilder.api(InspectorApi).pipe(Layer.provide(CoreHandlers))
