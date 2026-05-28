@@ -1,0 +1,12 @@
+{
+  "sources": [
+    {
+      "kind": "mcp",
+      "transport": "remote",
+      "name": "agentdock-app-control",
+      "endpoint": "http://0.0.0.0:38123/mcp",
+      "remoteTransport": "auto",
+      "namespace": "agentdock_app_control"
+    }
+  ]
+}

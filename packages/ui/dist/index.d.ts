@@ -57,12 +57,19 @@ type A2AAgentSuggestion = {
 };
 type A2AChatProps = {
     className?: string;
+    contentClassName?: string;
+    messagesClassName?: string;
     title?: string;
     description?: string;
     initialUrl?: string;
     proxyBasePath?: string | false;
     autoConnect?: boolean;
     showConnectionForm?: boolean;
+    showHeader?: boolean;
+    showConnectionStatus?: boolean;
+    showRecentAgents?: boolean;
+    showTaskSessions?: boolean;
+    layout?: "default" | "panel";
     agentSuggestions?: A2AAgentSuggestion[];
     eventRenderers?: MessageTimelineEventRenderer[];
     persistence?: A2AChatPersistenceAdapter;

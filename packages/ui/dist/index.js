@@ -156,7 +156,7 @@ function renderEventContent(event, eventRenderers) {
   }
   return null;
 }
-function MessageBox({ messages, eventRenderers = [] }) {
+function MessageBox({ messages, eventRenderers = [], className }) {
   const containerRef = React4.useRef(null);
   const endRef = React4.useRef(null);
   const [expandedStatusHistory, setExpandedStatusHistory] = React4.useState({});
@@ -178,7 +178,7 @@ function MessageBox({ messages, eventRenderers = [] }) {
     "div",
     {
       ref: containerRef,
-      className: "flex h-72 flex-col gap-3 overflow-auto rounded-md border border-border bg-background p-3",
+      className: cn("flex h-72 flex-col gap-3 overflow-auto rounded-md border border-border bg-background p-3", className),
       children: [
         messages.map((message) => {
           const isUser = message.role === "user";
@@ -1838,12 +1838,19 @@ function getAgentButtonLabel(agentName, agentUrl) {
 }
 function A2AChatCard({
   className,
+  contentClassName,
+  messagesClassName,
   title = "A2A Chat",
   description = "Reusable chat shell component",
   initialUrl,
   proxyBasePath,
   autoConnect,
   showConnectionForm = true,
+  showHeader = true,
+  showConnectionStatus = true,
+  showRecentAgents,
+  showTaskSessions = true,
+  layout = "default",
   agentSuggestions = [],
   eventRenderers = inspectorEventRenderers,
   persistence
@@ -1873,10 +1880,12 @@ function A2AChatCard({
     autoConnect,
     persistence
   });
-  return /* @__PURE__ */ jsxs4(Card, { className: cn("w-full max-w-5xl", className), children: [
-    /* @__PURE__ */ jsxs4(CardHeader, { className: "border-b border-border", children: [
-      /* @__PURE__ */ jsx10(CardTitle, { children: title }),
-      /* @__PURE__ */ jsx10(CardDescription, { children: description }),
+  const isPanel = layout === "panel";
+  const shouldShowRecentAgents = showRecentAgents ?? !isPanel;
+  return /* @__PURE__ */ jsxs4(Card, { className: cn("w-full max-w-5xl", isPanel && "flex h-full min-w-0 max-w-none flex-col overflow-hidden", className), children: [
+    showHeader ? /* @__PURE__ */ jsxs4(CardHeader, { className: cn("border-b border-border", isPanel && "shrink-0 gap-2 p-3"), children: [
+      /* @__PURE__ */ jsx10(CardTitle, { className: cn(isPanel && "text-base"), children: title }),
+      description ? /* @__PURE__ */ jsx10(CardDescription, { children: description }) : null,
       showConnectionForm ? /* @__PURE__ */ jsxs4(
         "form",
         {
@@ -1917,7 +1926,7 @@ function A2AChatCard({
           ]
         }
       ) : null,
-      /* @__PURE__ */ jsxs4("div", { className: "mt-2 flex flex-wrap items-center gap-2", children: [
+      showConnectionStatus ? /* @__PURE__ */ jsxs4("div", { className: "mt-2 flex flex-wrap items-center gap-2", children: [
         /* @__PURE__ */ jsx10(
           "div",
           {
@@ -1932,11 +1941,11 @@ function A2AChatCard({
           "Agent: ",
           agentName
         ] }) : null
-      ] })
-    ] }),
-    /* @__PURE__ */ jsx10(CardContent, { children: /* @__PURE__ */ jsxs4("div", { className: "grid gap-4 md:grid-cols-[15rem_1fr]", children: [
-      /* @__PURE__ */ jsxs4("aside", { className: "flex flex-col gap-4 border-b border-border pb-4 md:border-r md:border-b-0 md:pb-0 md:pr-4", children: [
-        /* @__PURE__ */ jsxs4("div", { className: "flex flex-col gap-2", children: [
+      ] }) : null
+    ] }) : null,
+    /* @__PURE__ */ jsx10(CardContent, { className: cn(isPanel && "min-h-0 flex-1 p-3", contentClassName), children: /* @__PURE__ */ jsxs4("div", { className: cn("grid min-w-0 gap-4", isPanel ? "h-full min-h-0 grid-rows-[auto_1fr]" : "md:grid-cols-[15rem_1fr]"), children: [
+      shouldShowRecentAgents || showTaskSessions ? /* @__PURE__ */ jsxs4("aside", { className: cn("flex min-w-0 flex-col gap-4 border-b border-border pb-4", !isPanel && "md:border-r md:border-b-0 md:pb-0 md:pr-4"), children: [
+        shouldShowRecentAgents ? /* @__PURE__ */ jsxs4("div", { className: "flex flex-col gap-2", children: [
           /* @__PURE__ */ jsx10("div", { className: "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground", children: "Recent Agents" }),
           /* @__PURE__ */ jsx10("div", { className: "flex max-h-40 flex-col gap-1 overflow-y-auto", children: recentAgents.length > 0 ? recentAgents.map((agent) => /* @__PURE__ */ jsx10(
             Button,
@@ -1951,8 +1960,8 @@ function A2AChatCard({
             },
             agent.url
           )) : /* @__PURE__ */ jsx10("div", { className: "text-xs text-muted-foreground", children: "No recent agent connections yet." }) })
-        ] }),
-        /* @__PURE__ */ jsxs4("div", { className: "flex min-h-0 flex-1 flex-col gap-2", children: [
+        ] }) : null,
+        showTaskSessions ? /* @__PURE__ */ jsxs4("div", { className: "flex min-h-0 min-w-0 flex-1 flex-col gap-2", children: [
           /* @__PURE__ */ jsxs4(
             Button,
             {
@@ -1997,10 +2006,10 @@ function A2AChatCard({
               }
             )
           ] }, session.id)) })
-        ] })
-      ] }),
-      /* @__PURE__ */ jsxs4("div", { className: "flex flex-col gap-3", children: [
-        /* @__PURE__ */ jsx10(MessageBox, { messages, eventRenderers }),
+        ] }) : null
+      ] }) : null,
+      /* @__PURE__ */ jsxs4("div", { className: "flex min-h-0 min-w-0 flex-col gap-3", children: [
+        /* @__PURE__ */ jsx10(MessageBox, { messages, eventRenderers, className: cn(isPanel && "min-h-0 flex-1", messagesClassName) }),
         /* @__PURE__ */ jsx10(Separator, {}),
         /* @__PURE__ */ jsx10(
           InputBox,

@@ -29,12 +29,19 @@ export type A2AAgentSuggestion = {
 
 export type A2AChatProps = {
   className?: string
+  contentClassName?: string
+  messagesClassName?: string
   title?: string
   description?: string
   initialUrl?: string
   proxyBasePath?: string | false
   autoConnect?: boolean
   showConnectionForm?: boolean
+  showHeader?: boolean
+  showConnectionStatus?: boolean
+  showRecentAgents?: boolean
+  showTaskSessions?: boolean
+  layout?: "default" | "panel"
   agentSuggestions?: A2AAgentSuggestion[]
   eventRenderers?: MessageTimelineEventRenderer[]
   persistence?: A2AChatPersistenceAdapter
@@ -66,12 +73,19 @@ function getAgentButtonLabel(agentName: string | null, agentUrl: string): string
 
 function A2AChatCard({
   className,
+  contentClassName,
+  messagesClassName,
   title = "A2A Chat",
   description = "Reusable chat shell component",
   initialUrl,
   proxyBasePath,
   autoConnect,
   showConnectionForm = true,
+  showHeader = true,
+  showConnectionStatus = true,
+  showRecentAgents,
+  showTaskSessions = true,
+  layout = "default",
   agentSuggestions = [],
   eventRenderers = inspectorEventRenderers,
   persistence,
@@ -102,96 +116,106 @@ function A2AChatCard({
     persistence,
   })
 
+  const isPanel = layout === "panel"
+  const shouldShowRecentAgents = showRecentAgents ?? !isPanel
+
   return (
-    <Card className={cn("w-full max-w-5xl", className)}>
-      <CardHeader className="border-b border-border">
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+    <Card className={cn("w-full max-w-5xl", isPanel && "flex h-full min-w-0 max-w-none flex-col overflow-hidden", className)}>
+      {showHeader ? (
+        <CardHeader className={cn("border-b border-border", isPanel && "shrink-0 gap-2 p-3")}>
+          <CardTitle className={cn(isPanel && "text-base")}>{title}</CardTitle>
+          {description ? <CardDescription>{description}</CardDescription> : null}
 
-        {showConnectionForm ? (
-          <form
-            className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]"
-            onSubmit={(event) => {
-              event.preventDefault()
-              handleConnect()
-            }}
-          >
-            <Input
-              value={url}
-              onChange={(event) => setUrl(event.target.value)}
-              placeholder="http://localhost:8000"
-              aria-label="A2A server URL"
-              list={agentSuggestions.length > 0 ? "a2a-agent-suggestions" : undefined}
-            />
-            {agentSuggestions.length > 0 ? (
-              <datalist id="a2a-agent-suggestions">
-                {agentSuggestions.map((suggestion) => (
-                  <option
-                    key={suggestion.url}
-                    value={suggestion.url}
-                    label={
-                      suggestion.description
-                        ? `${suggestion.label} - ${suggestion.description}`
-                        : suggestion.label
-                    }
-                  />
-                ))}
-              </datalist>
-            ) : null}
-            <Button
-              type="submit"
-              variant="outline"
-              disabled={connectionState === "connecting"}
-              className="h-9"
+          {showConnectionForm ? (
+            <form
+              className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]"
+              onSubmit={(event) => {
+                event.preventDefault()
+                handleConnect()
+              }}
             >
-              {connectionState === "connecting" ? "Connecting..." : "Connect"}
-            </Button>
-          </form>
-        ) : null}
+              <Input
+                value={url}
+                onChange={(event) => setUrl(event.target.value)}
+                placeholder="http://localhost:8000"
+                aria-label="A2A server URL"
+                list={agentSuggestions.length > 0 ? "a2a-agent-suggestions" : undefined}
+              />
+              {agentSuggestions.length > 0 ? (
+                <datalist id="a2a-agent-suggestions">
+                  {agentSuggestions.map((suggestion) => (
+                    <option
+                      key={suggestion.url}
+                      value={suggestion.url}
+                      label={
+                        suggestion.description
+                          ? `${suggestion.label} - ${suggestion.description}`
+                          : suggestion.label
+                      }
+                    />
+                  ))}
+                </datalist>
+              ) : null}
+              <Button
+                type="submit"
+                variant="outline"
+                disabled={connectionState === "connecting"}
+                className="h-9"
+              >
+                {connectionState === "connecting" ? "Connecting..." : "Connect"}
+              </Button>
+            </form>
+          ) : null}
 
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <div
-            className={cn(
-              "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium",
-              getStatusClasses(connectionState)
-            )}
-          >
-            {connectionMessage}
-          </div>
-          {agentName ? <div className="text-xs text-muted-foreground">Agent: {agentName}</div> : null}
-        </div>
-
-      </CardHeader>
-
-      <CardContent>
-        <div className="grid gap-4 md:grid-cols-[15rem_1fr]">
-          <aside className="flex flex-col gap-4 border-b border-border pb-4 md:border-r md:border-b-0 md:pb-0 md:pr-4">
-            <div className="flex flex-col gap-2">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Recent Agents
-              </div>
-              <div className="flex max-h-40 flex-col gap-1 overflow-y-auto">
-                {recentAgents.length > 0 ? (
-                  recentAgents.map((agent) => (
-                    <Button
-                      key={agent.url}
-                      type="button"
-                      variant={agent.url === url ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handleSelectRecentAgent(agent.url)}
-                      className="justify-start"
-                      title={agent.url}
-                    >
-                      <span className="truncate">{getAgentButtonLabel(agent.agentName, agent.url)}</span>
-                    </Button>
-                  ))
-                ) : (
-                  <div className="text-xs text-muted-foreground">No recent agent connections yet.</div>
+          {showConnectionStatus ? (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <div
+                className={cn(
+                  "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium",
+                  getStatusClasses(connectionState)
                 )}
+              >
+                {connectionMessage}
               </div>
+              {agentName ? <div className="text-xs text-muted-foreground">Agent: {agentName}</div> : null}
             </div>
+          ) : null}
 
-            <div className="flex min-h-0 flex-1 flex-col gap-2">
+        </CardHeader>
+      ) : null}
+
+      <CardContent className={cn(isPanel && "min-h-0 flex-1 p-3", contentClassName)}>
+        <div className={cn("grid min-w-0 gap-4", isPanel ? "h-full min-h-0 grid-rows-[auto_1fr]" : "md:grid-cols-[15rem_1fr]")}>
+          {shouldShowRecentAgents || showTaskSessions ? (
+            <aside className={cn("flex min-w-0 flex-col gap-4 border-b border-border pb-4", !isPanel && "md:border-r md:border-b-0 md:pb-0 md:pr-4")}>
+              {shouldShowRecentAgents ? (
+                <div className="flex flex-col gap-2">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Recent Agents
+                  </div>
+                  <div className="flex max-h-40 flex-col gap-1 overflow-y-auto">
+                    {recentAgents.length > 0 ? (
+                      recentAgents.map((agent) => (
+                        <Button
+                          key={agent.url}
+                          type="button"
+                          variant={agent.url === url ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handleSelectRecentAgent(agent.url)}
+                          className="justify-start"
+                          title={agent.url}
+                        >
+                          <span className="truncate">{getAgentButtonLabel(agent.agentName, agent.url)}</span>
+                        </Button>
+                      ))
+                    ) : (
+                      <div className="text-xs text-muted-foreground">No recent agent connections yet.</div>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+
+            {showTaskSessions ? <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
               <Button
                 type="button"
                 variant="outline"
@@ -234,11 +258,12 @@ function A2AChatCard({
                   </div>
                 ))}
               </div>
-            </div>
-          </aside>
+            </div> : null}
+            </aside>
+          ) : null}
 
-          <div className="flex flex-col gap-3">
-            <MessageBox messages={messages} eventRenderers={eventRenderers} />
+          <div className="flex min-h-0 min-w-0 flex-col gap-3">
+            <MessageBox messages={messages} eventRenderers={eventRenderers} className={cn(isPanel && "min-h-0 flex-1", messagesClassName)} />
             <Separator />
             <InputBox
               value={taskInput}

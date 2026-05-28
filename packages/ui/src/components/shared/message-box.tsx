@@ -2,6 +2,7 @@ import React from "react"
 import { ChevronDownIcon } from "lucide-react"
 
 import { Spinner } from "../ui/spinner"
+import { cn } from "../../lib/utils"
 
 export type MessageStatusHistoryEntry = {
   id: string
@@ -35,6 +36,7 @@ export type Message = {
 type MessageBoxProps = {
   messages: Message[]
   eventRenderers?: MessageTimelineEventRenderer[]
+  className?: string
 }
 
 function formatEventTime(timestamp: number): string {
@@ -60,7 +62,7 @@ function renderEventContent(
   return null
 }
 
-function MessageBox({ messages, eventRenderers = [] }: MessageBoxProps) {
+function MessageBox({ messages, eventRenderers = [], className }: MessageBoxProps) {
   const containerRef = React.useRef<HTMLDivElement>(null)
   const endRef = React.useRef<HTMLDivElement>(null)
   const [expandedStatusHistory, setExpandedStatusHistory] = React.useState<Record<string, boolean>>({})
@@ -86,7 +88,7 @@ function MessageBox({ messages, eventRenderers = [] }: MessageBoxProps) {
   return (
     <div
       ref={containerRef}
-      className="flex h-72 flex-col gap-3 overflow-auto rounded-md border border-border bg-background p-3"
+      className={cn("flex h-72 flex-col gap-3 overflow-auto rounded-md border border-border bg-background p-3", className)}
     >
       {messages.map((message) => {
         const isUser = message.role === "user"
