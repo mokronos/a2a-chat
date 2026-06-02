@@ -1,8 +1,13 @@
 import React from "react"
-import { ArrowUpIcon } from "lucide-react"
 
-import { Button } from "../ui/button"
-import { Textarea } from "../ui/textarea"
+import {
+  PromptInput,
+  PromptInputBody,
+  PromptInputFooter,
+  PromptInputSubmit,
+  PromptInputTextarea,
+  PromptInputTools,
+} from "../ai-elements/prompt-input"
 
 type InputBoxProps = {
   value: string
@@ -12,33 +17,29 @@ type InputBoxProps = {
 }
 
 function InputBox({ value, onChange, onSubmit, disabled = false }: InputBoxProps) {
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault()
-      onSubmit()
-    }
-  }
+  const canSubmit = !disabled && value.trim().length > 0
 
   return (
-    <div className="flex items-center gap-2">
-      <Textarea
-        placeholder="Write a message..."
-        className="min-h-20 flex-1 resize-none"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        onKeyDown={handleKeyDown}
-        disabled={disabled}
-      />
-      <Button
-        variant="outline"
-        size="icon"
-        disabled={disabled || value.trim().length === 0}
-        aria-label="Send message"
-        onClick={onSubmit}
-      >
-        <ArrowUpIcon />
-      </Button>
-    </div>
+    <PromptInput
+      onSubmit={() => {
+        if (canSubmit) {
+          onSubmit()
+        }
+      }}
+    >
+      <PromptInputBody>
+        <PromptInputTextarea
+          placeholder="Write a message..."
+          value={value}
+          onChange={(event) => onChange(event.currentTarget.value)}
+          disabled={disabled}
+        />
+      </PromptInputBody>
+      <PromptInputFooter>
+        <PromptInputTools />
+        <PromptInputSubmit disabled={!canSubmit} aria-label="Send message" />
+      </PromptInputFooter>
+    </PromptInput>
   )
 }
 

@@ -1,6 +1,10 @@
 {
     "compilerOptions": {
-        "lib": ["ESNext"],
+        "baseUrl": ".",
+        "paths": {
+            "@/*": ["./packages/ui/src/*"]
+        },
+        "lib": ["ESNext", "DOM", "DOM.Iterable"],
         "target": "ESNext",
         "module": "Preserve",
         "moduleDetection": "force",
@@ -24,5 +28,5 @@
             }
         ]
     },
-    "exclude": ["node_modules", "dist", "packages/*/dist", "apps/*/dist"]
+    "exclude": ["node_modules", "dist", "packages/*/dist", "apps/*/dist", "apps/*/public"]
 }

@@ -12,14 +12,15 @@
   "scripts": {
     "build": "bun run build:web && bun run build:cli",
     "build:cli": "bun build ./src/server.ts --outfile ./dist/cli.js --target bun --banner '#!/usr/bin/env bun' && chmod +x ./dist/cli.js",
-    "build:web": "bun run --cwd ../../packages/ui build && bun build ./web/main.tsx --outfile ./public/assets/app.js --target browser --format esm && cp ../../packages/ui/dist/styles.css ./public/assets/styles.css",
+    "build:web": "bun run --cwd ../../packages/ui build && bun build ./web/main.tsx --outfile ./public/assets/app.js --target browser --format esm && cp ../../packages/ui/dist/styles.css ./public/assets/styles.css && cp node_modules/katex/dist/katex.min.css ./public/assets/katex.min.css && mkdir -p ./public/assets/fonts && cp node_modules/katex/dist/fonts/* ./public/assets/fonts/",
     "dev": "bun run build:web && bun run --hot src/server.ts",
     "prepack": "bun run build"
   },
   "devDependencies": {
-    "@types/bun": "latest",
     "@effect/platform": "^0.96.0",
+    "@types/bun": "latest",
     "effect": "^3.21.1",
+    "katex": "^0.16.27",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "typescript": "^5"

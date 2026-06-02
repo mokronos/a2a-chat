@@ -1,15 +1,14 @@
 // src/A2AChat.tsx
-import React10 from "react";
+import React15 from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { PlusIcon, Trash2Icon } from "lucide-react";
+import { PlusIcon as PlusIcon2, Trash2Icon } from "lucide-react";
 
 // src/components/shared/input-box.tsx
 import "react";
-import { ArrowUpIcon } from "lucide-react";
 
-// src/components/ui/button.tsx
-import { Button as ButtonPrimitive } from "@base-ui/react/button";
-import { cva } from "class-variance-authority";
+// src/components/ui/command.tsx
+import "react";
+import { Command as CommandPrimitive } from "cmdk";
 
 // src/lib/utils.ts
 import { clsx } from "clsx";
@@ -18,7 +17,13 @@ function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
+// src/components/ui/dialog.tsx
+import "react";
+import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
+
 // src/components/ui/button.tsx
+import { Button as ButtonPrimitive } from "@base-ui/react/button";
+import { cva } from "class-variance-authority";
 import { jsx } from "react/jsx-runtime";
 var buttonVariants = cva(
   "group/button inline-flex shrink-0 items-center justify-center rounded-md border border-transparent bg-clip-padding text-xs/relaxed font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
@@ -65,11 +70,36 @@ function Button({
   );
 }
 
+// src/components/ui/dialog.tsx
+import { XIcon } from "lucide-react";
+import { jsx as jsx2, jsxs } from "react/jsx-runtime";
+
+// src/components/ui/input-group.tsx
+import "react";
+import { cva as cva2 } from "class-variance-authority";
+
+// src/components/ui/input.tsx
+import "react";
+import { jsx as jsx3 } from "react/jsx-runtime";
+function Input({ className, ...props }) {
+  return /* @__PURE__ */ jsx3(
+    "input",
+    {
+      "data-slot": "input",
+      className: cn(
+        "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50",
+        className
+      ),
+      ...props
+    }
+  );
+}
+
 // src/components/ui/textarea.tsx
 import "react";
-import { jsx as jsx2 } from "react/jsx-runtime";
+import { jsx as jsx4 } from "react/jsx-runtime";
 function Textarea({ className, ...props }) {
-  return /* @__PURE__ */ jsx2(
+  return /* @__PURE__ */ jsx4(
     "textarea",
     {
       "data-slot": "textarea",
@@ -82,50 +112,137 @@ function Textarea({ className, ...props }) {
   );
 }
 
-// src/components/shared/input-box.tsx
-import { jsx as jsx3, jsxs } from "react/jsx-runtime";
-function InputBox({ value, onChange, onSubmit, disabled = false }) {
-  const handleKeyDown = (event) => {
-    if (event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault();
-      onSubmit();
+// src/components/ui/input-group.tsx
+import { jsx as jsx5 } from "react/jsx-runtime";
+function InputGroup({ className, ...props }) {
+  return /* @__PURE__ */ jsx5(
+    "div",
+    {
+      "data-slot": "input-group",
+      role: "group",
+      className: cn(
+        "group/input-group relative flex h-7 w-full min-w-0 items-center rounded-md border border-input bg-input/20 transition-colors outline-none in-data-[slot=combobox-content]:focus-within:border-inherit in-data-[slot=combobox-content]:focus-within:ring-0 has-data-[align=block-end]:rounded-md has-data-[align=block-start]:rounded-md has-[[data-slot=input-group-control]:focus-visible]:border-ring has-[[data-slot=input-group-control]:focus-visible]:ring-2 has-[[data-slot=input-group-control]:focus-visible]:ring-ring/30 has-[[data-slot][aria-invalid=true]]:border-destructive has-[[data-slot][aria-invalid=true]]:ring-2 has-[[data-slot][aria-invalid=true]]:ring-destructive/20 has-[textarea]:rounded-md has-[>[data-align=block-end]]:h-auto has-[>[data-align=block-end]]:flex-col has-[>[data-align=block-start]]:h-auto has-[>[data-align=block-start]]:flex-col has-[>textarea]:h-auto dark:bg-input/30 dark:has-[[data-slot][aria-invalid=true]]:ring-destructive/40 has-[>[data-align=block-end]]:[&>input]:pt-3 has-[>[data-align=block-start]]:[&>input]:pb-3 has-[>[data-align=inline-end]]:[&>input]:pr-1.5 has-[>[data-align=inline-start]]:[&>input]:pl-1.5",
+        className
+      ),
+      ...props
     }
-  };
-  return /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-2", children: [
-    /* @__PURE__ */ jsx3(
-      Textarea,
-      {
-        placeholder: "Write a message...",
-        className: "min-h-20 flex-1 resize-none",
-        value,
-        onChange: (event) => onChange(event.target.value),
-        onKeyDown: handleKeyDown,
-        disabled
+  );
+}
+var inputGroupAddonVariants = cva2(
+  "flex h-auto cursor-text items-center justify-center gap-1 py-2 text-xs/relaxed font-medium text-muted-foreground select-none group-data-[disabled=true]/input-group:opacity-50 **:data-[slot=kbd]:rounded-[calc(var(--radius-sm)-2px)] **:data-[slot=kbd]:bg-muted-foreground/10 **:data-[slot=kbd]:px-1 **:data-[slot=kbd]:text-[0.625rem] [&>svg:not([class*='size-'])]:size-3.5",
+  {
+    variants: {
+      align: {
+        "inline-start": "order-first pl-2 has-[>button]:ml-[-0.275rem] has-[>kbd]:ml-[-0.275rem]",
+        "inline-end": "order-last pr-2 has-[>button]:mr-[-0.275rem] has-[>kbd]:mr-[-0.275rem]",
+        "block-start": "order-first w-full justify-start px-2 pt-2 group-has-[>input]/input-group:pt-2 [.border-b]:pb-2",
+        "block-end": "order-last w-full justify-start px-2 pb-2 group-has-[>input]/input-group:pb-2 [.border-t]:pt-2"
       }
-    ),
-    /* @__PURE__ */ jsx3(
-      Button,
-      {
-        variant: "outline",
-        size: "icon",
-        disabled: disabled || value.trim().length === 0,
-        "aria-label": "Send message",
-        onClick: onSubmit,
-        children: /* @__PURE__ */ jsx3(ArrowUpIcon, {})
+    },
+    defaultVariants: {
+      align: "inline-start"
+    }
+  }
+);
+function InputGroupAddon({
+  className,
+  align = "inline-start",
+  ...props
+}) {
+  return /* @__PURE__ */ jsx5(
+    "div",
+    {
+      role: "group",
+      "data-slot": "input-group-addon",
+      "data-align": align,
+      className: cn(inputGroupAddonVariants({ align }), className),
+      onClick: (e) => {
+        if (e.target.closest("button")) {
+          return;
+        }
+        e.currentTarget.parentElement?.querySelector("input")?.focus();
+      },
+      ...props
+    }
+  );
+}
+var inputGroupButtonVariants = cva2(
+  "flex items-center gap-2 rounded-md text-xs/relaxed shadow-none",
+  {
+    variants: {
+      size: {
+        xs: "h-5 gap-1 rounded-[calc(var(--radius-sm)-2px)] px-1 [&>svg:not([class*='size-'])]:size-3",
+        sm: "gap-1",
+        "icon-xs": "size-6 p-0 has-[>svg]:p-0",
+        "icon-sm": "size-7 p-0 has-[>svg]:p-0"
       }
-    )
-  ] });
+    },
+    defaultVariants: {
+      size: "xs"
+    }
+  }
+);
+function InputGroupButton({
+  className,
+  type = "button",
+  variant = "ghost",
+  size = "xs",
+  ...props
+}) {
+  return /* @__PURE__ */ jsx5(
+    Button,
+    {
+      type,
+      "data-size": size,
+      variant,
+      className: cn(inputGroupButtonVariants({ size }), className),
+      ...props
+    }
+  );
+}
+function InputGroupTextarea({
+  className,
+  ...props
+}) {
+  return /* @__PURE__ */ jsx5(
+    Textarea,
+    {
+      "data-slot": "input-group-control",
+      className: cn(
+        "flex-1 resize-none rounded-none border-0 bg-transparent py-2 shadow-none ring-0 focus-visible:ring-0 aria-invalid:ring-0 dark:bg-transparent",
+        className
+      ),
+      ...props
+    }
+  );
 }
 
-// src/components/shared/message-box.tsx
-import React4 from "react";
-import { ChevronDownIcon } from "lucide-react";
+// src/components/ui/command.tsx
+import { SearchIcon, CheckIcon } from "lucide-react";
+import { jsx as jsx6, jsxs as jsxs2 } from "react/jsx-runtime";
+
+// src/components/ui/dropdown-menu.tsx
+import "react";
+import { Menu as MenuPrimitive } from "@base-ui/react/menu";
+import { ChevronRightIcon, CheckIcon as CheckIcon2 } from "lucide-react";
+import { jsx as jsx7, jsxs as jsxs3 } from "react/jsx-runtime";
+
+// src/components/ui/hover-card.tsx
+import { PreviewCard as PreviewCardPrimitive } from "@base-ui/react/preview-card";
+import { jsx as jsx8 } from "react/jsx-runtime";
+
+// src/components/ui/select.tsx
+import "react";
+import { Select as SelectPrimitive } from "@base-ui/react/select";
+import { ChevronDownIcon, CheckIcon as CheckIcon3, ChevronUpIcon } from "lucide-react";
+import { jsx as jsx9, jsxs as jsxs4 } from "react/jsx-runtime";
+var Select = SelectPrimitive.Root;
 
 // src/components/ui/spinner.tsx
 import "react";
-import { jsx as jsx4 } from "react/jsx-runtime";
+import { jsx as jsx10 } from "react/jsx-runtime";
 function Spinner({ className, ...props }) {
-  return /* @__PURE__ */ jsx4(
+  return /* @__PURE__ */ jsx10(
     "span",
     {
       className: cn(
@@ -137,8 +254,1494 @@ function Spinner({ className, ...props }) {
   );
 }
 
+// src/components/ui/tooltip.tsx
+import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
+import { jsx as jsx11, jsxs as jsxs5 } from "react/jsx-runtime";
+
+// src/components/ai-elements/prompt-input.tsx
+import {
+  CornerDownLeftIcon,
+  ImageIcon,
+  Monitor,
+  PlusIcon,
+  SquareIcon,
+  XIcon as XIcon2
+} from "lucide-react";
+import { nanoid } from "nanoid";
+import {
+  Children,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
+import { Fragment, jsx as jsx12, jsxs as jsxs6 } from "react/jsx-runtime";
+var convertBlobUrlToDataUrl = async (url) => {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+};
+var PromptInputController = createContext(
+  null
+);
+var ProviderAttachmentsContext = createContext(
+  null
+);
+var useOptionalPromptInputController = () => useContext(PromptInputController);
+var useOptionalProviderAttachments = () => useContext(ProviderAttachmentsContext);
+var LocalAttachmentsContext = createContext(null);
+var usePromptInputAttachments = () => {
+  const provider = useOptionalProviderAttachments();
+  const local = useContext(LocalAttachmentsContext);
+  const context = local ?? provider;
+  if (!context) {
+    throw new Error(
+      "usePromptInputAttachments must be used within a PromptInput or PromptInputProvider"
+    );
+  }
+  return context;
+};
+var LocalReferencedSourcesContext = createContext(null);
+var PromptInput = ({
+  className,
+  accept,
+  multiple,
+  globalDrop,
+  syncHiddenInput,
+  maxFiles,
+  maxFileSize,
+  onError,
+  onSubmit,
+  children,
+  ...props
+}) => {
+  const controller = useOptionalPromptInputController();
+  const usingProvider = !!controller;
+  const inputRef = useRef(null);
+  const formRef = useRef(null);
+  const [items, setItems] = useState([]);
+  const files = usingProvider ? controller.attachments.files : items;
+  const [referencedSources, setReferencedSources] = useState([]);
+  const filesRef = useRef(files);
+  useEffect(() => {
+    filesRef.current = files;
+  }, [files]);
+  const openFileDialogLocal = useCallback(() => {
+    inputRef.current?.click();
+  }, []);
+  const matchesAccept = useCallback(
+    (f) => {
+      if (!accept || accept.trim() === "") {
+        return true;
+      }
+      const patterns = accept.split(",").map((s) => s.trim()).filter(Boolean);
+      return patterns.some((pattern) => {
+        if (pattern.endsWith("/*")) {
+          const prefix = pattern.slice(0, -1);
+          return f.type.startsWith(prefix);
+        }
+        return f.type === pattern;
+      });
+    },
+    [accept]
+  );
+  const addLocal = useCallback(
+    (fileList) => {
+      const incoming = [...fileList];
+      const accepted = incoming.filter((f) => matchesAccept(f));
+      if (incoming.length && accepted.length === 0) {
+        onError?.({
+          code: "accept",
+          message: "No files match the accepted types."
+        });
+        return;
+      }
+      const withinSize = (f) => maxFileSize ? f.size <= maxFileSize : true;
+      const sized = accepted.filter(withinSize);
+      if (accepted.length > 0 && sized.length === 0) {
+        onError?.({
+          code: "max_file_size",
+          message: "All files exceed the maximum size."
+        });
+        return;
+      }
+      setItems((prev) => {
+        const capacity = typeof maxFiles === "number" ? Math.max(0, maxFiles - prev.length) : void 0;
+        const capped = typeof capacity === "number" ? sized.slice(0, capacity) : sized;
+        if (typeof capacity === "number" && sized.length > capacity) {
+          onError?.({
+            code: "max_files",
+            message: "Too many files. Some were not added."
+          });
+        }
+        const next = [];
+        for (const file of capped) {
+          next.push({
+            filename: file.name,
+            id: nanoid(),
+            mediaType: file.type,
+            type: "file",
+            url: URL.createObjectURL(file)
+          });
+        }
+        return [...prev, ...next];
+      });
+    },
+    [matchesAccept, maxFiles, maxFileSize, onError]
+  );
+  const removeLocal = useCallback(
+    (id) => setItems((prev) => {
+      const found = prev.find((file) => file.id === id);
+      if (found?.url) {
+        URL.revokeObjectURL(found.url);
+      }
+      return prev.filter((file) => file.id !== id);
+    }),
+    []
+  );
+  const addWithProviderValidation = useCallback(
+    (fileList) => {
+      const incoming = [...fileList];
+      const accepted = incoming.filter((f) => matchesAccept(f));
+      if (incoming.length && accepted.length === 0) {
+        onError?.({
+          code: "accept",
+          message: "No files match the accepted types."
+        });
+        return;
+      }
+      const withinSize = (f) => maxFileSize ? f.size <= maxFileSize : true;
+      const sized = accepted.filter(withinSize);
+      if (accepted.length > 0 && sized.length === 0) {
+        onError?.({
+          code: "max_file_size",
+          message: "All files exceed the maximum size."
+        });
+        return;
+      }
+      const currentCount = files.length;
+      const capacity = typeof maxFiles === "number" ? Math.max(0, maxFiles - currentCount) : void 0;
+      const capped = typeof capacity === "number" ? sized.slice(0, capacity) : sized;
+      if (typeof capacity === "number" && sized.length > capacity) {
+        onError?.({
+          code: "max_files",
+          message: "Too many files. Some were not added."
+        });
+      }
+      if (capped.length > 0) {
+        controller?.attachments.add(capped);
+      }
+    },
+    [matchesAccept, maxFileSize, maxFiles, onError, files.length, controller]
+  );
+  const clearAttachments = useCallback(
+    () => usingProvider ? controller?.attachments.clear() : setItems((prev) => {
+      for (const file of prev) {
+        if (file.url) {
+          URL.revokeObjectURL(file.url);
+        }
+      }
+      return [];
+    }),
+    [usingProvider, controller]
+  );
+  const clearReferencedSources = useCallback(
+    () => setReferencedSources([]),
+    []
+  );
+  const add = usingProvider ? addWithProviderValidation : addLocal;
+  const remove = usingProvider ? controller.attachments.remove : removeLocal;
+  const openFileDialog = usingProvider ? controller.attachments.openFileDialog : openFileDialogLocal;
+  const clear = useCallback(() => {
+    clearAttachments();
+    clearReferencedSources();
+  }, [clearAttachments, clearReferencedSources]);
+  useEffect(() => {
+    if (!usingProvider) {
+      return;
+    }
+    controller.__registerFileInput(inputRef, () => inputRef.current?.click());
+  }, [usingProvider, controller]);
+  useEffect(() => {
+    if (syncHiddenInput && inputRef.current && files.length === 0) {
+      inputRef.current.value = "";
+    }
+  }, [files, syncHiddenInput]);
+  useEffect(() => {
+    const form = formRef.current;
+    if (!form) {
+      return;
+    }
+    if (globalDrop) {
+      return;
+    }
+    const onDragOver = (e) => {
+      if (e.dataTransfer?.types?.includes("Files")) {
+        e.preventDefault();
+      }
+    };
+    const onDrop = (e) => {
+      if (e.dataTransfer?.types?.includes("Files")) {
+        e.preventDefault();
+      }
+      if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+        add(e.dataTransfer.files);
+      }
+    };
+    form.addEventListener("dragover", onDragOver);
+    form.addEventListener("drop", onDrop);
+    return () => {
+      form.removeEventListener("dragover", onDragOver);
+      form.removeEventListener("drop", onDrop);
+    };
+  }, [add, globalDrop]);
+  useEffect(() => {
+    if (!globalDrop) {
+      return;
+    }
+    const onDragOver = (e) => {
+      if (e.dataTransfer?.types?.includes("Files")) {
+        e.preventDefault();
+      }
+    };
+    const onDrop = (e) => {
+      if (e.dataTransfer?.types?.includes("Files")) {
+        e.preventDefault();
+      }
+      if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+        add(e.dataTransfer.files);
+      }
+    };
+    document.addEventListener("dragover", onDragOver);
+    document.addEventListener("drop", onDrop);
+    return () => {
+      document.removeEventListener("dragover", onDragOver);
+      document.removeEventListener("drop", onDrop);
+    };
+  }, [add, globalDrop]);
+  useEffect(
+    () => () => {
+      if (!usingProvider) {
+        for (const f of filesRef.current) {
+          if (f.url) {
+            URL.revokeObjectURL(f.url);
+          }
+        }
+      }
+    },
+    [usingProvider]
+  );
+  const handleChange = useCallback(
+    (event) => {
+      if (event.currentTarget.files) {
+        add(event.currentTarget.files);
+      }
+      event.currentTarget.value = "";
+    },
+    [add]
+  );
+  const attachmentsCtx = useMemo(
+    () => ({
+      add,
+      clear: clearAttachments,
+      fileInputRef: inputRef,
+      files: files.map((item) => ({ ...item, id: item.id })),
+      openFileDialog,
+      remove
+    }),
+    [files, add, remove, clearAttachments, openFileDialog]
+  );
+  const refsCtx = useMemo(
+    () => ({
+      add: (incoming) => {
+        const array = Array.isArray(incoming) ? incoming : [incoming];
+        setReferencedSources((prev) => [
+          ...prev,
+          ...array.map((s) => ({ ...s, id: nanoid() }))
+        ]);
+      },
+      clear: clearReferencedSources,
+      remove: (id) => {
+        setReferencedSources((prev) => prev.filter((s) => s.id !== id));
+      },
+      sources: referencedSources
+    }),
+    [referencedSources, clearReferencedSources]
+  );
+  const handleSubmit = useCallback(
+    async (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const text = usingProvider ? controller.textInput.value : (() => {
+        const formData = new FormData(form);
+        return formData.get("message") || "";
+      })();
+      if (!usingProvider) {
+        form.reset();
+      }
+      try {
+        const convertedFiles = await Promise.all(
+          files.map(async ({ id: _id, ...item }) => {
+            if (item.url?.startsWith("blob:")) {
+              const dataUrl = await convertBlobUrlToDataUrl(item.url);
+              return {
+                ...item,
+                url: dataUrl ?? item.url
+              };
+            }
+            return item;
+          })
+        );
+        const result = onSubmit({ files: convertedFiles, text }, event);
+        if (result instanceof Promise) {
+          try {
+            await result;
+            clear();
+            if (usingProvider) {
+              controller.textInput.clear();
+            }
+          } catch {
+          }
+        } else {
+          clear();
+          if (usingProvider) {
+            controller.textInput.clear();
+          }
+        }
+      } catch {
+      }
+    },
+    [usingProvider, controller, files, onSubmit, clear]
+  );
+  const inner = /* @__PURE__ */ jsxs6(Fragment, { children: [
+    /* @__PURE__ */ jsx12(
+      "input",
+      {
+        accept,
+        "aria-label": "Upload files",
+        className: "hidden",
+        multiple,
+        onChange: handleChange,
+        ref: inputRef,
+        title: "Upload files",
+        type: "file"
+      }
+    ),
+    /* @__PURE__ */ jsx12(
+      "form",
+      {
+        className: cn("w-full", className),
+        onSubmit: handleSubmit,
+        ref: formRef,
+        ...props,
+        children: /* @__PURE__ */ jsx12(InputGroup, { className: "overflow-hidden", children })
+      }
+    )
+  ] });
+  const withReferencedSources = /* @__PURE__ */ jsx12(LocalReferencedSourcesContext.Provider, { value: refsCtx, children: inner });
+  return /* @__PURE__ */ jsx12(LocalAttachmentsContext.Provider, { value: attachmentsCtx, children: withReferencedSources });
+};
+var PromptInputBody = ({
+  className,
+  ...props
+}) => /* @__PURE__ */ jsx12("div", { className: cn("contents", className), ...props });
+var PromptInputTextarea = ({
+  onChange,
+  onKeyDown,
+  className,
+  placeholder = "What would you like to know?",
+  ...props
+}) => {
+  const controller = useOptionalPromptInputController();
+  const attachments = usePromptInputAttachments();
+  const [isComposing, setIsComposing] = useState(false);
+  const handleKeyDown = useCallback(
+    (e) => {
+      onKeyDown?.(e);
+      if (e.defaultPrevented) {
+        return;
+      }
+      if (e.key === "Enter") {
+        if (isComposing || e.nativeEvent.isComposing) {
+          return;
+        }
+        if (e.shiftKey) {
+          return;
+        }
+        e.preventDefault();
+        const { form } = e.currentTarget;
+        const submitButton = form?.querySelector(
+          'button[type="submit"]'
+        );
+        if (submitButton?.disabled) {
+          return;
+        }
+        form?.requestSubmit();
+      }
+      if (e.key === "Backspace" && e.currentTarget.value === "" && attachments.files.length > 0) {
+        e.preventDefault();
+        const lastAttachment = attachments.files.at(-1);
+        if (lastAttachment) {
+          attachments.remove(lastAttachment.id);
+        }
+      }
+    },
+    [onKeyDown, isComposing, attachments]
+  );
+  const handlePaste = useCallback(
+    (event) => {
+      const items = event.clipboardData?.items;
+      if (!items) {
+        return;
+      }
+      const files = [];
+      for (const item of items) {
+        if (item.kind === "file") {
+          const file = item.getAsFile();
+          if (file) {
+            files.push(file);
+          }
+        }
+      }
+      if (files.length > 0) {
+        event.preventDefault();
+        attachments.add(files);
+      }
+    },
+    [attachments]
+  );
+  const handleCompositionEnd = useCallback(() => setIsComposing(false), []);
+  const handleCompositionStart = useCallback(() => setIsComposing(true), []);
+  const controlledProps = controller ? {
+    onChange: (e) => {
+      controller.textInput.setInput(e.currentTarget.value);
+      onChange?.(e);
+    },
+    value: controller.textInput.value
+  } : {
+    onChange
+  };
+  return /* @__PURE__ */ jsx12(
+    InputGroupTextarea,
+    {
+      className: cn("field-sizing-content max-h-48 min-h-16", className),
+      name: "message",
+      onCompositionEnd: handleCompositionEnd,
+      onCompositionStart: handleCompositionStart,
+      onKeyDown: handleKeyDown,
+      onPaste: handlePaste,
+      placeholder,
+      ...props,
+      ...controlledProps
+    }
+  );
+};
+var PromptInputFooter = ({
+  className,
+  ...props
+}) => /* @__PURE__ */ jsx12(
+  InputGroupAddon,
+  {
+    align: "block-end",
+    className: cn("justify-between gap-1", className),
+    ...props
+  }
+);
+var PromptInputTools = ({
+  className,
+  ...props
+}) => /* @__PURE__ */ jsx12(
+  "div",
+  {
+    className: cn("flex min-w-0 items-center gap-1", className),
+    ...props
+  }
+);
+var PromptInputSubmit = ({
+  className,
+  variant = "default",
+  size = "icon-sm",
+  status,
+  onStop,
+  onClick,
+  children,
+  ...props
+}) => {
+  const isGenerating = status === "submitted" || status === "streaming";
+  let Icon = /* @__PURE__ */ jsx12(CornerDownLeftIcon, { className: "size-4" });
+  if (status === "submitted") {
+    Icon = /* @__PURE__ */ jsx12(Spinner, {});
+  } else if (status === "streaming") {
+    Icon = /* @__PURE__ */ jsx12(SquareIcon, { className: "size-4" });
+  } else if (status === "error") {
+    Icon = /* @__PURE__ */ jsx12(XIcon2, { className: "size-4" });
+  }
+  const handleClick = useCallback(
+    (e) => {
+      if (isGenerating && onStop) {
+        e.preventDefault();
+        onStop();
+        return;
+      }
+      onClick?.(e);
+    },
+    [isGenerating, onStop, onClick]
+  );
+  return /* @__PURE__ */ jsx12(
+    InputGroupButton,
+    {
+      "aria-label": isGenerating ? "Stop" : "Submit",
+      className: cn(className),
+      onClick: handleClick,
+      size,
+      type: isGenerating && onStop ? "button" : "submit",
+      variant,
+      ...props,
+      children: children ?? Icon
+    }
+  );
+};
+
+// src/components/shared/input-box.tsx
+import { jsx as jsx13, jsxs as jsxs7 } from "react/jsx-runtime";
+function InputBox({ value, onChange, onSubmit, disabled = false }) {
+  const canSubmit = !disabled && value.trim().length > 0;
+  return /* @__PURE__ */ jsxs7(
+    PromptInput,
+    {
+      onSubmit: () => {
+        if (canSubmit) {
+          onSubmit();
+        }
+      },
+      children: [
+        /* @__PURE__ */ jsx13(PromptInputBody, { children: /* @__PURE__ */ jsx13(
+          PromptInputTextarea,
+          {
+            placeholder: "Write a message...",
+            value,
+            onChange: (event) => onChange(event.currentTarget.value),
+            disabled
+          }
+        ) }),
+        /* @__PURE__ */ jsxs7(PromptInputFooter, { children: [
+          /* @__PURE__ */ jsx13(PromptInputTools, {}),
+          /* @__PURE__ */ jsx13(PromptInputSubmit, { disabled: !canSubmit, "aria-label": "Send message" })
+        ] })
+      ]
+    }
+  );
+}
+
 // src/components/shared/message-box.tsx
-import { jsx as jsx5, jsxs as jsxs2 } from "react/jsx-runtime";
+import "react";
+import { MessageSquareIcon } from "lucide-react";
+
+// src/components/ai-elements/conversation.tsx
+import { ArrowDownIcon, DownloadIcon } from "lucide-react";
+import { useCallback as useCallback2 } from "react";
+import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
+import { Fragment as Fragment2, jsx as jsx14, jsxs as jsxs8 } from "react/jsx-runtime";
+var Conversation = ({ className, ...props }) => /* @__PURE__ */ jsx14(
+  StickToBottom,
+  {
+    className: cn("relative flex-1 overflow-y-hidden", className),
+    initial: "smooth",
+    resize: "smooth",
+    role: "log",
+    ...props
+  }
+);
+var ConversationContent = ({
+  className,
+  ...props
+}) => /* @__PURE__ */ jsx14(
+  StickToBottom.Content,
+  {
+    className: cn("flex flex-col gap-8 p-4", className),
+    ...props
+  }
+);
+var ConversationEmptyState = ({
+  className,
+  title = "No messages yet",
+  description = "Start a conversation to see messages here",
+  icon,
+  children,
+  ...props
+}) => /* @__PURE__ */ jsx14(
+  "div",
+  {
+    className: cn(
+      "flex size-full flex-col items-center justify-center gap-3 p-8 text-center",
+      className
+    ),
+    ...props,
+    children: children ?? /* @__PURE__ */ jsxs8(Fragment2, { children: [
+      icon && /* @__PURE__ */ jsx14("div", { className: "text-muted-foreground", children: icon }),
+      /* @__PURE__ */ jsxs8("div", { className: "space-y-1", children: [
+        /* @__PURE__ */ jsx14("h3", { className: "font-medium text-sm", children: title }),
+        description && /* @__PURE__ */ jsx14("p", { className: "text-muted-foreground text-sm", children: description })
+      ] })
+    ] })
+  }
+);
+var ConversationScrollButton = ({
+  className,
+  ...props
+}) => {
+  const { isAtBottom, scrollToBottom } = useStickToBottomContext();
+  const handleScrollToBottom = useCallback2(() => {
+    scrollToBottom();
+  }, [scrollToBottom]);
+  return !isAtBottom && /* @__PURE__ */ jsx14(
+    Button,
+    {
+      className: cn(
+        "absolute bottom-4 left-[50%] translate-x-[-50%] rounded-full dark:bg-background dark:hover:bg-muted",
+        className
+      ),
+      onClick: handleScrollToBottom,
+      size: "icon",
+      type: "button",
+      variant: "outline",
+      ...props,
+      children: /* @__PURE__ */ jsx14(ArrowDownIcon, { className: "size-4" })
+    }
+  );
+};
+
+// src/components/ui/button-group.tsx
+import { mergeProps } from "@base-ui/react/merge-props";
+import { useRender } from "@base-ui/react/use-render";
+import { cva as cva3 } from "class-variance-authority";
+
+// src/components/ui/separator.tsx
+import "react";
+import { jsx as jsx15 } from "react/jsx-runtime";
+
+// src/components/ui/button-group.tsx
+import { jsx as jsx16 } from "react/jsx-runtime";
+var buttonGroupVariants = cva3(
+  "flex w-fit items-stretch *:focus-visible:relative *:focus-visible:z-10 has-[>[data-slot=button-group]]:gap-2 has-[select[aria-hidden=true]:last-child]:[&>[data-slot=select-trigger]:last-of-type]:rounded-r-md [&>[data-slot=select-trigger]:not([class*='w-'])]:w-fit [&>input]:flex-1",
+  {
+    variants: {
+      orientation: {
+        horizontal: "*:data-slot:rounded-r-none [&>[data-slot]:not(:has(~[data-slot]))]:rounded-r-md! [&>[data-slot]~[data-slot]]:rounded-l-none [&>[data-slot]~[data-slot]]:border-l-0",
+        vertical: "flex-col *:data-slot:rounded-b-none [&>[data-slot]:not(:has(~[data-slot]))]:rounded-b-md! [&>[data-slot]~[data-slot]]:rounded-t-none [&>[data-slot]~[data-slot]]:border-t-0"
+      }
+    },
+    defaultVariants: {
+      orientation: "horizontal"
+    }
+  }
+);
+
+// src/components/ai-elements/message.tsx
+import { cjk } from "@streamdown/cjk";
+import { code } from "@streamdown/code";
+import { math } from "@streamdown/math";
+import { mermaid } from "@streamdown/mermaid";
+import { ChevronLeftIcon, ChevronRightIcon as ChevronRightIcon2 } from "lucide-react";
+import {
+  createContext as createContext2,
+  memo,
+  useCallback as useCallback3,
+  useContext as useContext2,
+  useEffect as useEffect2,
+  useMemo as useMemo2,
+  useState as useState2
+} from "react";
+import { Streamdown } from "streamdown";
+import { jsx as jsx17, jsxs as jsxs9 } from "react/jsx-runtime";
+var Message = ({ className, from, ...props }) => /* @__PURE__ */ jsx17(
+  "div",
+  {
+    className: cn(
+      "group flex w-full max-w-[95%] flex-col gap-2",
+      from === "user" ? "is-user ml-auto justify-end" : "is-assistant",
+      className
+    ),
+    ...props
+  }
+);
+var MessageContent = ({
+  children,
+  className,
+  ...props
+}) => /* @__PURE__ */ jsx17(
+  "div",
+  {
+    className: cn(
+      "is-user:dark flex w-fit min-w-0 max-w-full flex-col gap-2 overflow-hidden text-sm",
+      "group-[.is-user]:ml-auto group-[.is-user]:rounded-lg group-[.is-user]:bg-secondary group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-foreground",
+      "group-[.is-assistant]:text-foreground",
+      className
+    ),
+    ...props,
+    children
+  }
+);
+var MessageBranchContext = createContext2(
+  null
+);
+var streamdownPlugins = { cjk, code, math, mermaid };
+var MessageResponse = memo(
+  ({ className, ...props }) => /* @__PURE__ */ jsx17(
+    Streamdown,
+    {
+      className: cn(
+        "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
+        className
+      ),
+      plugins: streamdownPlugins,
+      ...props
+    }
+  ),
+  (prevProps, nextProps) => prevProps.children === nextProps.children && nextProps.isAnimating === prevProps.isAnimating
+);
+MessageResponse.displayName = "MessageResponse";
+
+// src/components/ai-elements/reasoning.tsx
+import { useControllableState } from "@radix-ui/react-use-controllable-state";
+
+// src/components/ui/collapsible.tsx
+import { Collapsible as CollapsiblePrimitive } from "@base-ui/react/collapsible";
+import { jsx as jsx18 } from "react/jsx-runtime";
+function Collapsible({ ...props }) {
+  return /* @__PURE__ */ jsx18(CollapsiblePrimitive.Root, { "data-slot": "collapsible", ...props });
+}
+function CollapsibleTrigger({ ...props }) {
+  return /* @__PURE__ */ jsx18(CollapsiblePrimitive.Trigger, { "data-slot": "collapsible-trigger", ...props });
+}
+function CollapsibleContent({ ...props }) {
+  return /* @__PURE__ */ jsx18(CollapsiblePrimitive.Panel, { "data-slot": "collapsible-content", ...props });
+}
+
+// src/components/ai-elements/reasoning.tsx
+import { cjk as cjk2 } from "@streamdown/cjk";
+import { code as code2 } from "@streamdown/code";
+import { math as math2 } from "@streamdown/math";
+import { mermaid as mermaid2 } from "@streamdown/mermaid";
+import { BrainIcon, ChevronDownIcon as ChevronDownIcon2 } from "lucide-react";
+import {
+  createContext as createContext3,
+  memo as memo3,
+  useCallback as useCallback4,
+  useContext as useContext3,
+  useEffect as useEffect3,
+  useMemo as useMemo4,
+  useRef as useRef2,
+  useState as useState3
+} from "react";
+import { Streamdown as Streamdown2 } from "streamdown";
+
+// src/components/ai-elements/shimmer.tsx
+import { motion } from "motion/react";
+import { memo as memo2, useMemo as useMemo3 } from "react";
+import { jsx as jsx19 } from "react/jsx-runtime";
+var motionComponentCache = /* @__PURE__ */ new Map();
+var getMotionComponent = (element) => {
+  let component = motionComponentCache.get(element);
+  if (!component) {
+    component = motion.create(element);
+    motionComponentCache.set(element, component);
+  }
+  return component;
+};
+var ShimmerComponent = ({
+  children,
+  as: Component = "p",
+  className,
+  duration = 2,
+  spread = 2
+}) => {
+  const MotionComponent = getMotionComponent(
+    Component
+  );
+  const dynamicSpread = useMemo3(
+    () => (children?.length ?? 0) * spread,
+    [children, spread]
+  );
+  return /* @__PURE__ */ jsx19(
+    MotionComponent,
+    {
+      animate: { backgroundPosition: "0% center" },
+      className: cn(
+        "relative inline-block bg-[length:250%_100%,auto] bg-clip-text text-transparent",
+        "[--bg:linear-gradient(90deg,#0000_calc(50%-var(--spread)),var(--color-background),#0000_calc(50%+var(--spread)))] [background-repeat:no-repeat,padding-box]",
+        className
+      ),
+      initial: { backgroundPosition: "100% center" },
+      style: {
+        "--spread": `${dynamicSpread}px`,
+        backgroundImage: "var(--bg), linear-gradient(var(--color-muted-foreground), var(--color-muted-foreground))"
+      },
+      transition: {
+        duration,
+        ease: "linear",
+        repeat: Number.POSITIVE_INFINITY
+      },
+      children
+    }
+  );
+};
+var Shimmer = memo2(ShimmerComponent);
+
+// src/components/ai-elements/reasoning.tsx
+import { Fragment as Fragment3, jsx as jsx20, jsxs as jsxs10 } from "react/jsx-runtime";
+var ReasoningContext = createContext3(null);
+var useReasoning = () => {
+  const context = useContext3(ReasoningContext);
+  if (!context) {
+    throw new Error("Reasoning components must be used within Reasoning");
+  }
+  return context;
+};
+var AUTO_CLOSE_DELAY = 1e3;
+var MS_IN_S = 1e3;
+var Reasoning = memo3(
+  ({
+    className,
+    isStreaming = false,
+    open,
+    defaultOpen,
+    onOpenChange,
+    duration: durationProp,
+    children,
+    ...props
+  }) => {
+    const resolvedDefaultOpen = defaultOpen ?? isStreaming;
+    const isExplicitlyClosed = defaultOpen === false;
+    const [isOpen, setIsOpen] = useControllableState({
+      defaultProp: resolvedDefaultOpen,
+      onChange: onOpenChange,
+      prop: open
+    });
+    const [duration, setDuration] = useControllableState({
+      defaultProp: void 0,
+      prop: durationProp
+    });
+    const hasEverStreamedRef = useRef2(isStreaming);
+    const [hasAutoClosed, setHasAutoClosed] = useState3(false);
+    const startTimeRef = useRef2(null);
+    useEffect3(() => {
+      if (isStreaming) {
+        hasEverStreamedRef.current = true;
+        if (startTimeRef.current === null) {
+          startTimeRef.current = Date.now();
+        }
+      } else if (startTimeRef.current !== null) {
+        setDuration(Math.ceil((Date.now() - startTimeRef.current) / MS_IN_S));
+        startTimeRef.current = null;
+      }
+    }, [isStreaming, setDuration]);
+    useEffect3(() => {
+      if (isStreaming && !isOpen && !isExplicitlyClosed) {
+        setIsOpen(true);
+      }
+    }, [isStreaming, isOpen, setIsOpen, isExplicitlyClosed]);
+    useEffect3(() => {
+      if (hasEverStreamedRef.current && !isStreaming && isOpen && !hasAutoClosed) {
+        const timer = setTimeout(() => {
+          setIsOpen(false);
+          setHasAutoClosed(true);
+        }, AUTO_CLOSE_DELAY);
+        return () => clearTimeout(timer);
+      }
+    }, [isStreaming, isOpen, setIsOpen, hasAutoClosed]);
+    const handleOpenChange = useCallback4(
+      (newOpen) => {
+        setIsOpen(newOpen);
+      },
+      [setIsOpen]
+    );
+    const contextValue = useMemo4(
+      () => ({ duration, isOpen, isStreaming, setIsOpen }),
+      [duration, isOpen, isStreaming, setIsOpen]
+    );
+    return /* @__PURE__ */ jsx20(ReasoningContext.Provider, { value: contextValue, children: /* @__PURE__ */ jsx20(
+      Collapsible,
+      {
+        className: cn("not-prose mb-4", className),
+        onOpenChange: handleOpenChange,
+        open: isOpen,
+        ...props,
+        children
+      }
+    ) });
+  }
+);
+var defaultGetThinkingMessage = (isStreaming, duration) => {
+  if (isStreaming || duration === 0) {
+    return /* @__PURE__ */ jsx20(Shimmer, { duration: 1, children: "Thinking..." });
+  }
+  if (duration === void 0) {
+    return /* @__PURE__ */ jsx20("p", { children: "Thought for a few seconds" });
+  }
+  return /* @__PURE__ */ jsxs10("p", { children: [
+    "Thought for ",
+    duration,
+    " seconds"
+  ] });
+};
+var ReasoningTrigger = memo3(
+  ({
+    className,
+    children,
+    getThinkingMessage = defaultGetThinkingMessage,
+    ...props
+  }) => {
+    const { isStreaming, isOpen, duration } = useReasoning();
+    return /* @__PURE__ */ jsx20(
+      CollapsibleTrigger,
+      {
+        className: cn(
+          "flex w-full items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground",
+          className
+        ),
+        ...props,
+        children: children ?? /* @__PURE__ */ jsxs10(Fragment3, { children: [
+          /* @__PURE__ */ jsx20(BrainIcon, { className: "size-4" }),
+          getThinkingMessage(isStreaming, duration),
+          /* @__PURE__ */ jsx20(
+            ChevronDownIcon2,
+            {
+              className: cn(
+                "size-4 transition-transform",
+                isOpen ? "rotate-180" : "rotate-0"
+              )
+            }
+          )
+        ] })
+      }
+    );
+  }
+);
+var streamdownPlugins2 = { cjk: cjk2, code: code2, math: math2, mermaid: mermaid2 };
+var ReasoningContent = memo3(
+  ({ className, children, ...props }) => /* @__PURE__ */ jsx20(
+    CollapsibleContent,
+    {
+      className: cn(
+        "mt-4 text-sm",
+        "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-muted-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
+        className
+      ),
+      ...props,
+      children: /* @__PURE__ */ jsx20(Streamdown2, { plugins: streamdownPlugins2, children })
+    }
+  )
+);
+Reasoning.displayName = "Reasoning";
+ReasoningTrigger.displayName = "ReasoningTrigger";
+ReasoningContent.displayName = "ReasoningContent";
+
+// src/components/ai-elements/task.tsx
+import { ChevronDownIcon as ChevronDownIcon3, SearchIcon as SearchIcon2 } from "lucide-react";
+import { jsx as jsx21, jsxs as jsxs11 } from "react/jsx-runtime";
+var TaskItem = ({ children, className, ...props }) => /* @__PURE__ */ jsx21("div", { className: cn("text-muted-foreground text-sm", className), ...props, children });
+var Task = ({
+  defaultOpen = true,
+  className,
+  ...props
+}) => /* @__PURE__ */ jsx21(Collapsible, { className: cn(className), defaultOpen, ...props });
+var TaskTrigger = ({
+  children,
+  className,
+  title,
+  ...props
+}) => /* @__PURE__ */ jsx21(CollapsibleTrigger, { className: cn("group", className), ...props, children: children ?? /* @__PURE__ */ jsxs11("div", { className: "flex w-full cursor-pointer items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground", children: [
+  /* @__PURE__ */ jsx21(SearchIcon2, { className: "size-4" }),
+  /* @__PURE__ */ jsx21("p", { className: "text-sm", children: title }),
+  /* @__PURE__ */ jsx21(ChevronDownIcon3, { className: "size-4 transition-transform group-data-[state=open]:rotate-180" })
+] }) });
+var TaskContent = ({
+  children,
+  className,
+  ...props
+}) => /* @__PURE__ */ jsx21(
+  CollapsibleContent,
+  {
+    className: cn(
+      "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-popover-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
+      className
+    ),
+    ...props,
+    children: /* @__PURE__ */ jsx21("div", { className: "mt-4 space-y-2 border-muted border-l-2 pl-4", children })
+  }
+);
+
+// src/components/ai-elements/chain-of-thought.tsx
+import { useControllableState as useControllableState2 } from "@radix-ui/react-use-controllable-state";
+
+// src/components/ui/badge.tsx
+import { mergeProps as mergeProps2 } from "@base-ui/react/merge-props";
+import { useRender as useRender2 } from "@base-ui/react/use-render";
+import { cva as cva4 } from "class-variance-authority";
+var badgeVariants = cva4(
+  "group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-full border border-transparent px-2 py-0.5 text-[0.625rem] font-medium whitespace-nowrap transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-2.5!",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
+        secondary: "bg-secondary text-secondary-foreground [a]:hover:bg-secondary/80",
+        destructive: "bg-destructive/10 text-destructive focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:focus-visible:ring-destructive/40 [a]:hover:bg-destructive/20",
+        outline: "border-border bg-input/20 text-foreground dark:bg-input/30 [a]:hover:bg-muted [a]:hover:text-muted-foreground",
+        ghost: "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
+        link: "text-primary underline-offset-4 hover:underline"
+      }
+    },
+    defaultVariants: {
+      variant: "default"
+    }
+  }
+);
+function Badge({
+  className,
+  variant = "default",
+  render,
+  ...props
+}) {
+  return useRender2({
+    defaultTagName: "span",
+    props: mergeProps2(
+      {
+        className: cn(badgeVariants({ variant }), className)
+      },
+      props
+    ),
+    render,
+    state: {
+      slot: "badge",
+      variant
+    }
+  });
+}
+
+// src/components/ai-elements/chain-of-thought.tsx
+import { BrainIcon as BrainIcon2, ChevronDownIcon as ChevronDownIcon4, DotIcon } from "lucide-react";
+import { createContext as createContext4, memo as memo4, useContext as useContext4, useMemo as useMemo5 } from "react";
+import { jsx as jsx22, jsxs as jsxs12 } from "react/jsx-runtime";
+var ChainOfThoughtContext = createContext4(
+  null
+);
+var useChainOfThought = () => {
+  const context = useContext4(ChainOfThoughtContext);
+  if (!context) {
+    throw new Error(
+      "ChainOfThought components must be used within ChainOfThought"
+    );
+  }
+  return context;
+};
+var ChainOfThought = memo4(
+  ({
+    className,
+    open,
+    defaultOpen = false,
+    onOpenChange,
+    children,
+    ...props
+  }) => {
+    const [isOpen, setIsOpen] = useControllableState2({
+      defaultProp: defaultOpen,
+      onChange: onOpenChange,
+      prop: open
+    });
+    const chainOfThoughtContext = useMemo5(
+      () => ({ isOpen, setIsOpen }),
+      [isOpen, setIsOpen]
+    );
+    return /* @__PURE__ */ jsx22(ChainOfThoughtContext.Provider, { value: chainOfThoughtContext, children: /* @__PURE__ */ jsx22("div", { className: cn("not-prose w-full space-y-4", className), ...props, children }) });
+  }
+);
+var ChainOfThoughtHeader = memo4(
+  ({ className, children, ...props }) => {
+    const { isOpen, setIsOpen } = useChainOfThought();
+    return /* @__PURE__ */ jsx22(Collapsible, { onOpenChange: setIsOpen, open: isOpen, children: /* @__PURE__ */ jsxs12(
+      CollapsibleTrigger,
+      {
+        className: cn(
+          "flex w-full items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground",
+          className
+        ),
+        ...props,
+        children: [
+          /* @__PURE__ */ jsx22(BrainIcon2, { className: "size-4" }),
+          /* @__PURE__ */ jsx22("span", { className: "flex-1 text-left", children: children ?? "Chain of Thought" }),
+          /* @__PURE__ */ jsx22(
+            ChevronDownIcon4,
+            {
+              className: cn(
+                "size-4 transition-transform",
+                isOpen ? "rotate-180" : "rotate-0"
+              )
+            }
+          )
+        ]
+      }
+    ) });
+  }
+);
+var stepStatusStyles = {
+  active: "text-foreground",
+  complete: "text-muted-foreground",
+  pending: "text-muted-foreground/50"
+};
+var ChainOfThoughtStep = memo4(
+  ({
+    className,
+    icon: Icon = DotIcon,
+    label,
+    description,
+    status = "complete",
+    children,
+    ...props
+  }) => /* @__PURE__ */ jsxs12(
+    "div",
+    {
+      className: cn(
+        "flex gap-2 text-sm",
+        stepStatusStyles[status],
+        "fade-in-0 slide-in-from-top-2 animate-in",
+        className
+      ),
+      ...props,
+      children: [
+        /* @__PURE__ */ jsxs12("div", { className: "relative mt-0.5", children: [
+          /* @__PURE__ */ jsx22(Icon, { className: "size-4" }),
+          /* @__PURE__ */ jsx22("div", { className: "absolute top-7 bottom-0 left-1/2 -mx-px w-px bg-border" })
+        ] }),
+        /* @__PURE__ */ jsxs12("div", { className: "flex-1 space-y-2 overflow-hidden", children: [
+          /* @__PURE__ */ jsx22("div", { children: label }),
+          description && /* @__PURE__ */ jsx22("div", { className: "text-muted-foreground text-xs", children: description }),
+          children
+        ] })
+      ]
+    }
+  )
+);
+var ChainOfThoughtSearchResults = memo4(
+  ({ className, ...props }) => /* @__PURE__ */ jsx22(
+    "div",
+    {
+      className: cn("flex flex-wrap items-center gap-2", className),
+      ...props
+    }
+  )
+);
+var ChainOfThoughtSearchResult = memo4(
+  ({ className, children, ...props }) => /* @__PURE__ */ jsx22(
+    Badge,
+    {
+      className: cn("gap-1 px-2 py-0.5 font-normal text-xs", className),
+      variant: "secondary",
+      ...props,
+      children
+    }
+  )
+);
+var ChainOfThoughtContent = memo4(
+  ({ className, children, ...props }) => {
+    const { isOpen } = useChainOfThought();
+    return /* @__PURE__ */ jsx22(Collapsible, { open: isOpen, children: /* @__PURE__ */ jsx22(
+      CollapsibleContent,
+      {
+        className: cn(
+          "mt-2 space-y-3",
+          "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-popover-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
+          className
+        ),
+        ...props,
+        children
+      }
+    ) });
+  }
+);
+var ChainOfThoughtImage = memo4(
+  ({ className, children, caption, ...props }) => /* @__PURE__ */ jsxs12("div", { className: cn("mt-2 space-y-2", className), ...props, children: [
+    /* @__PURE__ */ jsx22("div", { className: "relative flex max-h-[22rem] items-center justify-center overflow-hidden rounded-lg bg-muted p-3", children }),
+    caption && /* @__PURE__ */ jsx22("p", { className: "text-muted-foreground text-xs", children: caption })
+  ] })
+);
+ChainOfThought.displayName = "ChainOfThought";
+ChainOfThoughtHeader.displayName = "ChainOfThoughtHeader";
+ChainOfThoughtStep.displayName = "ChainOfThoughtStep";
+ChainOfThoughtSearchResults.displayName = "ChainOfThoughtSearchResults";
+ChainOfThoughtSearchResult.displayName = "ChainOfThoughtSearchResult";
+ChainOfThoughtContent.displayName = "ChainOfThoughtContent";
+ChainOfThoughtImage.displayName = "ChainOfThoughtImage";
+
+// src/components/ai-elements/code-block.tsx
+import { CheckIcon as CheckIcon4, CopyIcon } from "lucide-react";
+import {
+  createContext as createContext5,
+  memo as memo5,
+  useCallback as useCallback5,
+  useContext as useContext5,
+  useEffect as useEffect4,
+  useMemo as useMemo6,
+  useRef as useRef3,
+  useState as useState4
+} from "react";
+import { createHighlighter } from "shiki";
+import { jsx as jsx23, jsxs as jsxs13 } from "react/jsx-runtime";
+var isItalic = (fontStyle) => fontStyle && fontStyle & 1;
+var isBold = (fontStyle) => fontStyle && fontStyle & 2;
+var isUnderline = (fontStyle) => (
+  // oxlint-disable-next-line eslint(no-bitwise)
+  fontStyle && fontStyle & 4
+);
+var addKeysToTokens = (lines) => lines.map((line, lineIdx) => ({
+  key: `line-${lineIdx}`,
+  tokens: line.map((token, tokenIdx) => ({
+    key: `line-${lineIdx}-${tokenIdx}`,
+    token
+  }))
+}));
+var TokenSpan = ({ token }) => /* @__PURE__ */ jsx23(
+  "span",
+  {
+    className: "dark:!bg-[var(--shiki-dark-bg)] dark:!text-[var(--shiki-dark)]",
+    style: {
+      backgroundColor: token.bgColor,
+      color: token.color,
+      fontStyle: isItalic(token.fontStyle) ? "italic" : void 0,
+      fontWeight: isBold(token.fontStyle) ? "bold" : void 0,
+      textDecoration: isUnderline(token.fontStyle) ? "underline" : void 0,
+      ...token.htmlStyle
+    },
+    children: token.content
+  }
+);
+var LINE_NUMBER_CLASSES = cn(
+  "block",
+  "before:content-[counter(line)]",
+  "before:inline-block",
+  "before:[counter-increment:line]",
+  "before:w-8",
+  "before:mr-4",
+  "before:text-right",
+  "before:text-muted-foreground/50",
+  "before:font-mono",
+  "before:select-none"
+);
+var LineSpan = ({
+  keyedLine,
+  showLineNumbers
+}) => /* @__PURE__ */ jsx23("span", { className: showLineNumbers ? LINE_NUMBER_CLASSES : "block", children: keyedLine.tokens.length === 0 ? "\n" : keyedLine.tokens.map(({ token, key }) => /* @__PURE__ */ jsx23(TokenSpan, { token }, key)) });
+var CodeBlockContext = createContext5({
+  code: ""
+});
+var highlighterCache = /* @__PURE__ */ new Map();
+var tokensCache = /* @__PURE__ */ new Map();
+var subscribers = /* @__PURE__ */ new Map();
+var getTokensCacheKey = (code3, language) => {
+  const start = code3.slice(0, 100);
+  const end = code3.length > 100 ? code3.slice(-100) : "";
+  return `${language}:${code3.length}:${start}:${end}`;
+};
+var getHighlighter = (language) => {
+  const cached = highlighterCache.get(language);
+  if (cached) {
+    return cached;
+  }
+  const highlighterPromise = createHighlighter({
+    langs: [language],
+    themes: ["github-light", "github-dark"]
+  });
+  highlighterCache.set(language, highlighterPromise);
+  return highlighterPromise;
+};
+var createRawTokens = (code3) => ({
+  bg: "transparent",
+  fg: "inherit",
+  tokens: code3.split("\n").map(
+    (line) => line === "" ? [] : [
+      {
+        color: "inherit",
+        content: line
+      }
+    ]
+  )
+});
+var highlightCode = (code3, language, callback) => {
+  const tokensCacheKey = getTokensCacheKey(code3, language);
+  const cached = tokensCache.get(tokensCacheKey);
+  if (cached) {
+    return cached;
+  }
+  if (callback) {
+    if (!subscribers.has(tokensCacheKey)) {
+      subscribers.set(tokensCacheKey, /* @__PURE__ */ new Set());
+    }
+    subscribers.get(tokensCacheKey)?.add(callback);
+  }
+  getHighlighter(language).then((highlighter) => {
+    const availableLangs = highlighter.getLoadedLanguages();
+    const langToUse = availableLangs.includes(language) ? language : "text";
+    const result = highlighter.codeToTokens(code3, {
+      lang: langToUse,
+      themes: {
+        dark: "github-dark",
+        light: "github-light"
+      }
+    });
+    const tokenized = {
+      bg: result.bg ?? "transparent",
+      fg: result.fg ?? "inherit",
+      tokens: result.tokens
+    };
+    tokensCache.set(tokensCacheKey, tokenized);
+    const subs = subscribers.get(tokensCacheKey);
+    if (subs) {
+      for (const sub of subs) {
+        sub(tokenized);
+      }
+      subscribers.delete(tokensCacheKey);
+    }
+  }).catch((error) => {
+    console.error("Failed to highlight code:", error);
+    subscribers.delete(tokensCacheKey);
+  });
+  return null;
+};
+var CodeBlockBody = memo5(
+  ({
+    tokenized,
+    showLineNumbers,
+    className
+  }) => {
+    const preStyle = useMemo6(
+      () => ({
+        backgroundColor: tokenized.bg,
+        color: tokenized.fg
+      }),
+      [tokenized.bg, tokenized.fg]
+    );
+    const keyedLines = useMemo6(
+      () => addKeysToTokens(tokenized.tokens),
+      [tokenized.tokens]
+    );
+    return /* @__PURE__ */ jsx23(
+      "pre",
+      {
+        className: cn(
+          "dark:!bg-[var(--shiki-dark-bg)] dark:!text-[var(--shiki-dark)] m-0 p-4 text-sm",
+          className
+        ),
+        style: preStyle,
+        children: /* @__PURE__ */ jsx23(
+          "code",
+          {
+            className: cn(
+              "font-mono text-sm",
+              showLineNumbers && "[counter-increment:line_0] [counter-reset:line]"
+            ),
+            children: keyedLines.map((keyedLine) => /* @__PURE__ */ jsx23(
+              LineSpan,
+              {
+                keyedLine,
+                showLineNumbers
+              },
+              keyedLine.key
+            ))
+          }
+        )
+      }
+    );
+  },
+  (prevProps, nextProps) => prevProps.tokenized === nextProps.tokenized && prevProps.showLineNumbers === nextProps.showLineNumbers && prevProps.className === nextProps.className
+);
+CodeBlockBody.displayName = "CodeBlockBody";
+var CodeBlockContainer = ({
+  className,
+  language,
+  style,
+  ...props
+}) => /* @__PURE__ */ jsx23(
+  "div",
+  {
+    className: cn(
+      "group relative w-full overflow-hidden rounded-md border bg-background text-foreground",
+      className
+    ),
+    "data-language": language,
+    style: {
+      containIntrinsicSize: "auto 200px",
+      contentVisibility: "auto",
+      ...style
+    },
+    ...props
+  }
+);
+var CodeBlockContent = ({
+  code: code3,
+  language,
+  showLineNumbers = false
+}) => {
+  const rawTokens = useMemo6(() => createRawTokens(code3), [code3]);
+  const syncTokens = useMemo6(
+    () => highlightCode(code3, language) ?? rawTokens,
+    [code3, language, rawTokens]
+  );
+  const [asyncTokens, setAsyncTokens] = useState4(null);
+  const asyncKeyRef = useRef3({ code: code3, language });
+  if (asyncKeyRef.current.code !== code3 || asyncKeyRef.current.language !== language) {
+    asyncKeyRef.current = { code: code3, language };
+    setAsyncTokens(null);
+  }
+  useEffect4(() => {
+    let cancelled = false;
+    highlightCode(code3, language, (result) => {
+      if (!cancelled) {
+        setAsyncTokens(result);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [code3, language]);
+  const tokenized = asyncTokens ?? syncTokens;
+  return /* @__PURE__ */ jsx23("div", { className: "relative overflow-auto", children: /* @__PURE__ */ jsx23(CodeBlockBody, { showLineNumbers, tokenized }) });
+};
+var CodeBlock = ({
+  code: code3,
+  language,
+  showLineNumbers = false,
+  className,
+  children,
+  ...props
+}) => {
+  const contextValue = useMemo6(() => ({ code: code3 }), [code3]);
+  return /* @__PURE__ */ jsx23(CodeBlockContext.Provider, { value: contextValue, children: /* @__PURE__ */ jsxs13(CodeBlockContainer, { className, language, ...props, children: [
+    children,
+    /* @__PURE__ */ jsx23(
+      CodeBlockContent,
+      {
+        code: code3,
+        language,
+        showLineNumbers
+      }
+    )
+  ] }) });
+};
+
+// src/components/shared/message-box.tsx
+import { jsx as jsx24, jsxs as jsxs14 } from "react/jsx-runtime";
 function formatEventTime(timestamp) {
   return new Date(timestamp).toLocaleTimeString([], {
     hour: "2-digit",
@@ -156,105 +1759,95 @@ function renderEventContent(event, eventRenderers) {
   }
   return null;
 }
+function MessageStatus({ message }) {
+  const statusHistory = message.statusHistory ?? [];
+  const statusLabel = message.status ?? "Idle";
+  const indicator = message.isWorking ? /* @__PURE__ */ jsx24(Spinner, { className: "size-3", "aria-hidden": "true" }) : /* @__PURE__ */ jsx24("span", { className: "size-2 rounded-full bg-muted-foreground/60", "aria-hidden": "true" });
+  if (statusHistory.length <= 1) {
+    return /* @__PURE__ */ jsxs14("div", { className: "flex items-center gap-2 text-xs text-muted-foreground", children: [
+      indicator,
+      /* @__PURE__ */ jsx24("span", { className: "truncate", children: statusLabel })
+    ] });
+  }
+  return /* @__PURE__ */ jsxs14(Task, { defaultOpen: false, children: [
+    /* @__PURE__ */ jsx24(TaskTrigger, { title: statusLabel, children: /* @__PURE__ */ jsxs14("div", { className: "flex w-full cursor-pointer items-center gap-2 text-xs text-muted-foreground transition-colors hover:text-foreground", children: [
+      indicator,
+      /* @__PURE__ */ jsx24("span", { className: "truncate", children: statusLabel }),
+      /* @__PURE__ */ jsxs14("span", { className: "text-[11px]", children: [
+        "(",
+        statusHistory.length,
+        ")"
+      ] })
+    ] }) }),
+    /* @__PURE__ */ jsx24(TaskContent, { children: statusHistory.map((statusItem) => /* @__PURE__ */ jsxs14(TaskItem, { className: "flex items-center gap-2 text-xs", children: [
+      /* @__PURE__ */ jsx24("span", { className: "font-mono opacity-80", children: formatEventTime(statusItem.at) }),
+      /* @__PURE__ */ jsx24("span", { children: statusItem.label })
+    ] }, statusItem.id)) })
+  ] });
+}
+function MessageEventTimeline({
+  events,
+  eventRenderers
+}) {
+  return /* @__PURE__ */ jsxs14(ChainOfThought, { defaultOpen: false, children: [
+    /* @__PURE__ */ jsxs14(ChainOfThoughtHeader, { children: [
+      "Event Timeline (",
+      events.length,
+      ")"
+    ] }),
+    /* @__PURE__ */ jsx24(ChainOfThoughtContent, { children: events.map((eventItem) => {
+      const customContent = renderEventContent(eventItem, eventRenderers);
+      return /* @__PURE__ */ jsx24(
+        ChainOfThoughtStep,
+        {
+          label: `${eventItem.kind}: ${eventItem.summary}`,
+          description: eventItem.details ? `${formatEventTime(eventItem.at)} \u2014 ${eventItem.details}` : formatEventTime(eventItem.at),
+          children: customContent ? /* @__PURE__ */ jsx24("div", { className: "min-w-0", children: customContent }) : eventItem.raw ? /* @__PURE__ */ jsx24(CodeBlock, { code: eventItem.raw, language: "json", className: "text-[10px]" }) : null
+        },
+        eventItem.id
+      );
+    }) })
+  ] });
+}
 function MessageBox({ messages, eventRenderers = [], className }) {
-  const containerRef = React4.useRef(null);
-  const endRef = React4.useRef(null);
-  const [expandedStatusHistory, setExpandedStatusHistory] = React4.useState({});
-  React4.useLayoutEffect(() => {
-    const container = containerRef.current;
-    if (!container) {
-      return;
-    }
-    container.scrollTop = container.scrollHeight;
-    const frameId = globalThis.requestAnimationFrame(() => {
-      container.scrollTop = container.scrollHeight;
-      endRef.current?.scrollIntoView({ block: "end" });
-    });
-    return () => {
-      globalThis.cancelAnimationFrame(frameId);
-    };
-  }, [messages]);
-  return /* @__PURE__ */ jsxs2(
-    "div",
+  return /* @__PURE__ */ jsxs14(
+    Conversation,
     {
-      ref: containerRef,
-      className: cn("flex h-72 flex-col gap-3 overflow-auto rounded-md border border-border bg-background p-3", className),
+      className: cn("h-72 rounded-md border border-border bg-background", className),
       children: [
-        messages.map((message) => {
+        /* @__PURE__ */ jsx24(ConversationContent, { className: "gap-3 p-3", children: messages.length === 0 ? /* @__PURE__ */ jsx24(
+          ConversationEmptyState,
+          {
+            icon: /* @__PURE__ */ jsx24(MessageSquareIcon, { className: "size-10", "aria-hidden": "true" }),
+            title: "No messages yet",
+            description: "Send a task to the agent to get started"
+          }
+        ) : messages.map((message) => {
           const isUser = message.role === "user";
-          const statusHistory = message.statusHistory ?? [];
           const timelineEvents = message.events ?? [];
-          const isHistoryExpanded = expandedStatusHistory[message.id] === true;
-          const canExpandStatusHistory = statusHistory.length > 1;
-          return /* @__PURE__ */ jsxs2(
-            "div",
-            {
-              className: isUser ? "ml-8 min-w-0 self-end" : "mr-8 min-w-0 self-start flex flex-col gap-1.5",
-              children: [
-                !isUser ? /* @__PURE__ */ jsxs2("div", { className: "min-w-0 overflow-hidden rounded-2xl rounded-bl-sm border border-border/60 bg-muted/70", children: [
-                  /* @__PURE__ */ jsxs2("div", { className: "inline-flex w-full items-center gap-2 border-b border-border/50 bg-muted/50 px-2.5 py-1 text-xs text-muted-foreground", children: [
-                    message.isWorking ? /* @__PURE__ */ jsx5(Spinner, { className: "size-3", "aria-hidden": "true" }) : /* @__PURE__ */ jsx5("span", { className: "size-2 rounded-full bg-muted-foreground/60", "aria-hidden": "true" }),
-                    /* @__PURE__ */ jsx5("span", { className: "flex-1 truncate", children: message.status ?? "Idle" }),
-                    canExpandStatusHistory ? /* @__PURE__ */ jsxs2(
-                      "button",
-                      {
-                        type: "button",
-                        onClick: () => {
-                          setExpandedStatusHistory((current) => ({
-                            ...current,
-                            [message.id]: !isHistoryExpanded
-                          }));
-                        },
-                        className: "inline-flex items-center gap-1 rounded-sm px-1 py-0.5 text-[11px] text-muted-foreground hover:bg-muted/70",
-                        "aria-label": isHistoryExpanded ? "Collapse status history" : "Expand status history",
-                        children: [
-                          /* @__PURE__ */ jsx5(ChevronDownIcon, { className: `size-3 transition-transform ${isHistoryExpanded ? "rotate-180" : ""}` }),
-                          /* @__PURE__ */ jsx5("span", { children: statusHistory.length })
-                        ]
-                      }
-                    ) : null
-                  ] }),
-                  canExpandStatusHistory && isHistoryExpanded ? /* @__PURE__ */ jsx5("div", { className: "border-b border-border/40 bg-muted/30 px-2.5 py-1.5", children: /* @__PURE__ */ jsx5("div", { className: "flex flex-col gap-1 text-[11px] text-muted-foreground", children: statusHistory.map((statusItem) => /* @__PURE__ */ jsxs2("div", { className: "flex items-center gap-2", children: [
-                    /* @__PURE__ */ jsx5("span", { className: "font-mono opacity-80", children: formatEventTime(statusItem.at) }),
-                    /* @__PURE__ */ jsx5("span", { children: statusItem.label })
-                  ] }, statusItem.id)) }) }) : null,
-                  timelineEvents.length > 0 ? /* @__PURE__ */ jsxs2("div", { className: "border-b border-border/40 bg-background/50 px-2.5 py-2", children: [
-                    /* @__PURE__ */ jsx5("div", { className: "mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground", children: "Event Timeline" }),
-                    /* @__PURE__ */ jsx5("div", { className: "flex flex-col gap-1.5", children: timelineEvents.map((eventItem) => {
-                      const customContent = renderEventContent(eventItem, eventRenderers);
-                      return /* @__PURE__ */ jsxs2("details", { className: "rounded-md border border-border/40 bg-background/70 px-2 py-1", children: [
-                        /* @__PURE__ */ jsxs2("summary", { className: "cursor-pointer list-none text-[11px] text-muted-foreground", children: [
-                          /* @__PURE__ */ jsx5("span", { className: "font-mono", children: formatEventTime(eventItem.at) }),
-                          " ",
-                          /* @__PURE__ */ jsx5("span", { className: "font-medium text-foreground", children: eventItem.kind }),
-                          " ",
-                          /* @__PURE__ */ jsx5("span", { children: eventItem.summary })
-                        ] }),
-                        eventItem.details ? /* @__PURE__ */ jsx5("div", { className: "mt-1 text-[11px] text-muted-foreground", children: eventItem.details }) : null,
-                        customContent ? /* @__PURE__ */ jsx5("div", { className: "mt-1", children: customContent }) : eventItem.raw ? /* @__PURE__ */ jsx5("pre", { className: "mt-1 overflow-x-auto rounded-sm bg-muted/40 p-1 text-[10px] text-muted-foreground", children: eventItem.raw }) : null
-                      ] }, eventItem.id);
-                    }) })
-                  ] }) : null,
-                  message.thinkingText && message.thinkingText.trim().length > 0 ? /* @__PURE__ */ jsxs2("div", { className: "border-t border-border/40 bg-muted/30 px-3 py-2 text-xs text-muted-foreground whitespace-pre-wrap [overflow-wrap:anywhere]", children: [
-                    /* @__PURE__ */ jsx5("span", { className: "font-medium", children: "Thinking:" }),
-                    " ",
-                    message.thinkingText
-                  ] }) : null,
-                  message.text.trim().length > 0 ? /* @__PURE__ */ jsx5("div", { className: "px-3 py-2 text-foreground whitespace-pre-wrap [overflow-wrap:anywhere]", children: message.text }) : null
-                ] }) : null,
-                isUser && message.text.trim().length > 0 ? /* @__PURE__ */ jsx5(
-                  "div",
-                  {
-                    className: "rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-primary-foreground whitespace-pre-wrap [overflow-wrap:anywhere]",
-                    children: message.text
-                  }
-                ) : null
-              ]
-            },
-            message.id
-          );
-        }),
-        /* @__PURE__ */ jsx5("div", { ref: endRef, "aria-hidden": "true" })
+          if (isUser) {
+            if (message.text.trim().length === 0) {
+              return null;
+            }
+            return /* @__PURE__ */ jsx24(Message, { from: "user", children: /* @__PURE__ */ jsx24(MessageContent, { children: /* @__PURE__ */ jsx24(MessageResponse, { children: message.text }) }) }, message.id);
+          }
+          return /* @__PURE__ */ jsxs14(Message, { from: "assistant", children: [
+            /* @__PURE__ */ jsx24(MessageStatus, { message }),
+            timelineEvents.length > 0 ? /* @__PURE__ */ jsx24(
+              MessageEventTimeline,
+              {
+                events: timelineEvents,
+                eventRenderers
+              }
+            ) : null,
+            message.thinkingText && message.thinkingText.trim().length > 0 ? /* @__PURE__ */ jsxs14(Reasoning, { className: "w-full", isStreaming: message.isWorking === true, children: [
+              /* @__PURE__ */ jsx24(ReasoningTrigger, {}),
+              /* @__PURE__ */ jsx24(ReasoningContent, { children: message.thinkingText })
+            ] }) : null,
+            message.text.trim().length > 0 ? /* @__PURE__ */ jsx24(MessageContent, { children: /* @__PURE__ */ jsx24(MessageResponse, { children: message.text }) }) : null
+          ] }, message.id);
+        }) }),
+        /* @__PURE__ */ jsx24(ConversationScrollButton, {})
       ]
     }
   );
@@ -262,13 +1855,13 @@ function MessageBox({ messages, eventRenderers = [], className }) {
 
 // src/components/ui/card.tsx
 import "react";
-import { jsx as jsx6 } from "react/jsx-runtime";
+import { jsx as jsx25 } from "react/jsx-runtime";
 function Card({
   className,
   size = "default",
   ...props
 }) {
-  return /* @__PURE__ */ jsx6(
+  return /* @__PURE__ */ jsx25(
     "div",
     {
       "data-slot": "card",
@@ -282,7 +1875,7 @@ function Card({
   );
 }
 function CardHeader({ className, ...props }) {
-  return /* @__PURE__ */ jsx6(
+  return /* @__PURE__ */ jsx25(
     "div",
     {
       "data-slot": "card-header",
@@ -295,7 +1888,7 @@ function CardHeader({ className, ...props }) {
   );
 }
 function CardTitle({ className, ...props }) {
-  return /* @__PURE__ */ jsx6(
+  return /* @__PURE__ */ jsx25(
     "div",
     {
       "data-slot": "card-title",
@@ -305,7 +1898,7 @@ function CardTitle({ className, ...props }) {
   );
 }
 function CardDescription({ className, ...props }) {
-  return /* @__PURE__ */ jsx6(
+  return /* @__PURE__ */ jsx25(
     "div",
     {
       "data-slot": "card-description",
@@ -315,7 +1908,7 @@ function CardDescription({ className, ...props }) {
   );
 }
 function CardContent({ className, ...props }) {
-  return /* @__PURE__ */ jsx6(
+  return /* @__PURE__ */ jsx25(
     "div",
     {
       "data-slot": "card-content",
@@ -325,47 +1918,8 @@ function CardContent({ className, ...props }) {
   );
 }
 
-// src/components/ui/input.tsx
-import "react";
-import { jsx as jsx7 } from "react/jsx-runtime";
-function Input({ className, ...props }) {
-  return /* @__PURE__ */ jsx7(
-    "input",
-    {
-      "data-slot": "input",
-      className: cn(
-        "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50",
-        className
-      ),
-      ...props
-    }
-  );
-}
-
-// src/components/ui/separator.tsx
-import "react";
-import { jsx as jsx8 } from "react/jsx-runtime";
-function Separator({
-  className,
-  orientation = "horizontal",
-  ...props
-}) {
-  return /* @__PURE__ */ jsx8(
-    "div",
-    {
-      "data-slot": "separator",
-      "data-orientation": orientation,
-      className: cn(
-        "shrink-0 bg-border data-[orientation=horizontal]:h-px data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-px",
-        className
-      ),
-      ...props
-    }
-  );
-}
-
 // src/a2a/use-a2a-chat.ts
-import React8 from "react";
+import React13 from "react";
 import { Effect as Effect2 } from "effect";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -908,12 +2462,12 @@ function useA2AChat(options = {}) {
     persistence
   } = options;
   const queryClient = useQueryClient();
-  const [url, setUrl] = React8.useState(initialUrl);
-  const [taskInput, setTaskInput] = React8.useState("");
-  const runnerControllersRef = React8.useRef(/* @__PURE__ */ new Map());
-  const didAutoConnectRef = React8.useRef(/* @__PURE__ */ new Set());
-  const baseUrl = React8.useMemo(() => normalizeBaseUrl(url), [url]);
-  const transport = React8.useMemo(() => createProxyTransport(proxyBasePath), [proxyBasePath]);
+  const [url, setUrl] = React13.useState(initialUrl);
+  const [taskInput, setTaskInput] = React13.useState("");
+  const runnerControllersRef = React13.useRef(/* @__PURE__ */ new Map());
+  const didAutoConnectRef = React13.useRef(/* @__PURE__ */ new Set());
+  const baseUrl = React13.useMemo(() => normalizeBaseUrl(url), [url]);
+  const transport = React13.useMemo(() => createProxyTransport(proxyBasePath), [proxyBasePath]);
   const connectionQuery = useQuery({
     queryKey: connectionKey,
     queryFn: async () => getConnectionInitialState(),
@@ -928,7 +2482,7 @@ function useA2AChat(options = {}) {
     staleTime: Number.POSITIVE_INFINITY,
     gcTime: Number.POSITIVE_INFINITY
   });
-  const setConnectionStore = React8.useCallback(
+  const setConnectionStore = React13.useCallback(
     (updater) => {
       queryClient.setQueryData(
         connectionKey,
@@ -937,13 +2491,13 @@ function useA2AChat(options = {}) {
     },
     [queryClient]
   );
-  const setChatStore = React8.useCallback(
+  const setChatStore = React13.useCallback(
     (updater) => {
       queryClient.setQueryData(chatKey, (current) => updater(current ?? getChatInitialState()));
     },
     [queryClient]
   );
-  const ensureUrlChatState = React8.useCallback(
+  const ensureUrlChatState = React13.useCallback(
     (urlKey) => {
       setChatStore((current) => {
         if (current.byUrl[urlKey]) {
@@ -960,7 +2514,7 @@ function useA2AChat(options = {}) {
     },
     [setChatStore]
   );
-  const updateTaskSession = React8.useCallback(
+  const updateTaskSession = React13.useCallback(
     (urlKey, sessionId, updater) => {
       setChatStore((current) => {
         const urlState = current.byUrl[urlKey];
@@ -999,7 +2553,7 @@ function useA2AChat(options = {}) {
     },
     [setChatStore]
   );
-  const hydratePersistedSessions = React8.useCallback(
+  const hydratePersistedSessions = React13.useCallback(
     async (urlKey) => {
       if (!persistence) {
         return;
@@ -1032,7 +2586,7 @@ function useA2AChat(options = {}) {
     },
     [ensureUrlChatState, persistence, setChatStore]
   );
-  const updateAssistantMessage = React8.useCallback(
+  const updateAssistantMessage = React13.useCallback(
     (urlKey, sessionId, messageId, updater) => {
       updateTaskSession(urlKey, sessionId, (currentSession) => ({
         ...currentSession,
@@ -1046,7 +2600,7 @@ function useA2AChat(options = {}) {
     },
     [updateTaskSession]
   );
-  const setAssistantStatus = React8.useCallback(
+  const setAssistantStatus = React13.useCallback(
     (urlKey, sessionId, messageId, nextStatus, isWorking) => {
       updateAssistantMessage(urlKey, sessionId, messageId, (currentMessage) => {
         const statusHistory = currentMessage.statusHistory ?? [];
@@ -1062,7 +2616,7 @@ function useA2AChat(options = {}) {
     },
     [updateAssistantMessage]
   );
-  const appendAssistantEvent = React8.useCallback(
+  const appendAssistantEvent = React13.useCallback(
     (urlKey, sessionId, messageId, event) => {
       updateAssistantMessage(urlKey, sessionId, messageId, (currentMessage) => ({
         ...currentMessage,
@@ -1078,7 +2632,7 @@ function useA2AChat(options = {}) {
     },
     [updateAssistantMessage]
   );
-  const hydrateTaskOutput = React8.useCallback(
+  const hydrateTaskOutput = React13.useCallback(
     async (client, urlKey, sessionId, assistantMessageId, taskId) => {
       try {
         const snapshot = await Effect2.runPromise(getTaskById(client, taskId));
@@ -1106,7 +2660,7 @@ function useA2AChat(options = {}) {
     },
     [appendAssistantEvent, updateAssistantMessage]
   );
-  const processTaskStreamEvent = React8.useCallback(
+  const processTaskStreamEvent = React13.useCallback(
     async (client, urlKey, sessionId, assistantMessageId, currentTask, event) => {
       const artifactUpdate = getArtifactUpdateEvent(event);
       if (!artifactUpdate) {
@@ -1220,7 +2774,7 @@ function useA2AChat(options = {}) {
       updateTaskSession
     ]
   );
-  const startTaskResubscribeLoop = React8.useCallback(
+  const startTaskResubscribeLoop = React13.useCallback(
     (client, urlKey, sessionId, initialTask, assistantMessageId) => {
       const controllerKey = `${urlKey}::${initialTask.id}`;
       const existing = runnerControllersRef.current.get(controllerKey);
@@ -1274,7 +2828,7 @@ function useA2AChat(options = {}) {
     },
     [processTaskStreamEvent, setAssistantStatus]
   );
-  React8.useEffect(() => {
+  React13.useEffect(() => {
     return () => {
       for (const controller of runnerControllersRef.current.values()) {
         controller.abort();
@@ -1484,7 +3038,7 @@ function useA2AChat(options = {}) {
     }
   });
   const activeUrlState = chatQuery.data.byUrl[baseUrl] ?? null;
-  const recentAgents = React8.useMemo(
+  const recentAgents = React13.useMemo(
     () => Object.entries(chatQuery.data.byUrl).map(([connectedUrl, state]) => ({
       url: connectedUrl,
       agentName: state.agentName,
@@ -1493,7 +3047,7 @@ function useA2AChat(options = {}) {
     [chatQuery.data.byUrl]
   );
   const activeTaskSession = activeUrlState ? activeUrlState.sessions.find((session) => session.id === activeUrlState.activeSessionId) ?? activeUrlState.sessions[0] ?? null : null;
-  const taskSessions = React8.useMemo(
+  const taskSessions = React13.useMemo(
     () => [...activeUrlState?.sessions ?? []].sort((a, b) => b.updatedAt - a.updatedAt).map((session) => ({
       id: session.id,
       title: session.title,
@@ -1501,17 +3055,17 @@ function useA2AChat(options = {}) {
     })),
     [activeUrlState?.sessions]
   );
-  const handleConnect = React8.useCallback(() => {
+  const handleConnect = React13.useCallback(() => {
     connectMutation.mutate(baseUrl);
   }, [baseUrl, connectMutation]);
-  const handleSelectRecentAgent = React8.useCallback(
+  const handleSelectRecentAgent = React13.useCallback(
     (agentUrl) => {
       setUrl(agentUrl);
       ensureUrlChatState(agentUrl);
     },
     [ensureUrlChatState]
   );
-  React8.useEffect(() => {
+  React13.useEffect(() => {
     if (!autoConnect || connectMutation.isPending || didAutoConnectRef.current.has(baseUrl)) {
       return;
     }
@@ -1522,10 +3076,10 @@ function useA2AChat(options = {}) {
     didAutoConnectRef.current.add(baseUrl);
     connectMutation.mutate(baseUrl);
   }, [autoConnect, baseUrl, connectMutation, connectionQuery.data]);
-  React8.useEffect(() => {
+  React13.useEffect(() => {
     void hydratePersistedSessions(baseUrl);
   }, [baseUrl, hydratePersistedSessions]);
-  const handleSubmitTask = React8.useCallback(() => {
+  const handleSubmitTask = React13.useCallback(() => {
     const taskText = taskInput.trim();
     const connection = connectionQuery.data;
     if (taskText.length === 0 || sendTaskMutation.isPending || !activeTaskSession || connection.state !== "connected" || connection.connectedUrl !== baseUrl || !connection.client) {
@@ -1538,7 +3092,7 @@ function useA2AChat(options = {}) {
       taskSessionId: activeTaskSession.id
     });
   }, [activeTaskSession, baseUrl, connectionQuery.data, sendTaskMutation, taskInput]);
-  const handleCreateTaskSession = React8.useCallback(() => {
+  const handleCreateTaskSession = React13.useCallback(() => {
     setChatStore((current) => {
       const urlState = current.byUrl[baseUrl];
       if (!urlState) {
@@ -1558,7 +3112,7 @@ function useA2AChat(options = {}) {
       };
     });
   }, [baseUrl, setChatStore]);
-  const handleSelectTaskSession = React8.useCallback(
+  const handleSelectTaskSession = React13.useCallback(
     (sessionId) => {
       setChatStore((current) => {
         const urlState = current.byUrl[baseUrl];
@@ -1582,7 +3136,7 @@ function useA2AChat(options = {}) {
     },
     [baseUrl, setChatStore]
   );
-  const handleDeleteTaskSession = React8.useCallback(
+  const handleDeleteTaskSession = React13.useCallback(
     (sessionId) => {
       const deletePersistedSession = persistence?.deleteSession;
       if (deletePersistedSession) {
@@ -1654,7 +3208,124 @@ function useA2AChat(options = {}) {
 
 // src/a2a/inspector-event-renderers.tsx
 import "react";
-import { jsx as jsx9, jsxs as jsxs3 } from "react/jsx-runtime";
+
+// src/components/ai-elements/tool.tsx
+import {
+  CheckCircleIcon,
+  ChevronDownIcon as ChevronDownIcon5,
+  CircleIcon,
+  ClockIcon,
+  WrenchIcon,
+  XCircleIcon
+} from "lucide-react";
+import { isValidElement } from "react";
+import { jsx as jsx26, jsxs as jsxs15 } from "react/jsx-runtime";
+var Tool = ({ className, ...props }) => /* @__PURE__ */ jsx26(
+  Collapsible,
+  {
+    className: cn("group not-prose mb-4 w-full rounded-md border", className),
+    ...props
+  }
+);
+var statusLabels = {
+  "approval-requested": "Awaiting Approval",
+  "approval-responded": "Responded",
+  "input-available": "Running",
+  "input-streaming": "Pending",
+  "output-available": "Completed",
+  "output-denied": "Denied",
+  "output-error": "Error"
+};
+var statusIcons = {
+  "approval-requested": /* @__PURE__ */ jsx26(ClockIcon, { className: "size-4 text-yellow-600" }),
+  "approval-responded": /* @__PURE__ */ jsx26(CheckCircleIcon, { className: "size-4 text-blue-600" }),
+  "input-available": /* @__PURE__ */ jsx26(ClockIcon, { className: "size-4 animate-pulse" }),
+  "input-streaming": /* @__PURE__ */ jsx26(CircleIcon, { className: "size-4" }),
+  "output-available": /* @__PURE__ */ jsx26(CheckCircleIcon, { className: "size-4 text-green-600" }),
+  "output-denied": /* @__PURE__ */ jsx26(XCircleIcon, { className: "size-4 text-orange-600" }),
+  "output-error": /* @__PURE__ */ jsx26(XCircleIcon, { className: "size-4 text-red-600" })
+};
+var getStatusBadge = (status) => /* @__PURE__ */ jsxs15(Badge, { className: "gap-1.5 rounded-full text-xs", variant: "secondary", children: [
+  statusIcons[status],
+  statusLabels[status]
+] });
+var ToolHeader = ({
+  className,
+  title,
+  type,
+  state,
+  toolName,
+  ...props
+}) => {
+  const derivedName = type === "dynamic-tool" ? toolName : type.split("-").slice(1).join("-");
+  return /* @__PURE__ */ jsxs15(
+    CollapsibleTrigger,
+    {
+      className: cn(
+        "flex w-full items-center justify-between gap-4 p-3",
+        className
+      ),
+      ...props,
+      children: [
+        /* @__PURE__ */ jsxs15("div", { className: "flex items-center gap-2", children: [
+          /* @__PURE__ */ jsx26(WrenchIcon, { className: "size-4 text-muted-foreground" }),
+          /* @__PURE__ */ jsx26("span", { className: "font-medium text-sm", children: title ?? derivedName }),
+          getStatusBadge(state)
+        ] }),
+        /* @__PURE__ */ jsx26(ChevronDownIcon5, { className: "size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" })
+      ]
+    }
+  );
+};
+var ToolContent = ({ className, ...props }) => /* @__PURE__ */ jsx26(
+  CollapsibleContent,
+  {
+    className: cn(
+      "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 space-y-4 p-4 text-popover-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
+      className
+    ),
+    ...props
+  }
+);
+var ToolInput = ({ className, input, ...props }) => /* @__PURE__ */ jsxs15("div", { className: cn("space-y-2 overflow-hidden", className), ...props, children: [
+  /* @__PURE__ */ jsx26("h4", { className: "font-medium text-muted-foreground text-xs uppercase tracking-wide", children: "Parameters" }),
+  /* @__PURE__ */ jsx26("div", { className: "rounded-md bg-muted/50", children: /* @__PURE__ */ jsx26(CodeBlock, { code: JSON.stringify(input, null, 2), language: "json" }) })
+] });
+var ToolOutput = ({
+  className,
+  output,
+  errorText,
+  ...props
+}) => {
+  if (!(output || errorText)) {
+    return null;
+  }
+  let Output = /* @__PURE__ */ jsx26("div", { children: output });
+  if (typeof output === "object" && !isValidElement(output)) {
+    Output = /* @__PURE__ */ jsx26(CodeBlock, { code: JSON.stringify(output, null, 2), language: "json" });
+  } else if (typeof output === "string") {
+    Output = /* @__PURE__ */ jsx26(CodeBlock, { code: output, language: "json" });
+  }
+  return /* @__PURE__ */ jsxs15("div", { className: cn("space-y-2", className), ...props, children: [
+    /* @__PURE__ */ jsx26("h4", { className: "font-medium text-muted-foreground text-xs uppercase tracking-wide", children: errorText ? "Error" : "Result" }),
+    /* @__PURE__ */ jsxs15(
+      "div",
+      {
+        className: cn(
+          "overflow-x-auto rounded-md text-xs [&_table]:w-full",
+          errorText ? "bg-destructive/10 text-destructive" : "bg-muted/50 text-foreground"
+        ),
+        children: [
+          errorText && /* @__PURE__ */ jsx26("div", { children: errorText }),
+          Output
+        ]
+      }
+    )
+  ] });
+};
+
+// src/a2a/inspector-event-renderers.tsx
+import { jsx as jsx27, jsxs as jsxs16 } from "react/jsx-runtime";
 function isRecord2(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -1704,49 +3375,39 @@ function getArtifactText(event) {
   ).join("");
   return text.length > 0 ? text : null;
 }
-function formatJson(value) {
-  try {
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return String(value);
-  }
-}
-function CompactJson({ value }) {
-  return /* @__PURE__ */ jsx9("pre", { className: "overflow-x-auto rounded-sm bg-muted/40 p-1.5 text-[10px] text-muted-foreground", children: formatJson(value) });
-}
-function Field({ label, children }) {
-  return /* @__PURE__ */ jsxs3("div", { className: "grid gap-0.5", children: [
-    /* @__PURE__ */ jsx9("div", { className: "text-[10px] font-medium uppercase tracking-wide text-muted-foreground", children: label }),
-    /* @__PURE__ */ jsx9("div", { className: "text-[11px] text-foreground [overflow-wrap:anywhere]", children })
-  ] });
-}
 function renderSendTaskTool(data) {
   const input = isRecord2(data.input) ? data.input : {};
-  const agent = typeof input.agent === "string" ? input.agent : "unknown agent";
-  const content = typeof input.content === "string" ? input.content : "";
-  return /* @__PURE__ */ jsxs3("div", { className: "rounded-md border border-sky-500/25 bg-sky-500/10 p-2", children: [
-    /* @__PURE__ */ jsx9("div", { className: "text-[11px] font-semibold text-sky-800 dark:text-sky-200", children: "Calling subagent" }),
-    /* @__PURE__ */ jsxs3("div", { className: "mt-1 grid gap-2", children: [
-      /* @__PURE__ */ jsx9(Field, { label: "Agent", children: agent }),
-      content.length > 0 ? /* @__PURE__ */ jsx9(Field, { label: "Message", children: content }) : null
-    ] })
+  return /* @__PURE__ */ jsxs16(Tool, { defaultOpen: true, children: [
+    /* @__PURE__ */ jsx27(ToolHeader, { type: "tool-send_task", state: "input-available", title: "Calling subagent" }),
+    /* @__PURE__ */ jsx27(ToolContent, { children: /* @__PURE__ */ jsx27(ToolInput, { input }) })
   ] });
 }
 function renderSendTaskResult(data) {
   const output = isRecord2(data.output) ? data.output : null;
   const taskId = output && typeof output.task_id === "string" ? output.task_id : null;
-  return /* @__PURE__ */ jsxs3("div", { className: "rounded-md border border-emerald-500/25 bg-emerald-500/10 p-2", children: [
-    /* @__PURE__ */ jsx9("div", { className: "text-[11px] font-semibold text-emerald-800 dark:text-emerald-200", children: "Subagent task created" }),
-    taskId ? /* @__PURE__ */ jsx9("div", { className: "mt-1 font-mono text-[11px] text-foreground", children: taskId }) : null,
-    !taskId ? /* @__PURE__ */ jsx9(CompactJson, { value: data.output }) : null
+  return /* @__PURE__ */ jsxs16(Tool, { defaultOpen: true, children: [
+    /* @__PURE__ */ jsx27(ToolHeader, { type: "tool-send_task", state: "output-available", title: "Subagent task created" }),
+    /* @__PURE__ */ jsx27(ToolContent, { children: /* @__PURE__ */ jsx27(
+      ToolOutput,
+      {
+        output: taskId ? /* @__PURE__ */ jsx27("div", { className: "p-2 font-mono text-[11px] text-foreground", children: taskId }) : data.output,
+        errorText: void 0
+      }
+    ) })
   ] });
 }
 function renderCheckTaskStatusCall(data) {
   const input = isRecord2(data.input) ? data.input : {};
-  const taskId = typeof input.task_id === "string" ? input.task_id : "unknown task";
-  return /* @__PURE__ */ jsxs3("div", { className: "rounded-md border border-violet-500/25 bg-violet-500/10 p-2", children: [
-    /* @__PURE__ */ jsx9("div", { className: "text-[11px] font-semibold text-violet-800 dark:text-violet-200", children: "Checking subagent status" }),
-    /* @__PURE__ */ jsx9("div", { className: "mt-1 font-mono text-[11px] text-foreground [overflow-wrap:anywhere]", children: taskId })
+  return /* @__PURE__ */ jsxs16(Tool, { defaultOpen: true, children: [
+    /* @__PURE__ */ jsx27(
+      ToolHeader,
+      {
+        type: "tool-check_task_status",
+        state: "input-available",
+        title: "Checking subagent status"
+      }
+    ),
+    /* @__PURE__ */ jsx27(ToolContent, { children: /* @__PURE__ */ jsx27(ToolInput, { input }) })
   ] });
 }
 function renderCheckTaskStatusResult(data) {
@@ -1761,24 +3422,39 @@ function renderCheckTaskStatusResult(data) {
       (part) => isRecord2(part) && part.kind === "text" && typeof part.text === "string" ? [part.text] : []
     );
   }).join("");
-  return /* @__PURE__ */ jsxs3("div", { className: "rounded-md border border-violet-500/25 bg-violet-500/10 p-2", children: [
-    /* @__PURE__ */ jsxs3("div", { className: "flex flex-wrap items-center gap-2 text-[11px]", children: [
-      /* @__PURE__ */ jsx9("span", { className: "font-semibold text-violet-800 dark:text-violet-200", children: "Subagent status" }),
-      /* @__PURE__ */ jsx9("span", { className: "rounded-full border border-violet-500/30 bg-background/60 px-1.5 py-0.5 font-mono text-[10px] text-foreground", children: status })
-    ] }),
-    artifactText.length > 0 ? /* @__PURE__ */ jsx9("blockquote", { className: "mt-1 border-l-2 border-violet-500/40 pl-2 text-[11px] text-foreground whitespace-pre-wrap", children: artifactText }) : /* @__PURE__ */ jsx9("div", { className: "mt-1", children: /* @__PURE__ */ jsx9(CompactJson, { value: data.output }) })
+  return /* @__PURE__ */ jsxs16(Tool, { defaultOpen: true, children: [
+    /* @__PURE__ */ jsx27(
+      ToolHeader,
+      {
+        type: "tool-check_task_status",
+        state: "output-available",
+        title: `Subagent status: ${status}`
+      }
+    ),
+    /* @__PURE__ */ jsx27(ToolContent, { children: /* @__PURE__ */ jsx27(
+      ToolOutput,
+      {
+        output: artifactText.length > 0 ? /* @__PURE__ */ jsx27(MessageResponse, { className: "p-2 text-xs", children: artifactText }) : data.output,
+        errorText: void 0
+      }
+    ) })
   ] });
 }
 function renderGenericToolData(data) {
-  const type = typeof data.type === "string" ? data.type : "tool-event";
-  const toolName = typeof data.toolName === "string" ? data.toolName : "unknown tool";
-  return /* @__PURE__ */ jsxs3("div", { className: "rounded-md border border-border/50 bg-muted/30 p-2", children: [
-    /* @__PURE__ */ jsxs3("div", { className: "text-[11px] font-semibold text-foreground", children: [
-      type,
-      ": ",
-      toolName
-    ] }),
-    /* @__PURE__ */ jsx9("div", { className: "mt-1", children: /* @__PURE__ */ jsx9(CompactJson, { value: data.input ?? data.output ?? data }) })
+  const isResult = data.type === "tool-result";
+  const toolName = typeof data.toolName === "string" ? data.toolName : "unknown_tool";
+  return /* @__PURE__ */ jsxs16(Tool, { defaultOpen: true, children: [
+    /* @__PURE__ */ jsx27(
+      ToolHeader,
+      {
+        type: `tool-${toolName}`,
+        state: isResult ? "output-available" : "input-available"
+      }
+    ),
+    /* @__PURE__ */ jsxs16(ToolContent, { children: [
+      !isResult && data.input !== void 0 ? /* @__PURE__ */ jsx27(ToolInput, { input: data.input }) : null,
+      isResult ? /* @__PURE__ */ jsx27(ToolOutput, { output: data.output ?? data, errorText: void 0 }) : null
+    ] })
   ] });
 }
 var renderInspectorToolEvent = (event) => {
@@ -1809,7 +3485,7 @@ var renderInspectorArtifactEvent = (event) => {
   if (!text) {
     return null;
   }
-  return /* @__PURE__ */ jsx9("div", { className: "rounded-md border border-border/50 bg-muted/30 px-2 py-1 text-[11px] text-foreground whitespace-pre-wrap [overflow-wrap:anywhere]", children: text });
+  return /* @__PURE__ */ jsx27(CodeBlock, { code: text, language: "markdown", className: "text-[11px]" });
 };
 var inspectorEventRenderers = [
   renderInspectorToolEvent,
@@ -1817,7 +3493,7 @@ var inspectorEventRenderers = [
 ];
 
 // src/A2AChat.tsx
-import { jsx as jsx10, jsxs as jsxs4 } from "react/jsx-runtime";
+import { jsx as jsx28, jsxs as jsxs17 } from "react/jsx-runtime";
 function getStatusClasses(state) {
   if (state === "connected") {
     return "border-emerald-500/40 bg-emerald-500/10 text-emerald-700";
@@ -1882,11 +3558,11 @@ function A2AChatCard({
   });
   const isPanel = layout === "panel";
   const shouldShowRecentAgents = showRecentAgents ?? !isPanel;
-  return /* @__PURE__ */ jsxs4(Card, { className: cn("w-full max-w-5xl", isPanel && "flex h-full min-w-0 max-w-none flex-col overflow-hidden", className), children: [
-    showHeader ? /* @__PURE__ */ jsxs4(CardHeader, { className: cn("border-b border-border", isPanel && "shrink-0 gap-2 p-3"), children: [
-      /* @__PURE__ */ jsx10(CardTitle, { className: cn(isPanel && "text-base"), children: title }),
-      description ? /* @__PURE__ */ jsx10(CardDescription, { children: description }) : null,
-      showConnectionForm ? /* @__PURE__ */ jsxs4(
+  return /* @__PURE__ */ jsxs17(Card, { className: cn("w-full max-w-5xl", isPanel && "flex h-full min-w-0 max-w-none flex-col overflow-hidden", className), children: [
+    showHeader ? /* @__PURE__ */ jsxs17(CardHeader, { className: cn("border-b border-border", isPanel && "shrink-0 gap-2 p-3"), children: [
+      /* @__PURE__ */ jsx28(CardTitle, { className: cn(isPanel && "text-base"), children: title }),
+      description ? /* @__PURE__ */ jsx28(CardDescription, { children: description }) : null,
+      showConnectionForm ? /* @__PURE__ */ jsxs17(
         "form",
         {
           className: "mt-2 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]",
@@ -1895,7 +3571,7 @@ function A2AChatCard({
             handleConnect();
           },
           children: [
-            /* @__PURE__ */ jsx10(
+            /* @__PURE__ */ jsx28(
               Input,
               {
                 value: url,
@@ -1905,7 +3581,7 @@ function A2AChatCard({
                 list: agentSuggestions.length > 0 ? "a2a-agent-suggestions" : void 0
               }
             ),
-            agentSuggestions.length > 0 ? /* @__PURE__ */ jsx10("datalist", { id: "a2a-agent-suggestions", children: agentSuggestions.map((suggestion) => /* @__PURE__ */ jsx10(
+            agentSuggestions.length > 0 ? /* @__PURE__ */ jsx28("datalist", { id: "a2a-agent-suggestions", children: agentSuggestions.map((suggestion) => /* @__PURE__ */ jsx28(
               "option",
               {
                 value: suggestion.url,
@@ -1913,7 +3589,7 @@ function A2AChatCard({
               },
               suggestion.url
             )) }) : null,
-            /* @__PURE__ */ jsx10(
+            /* @__PURE__ */ jsx28(
               Button,
               {
                 type: "submit",
@@ -1926,8 +3602,8 @@ function A2AChatCard({
           ]
         }
       ) : null,
-      showConnectionStatus ? /* @__PURE__ */ jsxs4("div", { className: "mt-2 flex flex-wrap items-center gap-2", children: [
-        /* @__PURE__ */ jsx10(
+      showConnectionStatus ? /* @__PURE__ */ jsxs17("div", { className: "mt-2 flex flex-wrap items-center gap-2", children: [
+        /* @__PURE__ */ jsx28(
           "div",
           {
             className: cn(
@@ -1937,17 +3613,17 @@ function A2AChatCard({
             children: connectionMessage
           }
         ),
-        agentName ? /* @__PURE__ */ jsxs4("div", { className: "text-xs text-muted-foreground", children: [
+        agentName ? /* @__PURE__ */ jsxs17("div", { className: "text-xs text-muted-foreground", children: [
           "Agent: ",
           agentName
         ] }) : null
       ] }) : null
     ] }) : null,
-    /* @__PURE__ */ jsx10(CardContent, { className: cn(isPanel && "min-h-0 flex-1 p-3", contentClassName), children: /* @__PURE__ */ jsxs4("div", { className: cn("grid min-w-0 gap-4", isPanel ? "h-full min-h-0 grid-rows-[auto_1fr]" : "md:grid-cols-[15rem_1fr]"), children: [
-      shouldShowRecentAgents || showTaskSessions ? /* @__PURE__ */ jsxs4("aside", { className: cn("flex min-w-0 flex-col gap-4 border-b border-border pb-4", !isPanel && "md:border-r md:border-b-0 md:pb-0 md:pr-4"), children: [
-        shouldShowRecentAgents ? /* @__PURE__ */ jsxs4("div", { className: "flex flex-col gap-2", children: [
-          /* @__PURE__ */ jsx10("div", { className: "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground", children: "Recent Agents" }),
-          /* @__PURE__ */ jsx10("div", { className: "flex max-h-40 flex-col gap-1 overflow-y-auto", children: recentAgents.length > 0 ? recentAgents.map((agent) => /* @__PURE__ */ jsx10(
+    /* @__PURE__ */ jsx28(CardContent, { className: cn(isPanel && "min-h-0 flex-1 p-3", contentClassName), children: /* @__PURE__ */ jsxs17("div", { className: cn("grid min-w-0 gap-4", isPanel ? "h-full min-h-0 grid-rows-[auto_1fr]" : "md:grid-cols-[15rem_1fr]"), children: [
+      shouldShowRecentAgents || showTaskSessions ? /* @__PURE__ */ jsxs17("aside", { className: cn("flex min-w-0 flex-col gap-4 border-b border-border pb-4", !isPanel && "md:border-r md:border-b-0 md:pb-0 md:pr-4"), children: [
+        shouldShowRecentAgents ? /* @__PURE__ */ jsxs17("div", { className: "flex flex-col gap-2", children: [
+          /* @__PURE__ */ jsx28("div", { className: "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground", children: "Recent Agents" }),
+          /* @__PURE__ */ jsx28("div", { className: "flex max-h-40 flex-col gap-1 overflow-y-auto", children: recentAgents.length > 0 ? recentAgents.map((agent) => /* @__PURE__ */ jsx28(
             Button,
             {
               type: "button",
@@ -1956,13 +3632,13 @@ function A2AChatCard({
               onClick: () => handleSelectRecentAgent(agent.url),
               className: "justify-start",
               title: agent.url,
-              children: /* @__PURE__ */ jsx10("span", { className: "truncate", children: getAgentButtonLabel(agent.agentName, agent.url) })
+              children: /* @__PURE__ */ jsx28("span", { className: "truncate", children: getAgentButtonLabel(agent.agentName, agent.url) })
             },
             agent.url
-          )) : /* @__PURE__ */ jsx10("div", { className: "text-xs text-muted-foreground", children: "No recent agent connections yet." }) })
+          )) : /* @__PURE__ */ jsx28("div", { className: "text-xs text-muted-foreground", children: "No recent agent connections yet." }) })
         ] }) : null,
-        showTaskSessions ? /* @__PURE__ */ jsxs4("div", { className: "flex min-h-0 min-w-0 flex-1 flex-col gap-2", children: [
-          /* @__PURE__ */ jsxs4(
+        showTaskSessions ? /* @__PURE__ */ jsxs17("div", { className: "flex min-h-0 min-w-0 flex-1 flex-col gap-2", children: [
+          /* @__PURE__ */ jsxs17(
             Button,
             {
               type: "button",
@@ -1974,14 +3650,14 @@ function A2AChatCard({
               "aria-label": "New task",
               title: "New task",
               children: [
-                /* @__PURE__ */ jsx10(PlusIcon, {}),
-                /* @__PURE__ */ jsx10("span", { children: "New Task" })
+                /* @__PURE__ */ jsx28(PlusIcon2, {}),
+                /* @__PURE__ */ jsx28("span", { children: "New Task" })
               ]
             }
           ),
-          /* @__PURE__ */ jsx10("div", { className: "mt-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground", children: "Tasks" }),
-          /* @__PURE__ */ jsx10("div", { className: "flex min-w-0 flex-1 flex-col gap-1 overflow-y-auto pb-1", children: taskSessions.map((session) => /* @__PURE__ */ jsxs4("div", { className: "flex items-center gap-1", children: [
-            /* @__PURE__ */ jsx10(
+          /* @__PURE__ */ jsx28("div", { className: "mt-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground", children: "Tasks" }),
+          /* @__PURE__ */ jsx28("div", { className: "flex min-w-0 flex-1 flex-col gap-1 overflow-y-auto pb-1", children: taskSessions.map((session) => /* @__PURE__ */ jsxs17("div", { className: "flex items-center gap-1", children: [
+            /* @__PURE__ */ jsx28(
               Button,
               {
                 type: "button",
@@ -1990,10 +3666,10 @@ function A2AChatCard({
                 onClick: () => handleSelectTaskSession(session.id),
                 className: "min-w-0 flex-1 justify-start",
                 title: session.title,
-                children: /* @__PURE__ */ jsx10("span", { className: "truncate", children: session.title })
+                children: /* @__PURE__ */ jsx28("span", { className: "truncate", children: session.title })
               }
             ),
-            /* @__PURE__ */ jsx10(
+            /* @__PURE__ */ jsx28(
               Button,
               {
                 type: "button",
@@ -2002,16 +3678,15 @@ function A2AChatCard({
                 onClick: () => handleDeleteTaskSession(session.id),
                 "aria-label": `Delete task ${session.title}`,
                 title: `Delete task ${session.title}`,
-                children: /* @__PURE__ */ jsx10(Trash2Icon, {})
+                children: /* @__PURE__ */ jsx28(Trash2Icon, {})
               }
             )
           ] }, session.id)) })
         ] }) : null
       ] }) : null,
-      /* @__PURE__ */ jsxs4("div", { className: "flex min-h-0 min-w-0 flex-col gap-3", children: [
-        /* @__PURE__ */ jsx10(MessageBox, { messages, eventRenderers, className: cn(isPanel && "min-h-0 flex-1", messagesClassName) }),
-        /* @__PURE__ */ jsx10(Separator, {}),
-        /* @__PURE__ */ jsx10(
+      /* @__PURE__ */ jsxs17("div", { className: "flex min-h-0 min-w-0 flex-col gap-3", children: [
+        /* @__PURE__ */ jsx28(MessageBox, { messages, eventRenderers, className: cn(isPanel && "min-h-0 flex-1", messagesClassName) }),
+        /* @__PURE__ */ jsx28(
           InputBox,
           {
             value: taskInput,
@@ -2025,8 +3700,8 @@ function A2AChatCard({
   ] });
 }
 function A2AChat(props) {
-  const [queryClient] = React10.useState(() => new QueryClient());
-  return /* @__PURE__ */ jsx10(QueryClientProvider, { client: queryClient, children: /* @__PURE__ */ jsx10(A2AChatCard, { ...props }) });
+  const [queryClient] = React15.useState(() => new QueryClient());
+  return /* @__PURE__ */ jsx28(QueryClientProvider, { client: queryClient, children: /* @__PURE__ */ jsx28(A2AChatCard, { ...props }) });
 }
 export {
   A2AChat,

@@ -14,7 +14,6 @@ import {
 } from "./components/ui/card"
 import { Button } from "./components/ui/button"
 import { Input } from "./components/ui/input"
-import { Separator } from "./components/ui/separator"
 import { cn } from "./lib/utils"
 import { useA2AChat } from "./a2a/use-a2a-chat"
 import type { A2AChatPersistenceAdapter } from "./a2a/use-a2a-chat"
@@ -264,7 +263,6 @@ function A2AChatCard({
 
           <div className="flex min-h-0 min-w-0 flex-col gap-3">
             <MessageBox messages={messages} eventRenderers={eventRenderers} className={cn(isPanel && "min-h-0 flex-1", messagesClassName)} />
-            <Separator />
             <InputBox
               value={taskInput}
               onChange={setTaskInput}

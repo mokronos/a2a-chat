@@ -1,6 +1,30 @@
 import React from "react"
-import { ChevronDownIcon } from "lucide-react"
+import { MessageSquareIcon } from "lucide-react"
 
+import {
+  Conversation,
+  ConversationContent,
+  ConversationEmptyState,
+  ConversationScrollButton,
+} from "../ai-elements/conversation"
+import {
+  Message as MessageBubble,
+  MessageContent,
+  MessageResponse,
+} from "../ai-elements/message"
+import {
+  Reasoning,
+  ReasoningContent,
+  ReasoningTrigger,
+} from "../ai-elements/reasoning"
+import { Task, TaskContent, TaskItem, TaskTrigger } from "../ai-elements/task"
+import {
+  ChainOfThought,
+  ChainOfThoughtContent,
+  ChainOfThoughtHeader,
+  ChainOfThoughtStep,
+} from "../ai-elements/chain-of-thought"
+import { CodeBlock } from "../ai-elements/code-block"
 import { Spinner } from "../ui/spinner"
 import { cn } from "../../lib/utils"
 
@@ -62,134 +86,140 @@ function renderEventContent(
   return null
 }
 
-function MessageBox({ messages, eventRenderers = [], className }: MessageBoxProps) {
-  const containerRef = React.useRef<HTMLDivElement>(null)
-  const endRef = React.useRef<HTMLDivElement>(null)
-  const [expandedStatusHistory, setExpandedStatusHistory] = React.useState<Record<string, boolean>>({})
+function MessageStatus({ message }: { message: Message }) {
+  const statusHistory = message.statusHistory ?? []
+  const statusLabel = message.status ?? "Idle"
+  const indicator = message.isWorking ? (
+    <Spinner className="size-3" aria-hidden="true" />
+  ) : (
+    <span className="size-2 rounded-full bg-muted-foreground/60" aria-hidden="true" />
+  )
 
-  React.useLayoutEffect(() => {
-    const container = containerRef.current
-    if (!container) {
-      return
-    }
-
-    container.scrollTop = container.scrollHeight
-
-    const frameId = globalThis.requestAnimationFrame(() => {
-      container.scrollTop = container.scrollHeight
-      endRef.current?.scrollIntoView({ block: "end" })
-    })
-
-    return () => {
-      globalThis.cancelAnimationFrame(frameId)
-    }
-  }, [messages])
+  if (statusHistory.length <= 1) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        {indicator}
+        <span className="truncate">{statusLabel}</span>
+      </div>
+    )
+  }
 
   return (
-    <div
-      ref={containerRef}
-      className={cn("flex h-72 flex-col gap-3 overflow-auto rounded-md border border-border bg-background p-3", className)}
+    <Task defaultOpen={false}>
+      <TaskTrigger title={statusLabel}>
+        <div className="flex w-full cursor-pointer items-center gap-2 text-xs text-muted-foreground transition-colors hover:text-foreground">
+          {indicator}
+          <span className="truncate">{statusLabel}</span>
+          <span className="text-[11px]">({statusHistory.length})</span>
+        </div>
+      </TaskTrigger>
+      <TaskContent>
+        {statusHistory.map((statusItem) => (
+          <TaskItem key={statusItem.id} className="flex items-center gap-2 text-xs">
+            <span className="font-mono opacity-80">{formatEventTime(statusItem.at)}</span>
+            <span>{statusItem.label}</span>
+          </TaskItem>
+        ))}
+      </TaskContent>
+    </Task>
+  )
+}
+
+function MessageEventTimeline({
+  events,
+  eventRenderers,
+}: {
+  events: MessageTimelineEvent[]
+  eventRenderers: MessageTimelineEventRenderer[]
+}) {
+  return (
+    <ChainOfThought defaultOpen={false}>
+      <ChainOfThoughtHeader>Event Timeline ({events.length})</ChainOfThoughtHeader>
+      <ChainOfThoughtContent>
+        {events.map((eventItem) => {
+          const customContent = renderEventContent(eventItem, eventRenderers)
+
+          return (
+            <ChainOfThoughtStep
+              key={eventItem.id}
+              label={`${eventItem.kind}: ${eventItem.summary}`}
+              description={
+                eventItem.details
+                  ? `${formatEventTime(eventItem.at)} — ${eventItem.details}`
+                  : formatEventTime(eventItem.at)
+              }
+            >
+              {customContent ? (
+                <div className="min-w-0">{customContent}</div>
+              ) : eventItem.raw ? (
+                <CodeBlock code={eventItem.raw} language="json" className="text-[10px]" />
+              ) : null}
+            </ChainOfThoughtStep>
+          )
+        })}
+      </ChainOfThoughtContent>
+    </ChainOfThought>
+  )
+}
+
+function MessageBox({ messages, eventRenderers = [], className }: MessageBoxProps) {
+  return (
+    <Conversation
+      className={cn("h-72 rounded-md border border-border bg-background", className)}
     >
-      {messages.map((message) => {
-        const isUser = message.role === "user"
-        const statusHistory = message.statusHistory ?? []
-        const timelineEvents = message.events ?? []
-        const isHistoryExpanded = expandedStatusHistory[message.id] === true
-        const canExpandStatusHistory = statusHistory.length > 1
+      <ConversationContent className="gap-3 p-3">
+        {messages.length === 0 ? (
+          <ConversationEmptyState
+            icon={<MessageSquareIcon className="size-10" aria-hidden="true" />}
+            title="No messages yet"
+            description="Send a task to the agent to get started"
+          />
+        ) : (
+          messages.map((message) => {
+            const isUser = message.role === "user"
+            const timelineEvents = message.events ?? []
 
-        return (
-          <div
-            key={message.id}
-            className={isUser ? "ml-8 min-w-0 self-end" : "mr-8 min-w-0 self-start flex flex-col gap-1.5"}
-          >
-            {!isUser ? (
-              <div className="min-w-0 overflow-hidden rounded-2xl rounded-bl-sm border border-border/60 bg-muted/70">
-                <div className="inline-flex w-full items-center gap-2 border-b border-border/50 bg-muted/50 px-2.5 py-1 text-xs text-muted-foreground">
-                  {message.isWorking ? <Spinner className="size-3" aria-hidden="true" /> : <span className="size-2 rounded-full bg-muted-foreground/60" aria-hidden="true" />}
-                  <span className="flex-1 truncate">{message.status ?? "Idle"}</span>
-                  {canExpandStatusHistory ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setExpandedStatusHistory((current) => ({
-                          ...current,
-                          [message.id]: !isHistoryExpanded,
-                        }))
-                      }}
-                      className="inline-flex items-center gap-1 rounded-sm px-1 py-0.5 text-[11px] text-muted-foreground hover:bg-muted/70"
-                      aria-label={isHistoryExpanded ? "Collapse status history" : "Expand status history"}
-                    >
-                      <ChevronDownIcon className={`size-3 transition-transform ${isHistoryExpanded ? "rotate-180" : ""}`} />
-                      <span>{statusHistory.length}</span>
-                    </button>
-                  ) : null}
-                </div>
-                {canExpandStatusHistory && isHistoryExpanded ? (
-                  <div className="border-b border-border/40 bg-muted/30 px-2.5 py-1.5">
-                    <div className="flex flex-col gap-1 text-[11px] text-muted-foreground">
-                      {statusHistory.map((statusItem) => (
-                        <div key={statusItem.id} className="flex items-center gap-2">
-                          <span className="font-mono opacity-80">{formatEventTime(statusItem.at)}</span>
-                          <span>{statusItem.label}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
+            if (isUser) {
+              if (message.text.trim().length === 0) {
+                return null
+              }
+
+              return (
+                <MessageBubble from="user" key={message.id}>
+                  <MessageContent>
+                    <MessageResponse>{message.text}</MessageResponse>
+                  </MessageContent>
+                </MessageBubble>
+              )
+            }
+
+            return (
+              <MessageBubble from="assistant" key={message.id}>
+                <MessageStatus message={message} />
                 {timelineEvents.length > 0 ? (
-                  <div className="border-b border-border/40 bg-background/50 px-2.5 py-2">
-                    <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Event Timeline</div>
-                    <div className="flex flex-col gap-1.5">
-                      {timelineEvents.map((eventItem) => {
-                        const customContent = renderEventContent(eventItem, eventRenderers)
-
-                        return (
-                          <details key={eventItem.id} className="rounded-md border border-border/40 bg-background/70 px-2 py-1">
-                            <summary className="cursor-pointer list-none text-[11px] text-muted-foreground">
-                              <span className="font-mono">{formatEventTime(eventItem.at)}</span>{" "}
-                              <span className="font-medium text-foreground">{eventItem.kind}</span>{" "}
-                              <span>{eventItem.summary}</span>
-                            </summary>
-                            {eventItem.details ? (
-                              <div className="mt-1 text-[11px] text-muted-foreground">{eventItem.details}</div>
-                            ) : null}
-                            {customContent ? (
-                              <div className="mt-1">{customContent}</div>
-                            ) : eventItem.raw ? (
-                              <pre className="mt-1 overflow-x-auto rounded-sm bg-muted/40 p-1 text-[10px] text-muted-foreground">
-                                {eventItem.raw}
-                              </pre>
-                            ) : null}
-                          </details>
-                        )
-                      })}
-                    </div>
-                  </div>
+                  <MessageEventTimeline
+                    events={timelineEvents}
+                    eventRenderers={eventRenderers}
+                  />
                 ) : null}
                 {message.thinkingText && message.thinkingText.trim().length > 0 ? (
-                  <div className="border-t border-border/40 bg-muted/30 px-3 py-2 text-xs text-muted-foreground whitespace-pre-wrap [overflow-wrap:anywhere]">
-                    <span className="font-medium">Thinking:</span> {message.thinkingText}
-                  </div>
+                  <Reasoning className="w-full" isStreaming={message.isWorking === true}>
+                    <ReasoningTrigger />
+                    <ReasoningContent>{message.thinkingText}</ReasoningContent>
+                  </Reasoning>
                 ) : null}
                 {message.text.trim().length > 0 ? (
-                  <div className="px-3 py-2 text-foreground whitespace-pre-wrap [overflow-wrap:anywhere]">
-                    {message.text}
-                  </div>
+                  <MessageContent>
+                    <MessageResponse>{message.text}</MessageResponse>
+                  </MessageContent>
                 ) : null}
-              </div>
-            ) : null}
-            {isUser && message.text.trim().length > 0 ? (
-              <div
-                className="rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-primary-foreground whitespace-pre-wrap [overflow-wrap:anywhere]"
-              >
-                {message.text}
-              </div>
-            ) : null}
-          </div>
-        )
-      })}
-      <div ref={endRef} aria-hidden="true" />
-    </div>
+              </MessageBubble>
+            )
+          })
+        )}
+      </ConversationContent>
+      <ConversationScrollButton />
+    </Conversation>
   )
 }
 
