@@ -1,6 +1,6 @@
 import React from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { PlusIcon, Trash2Icon } from "lucide-react"
+import { PanelLeftCloseIcon, PanelLeftOpenIcon, PlusIcon, Trash2Icon } from "lucide-react"
 
 import { InputBox } from "./components/shared/input-box"
 import { MessageBox } from "./components/shared/message-box"
@@ -40,6 +40,10 @@ export type A2AChatProps = {
   showConnectionStatus?: boolean
   showRecentAgents?: boolean
   showTaskSessions?: boolean
+  /** Fill the parent's height (like the panel layout) while keeping the chosen layout. */
+  fillHeight?: boolean
+  /** Allow the sidebar (recent agents / tasks) to collapse to a thin rail. Default layout only. */
+  collapsibleSidebar?: boolean
   layout?: "default" | "panel"
   agentSuggestions?: A2AAgentSuggestion[]
   eventRenderers?: MessageTimelineEventRenderer[]
@@ -84,6 +88,8 @@ function A2AChatCard({
   showConnectionStatus = true,
   showRecentAgents,
   showTaskSessions = true,
+  fillHeight = false,
+  collapsibleSidebar = false,
   layout = "default",
   agentSuggestions = [],
   eventRenderers = inspectorEventRenderers,
@@ -117,11 +123,17 @@ function A2AChatCard({
 
   const isPanel = layout === "panel"
   const shouldShowRecentAgents = showRecentAgents ?? !isPanel
+  // The panel layout always fills its parent; default layout opts in via `fillHeight`.
+  const fills = isPanel || fillHeight
+  const sidebarVisible = shouldShowRecentAgents || showTaskSessions
+  const canCollapse = collapsibleSidebar && !isPanel
+  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false)
+  const collapsed = canCollapse && sidebarCollapsed
 
   return (
-    <Card className={cn("w-full max-w-5xl", isPanel && "flex h-full min-w-0 max-w-none flex-col overflow-hidden", className)}>
+    <Card className={cn("w-full max-w-5xl", fills && "flex h-full min-w-0 max-w-none flex-col overflow-hidden", className)}>
       {showHeader ? (
-        <CardHeader className={cn("border-b border-border", isPanel && "shrink-0 gap-2 p-3")}>
+        <CardHeader className={cn("border-b border-border", fills && "shrink-0", isPanel && "gap-2 p-3")}>
           <CardTitle className={cn(isPanel && "text-base")}>{title}</CardTitle>
           {description ? <CardDescription>{description}</CardDescription> : null}
 
@@ -183,10 +195,66 @@ function A2AChatCard({
         </CardHeader>
       ) : null}
 
-      <CardContent className={cn(isPanel && "min-h-0 flex-1 p-3", contentClassName)}>
-        <div className={cn("grid min-w-0 gap-4", isPanel ? "h-full min-h-0 grid-rows-[auto_1fr]" : "md:grid-cols-[15rem_1fr]")}>
-          {shouldShowRecentAgents || showTaskSessions ? (
+      <CardContent className={cn(fills && "min-h-0 flex-1", isPanel && "p-3", contentClassName)}>
+        <div
+          className={cn(
+            "grid min-w-0 gap-4",
+            isPanel
+              ? "h-full min-h-0 grid-rows-[auto_1fr]"
+              : cn(
+                  fillHeight && "h-full min-h-0",
+                  !sidebarVisible
+                    ? "grid-cols-1"
+                    : collapsed
+                      ? "md:grid-cols-[auto_1fr]"
+                      : "md:grid-cols-[15rem_1fr]",
+                ),
+          )}
+        >
+          {sidebarVisible && collapsed ? (
+            <div className="flex items-center justify-between gap-2 border-b border-border pb-2 md:flex-col md:items-stretch md:justify-start md:border-b-0 md:border-r md:pb-0 md:pr-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setSidebarCollapsed(false)}
+                aria-label="Expand sidebar"
+                title="Expand sidebar"
+              >
+                <PanelLeftOpenIcon />
+              </Button>
+              {showTaskSessions ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon-sm"
+                  onClick={handleCreateTaskSession}
+                  disabled={connectionState !== "connected"}
+                  aria-label="New task"
+                  title="New task"
+                >
+                  <PlusIcon />
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
+
+          {sidebarVisible && !collapsed ? (
             <aside className={cn("flex min-w-0 flex-col gap-4 border-b border-border pb-4", !isPanel && "md:border-r md:border-b-0 md:pb-0 md:pr-4")}>
+              {canCollapse ? (
+                <div className="flex items-center justify-end">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => setSidebarCollapsed(true)}
+                    aria-label="Collapse sidebar"
+                    title="Collapse sidebar"
+                  >
+                    <PanelLeftCloseIcon />
+                  </Button>
+                </div>
+              ) : null}
               {shouldShowRecentAgents ? (
                 <div className="flex flex-col gap-2">
                   <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -262,7 +330,7 @@ function A2AChatCard({
           ) : null}
 
           <div className="flex min-h-0 min-w-0 flex-col gap-3">
-            <MessageBox messages={messages} eventRenderers={eventRenderers} className={cn(isPanel && "min-h-0 flex-1", messagesClassName)} />
+            <MessageBox messages={messages} eventRenderers={eventRenderers} className={cn(fills && "min-h-0 flex-1", messagesClassName)} />
             <InputBox
               value={taskInput}
               onChange={setTaskInput}

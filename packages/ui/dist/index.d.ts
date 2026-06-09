@@ -69,6 +69,10 @@ type A2AChatProps = {
     showConnectionStatus?: boolean;
     showRecentAgents?: boolean;
     showTaskSessions?: boolean;
+    /** Fill the parent's height (like the panel layout) while keeping the chosen layout. */
+    fillHeight?: boolean;
+    /** Allow the sidebar (recent agents / tasks) to collapse to a thin rail. Default layout only. */
+    collapsibleSidebar?: boolean;
     layout?: "default" | "panel";
     agentSuggestions?: A2AAgentSuggestion[];
     eventRenderers?: MessageTimelineEventRenderer[];

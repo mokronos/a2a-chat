@@ -1,7 +1,7 @@
 // src/A2AChat.tsx
 import React15 from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { PlusIcon as PlusIcon2, Trash2Icon } from "lucide-react";
+import { PanelLeftCloseIcon, PanelLeftOpenIcon, PlusIcon as PlusIcon2, Trash2Icon } from "lucide-react";
 
 // src/components/shared/input-box.tsx
 import "react";
@@ -3526,6 +3526,8 @@ function A2AChatCard({
   showConnectionStatus = true,
   showRecentAgents,
   showTaskSessions = true,
+  fillHeight = false,
+  collapsibleSidebar = false,
   layout = "default",
   agentSuggestions = [],
   eventRenderers = inspectorEventRenderers,
@@ -3558,8 +3560,13 @@ function A2AChatCard({
   });
   const isPanel = layout === "panel";
   const shouldShowRecentAgents = showRecentAgents ?? !isPanel;
-  return /* @__PURE__ */ jsxs17(Card, { className: cn("w-full max-w-5xl", isPanel && "flex h-full min-w-0 max-w-none flex-col overflow-hidden", className), children: [
-    showHeader ? /* @__PURE__ */ jsxs17(CardHeader, { className: cn("border-b border-border", isPanel && "shrink-0 gap-2 p-3"), children: [
+  const fills = isPanel || fillHeight;
+  const sidebarVisible = shouldShowRecentAgents || showTaskSessions;
+  const canCollapse = collapsibleSidebar && !isPanel;
+  const [sidebarCollapsed, setSidebarCollapsed] = React15.useState(false);
+  const collapsed = canCollapse && sidebarCollapsed;
+  return /* @__PURE__ */ jsxs17(Card, { className: cn("w-full max-w-5xl", fills && "flex h-full min-w-0 max-w-none flex-col overflow-hidden", className), children: [
+    showHeader ? /* @__PURE__ */ jsxs17(CardHeader, { className: cn("border-b border-border", fills && "shrink-0", isPanel && "gap-2 p-3"), children: [
       /* @__PURE__ */ jsx28(CardTitle, { className: cn(isPanel && "text-base"), children: title }),
       description ? /* @__PURE__ */ jsx28(CardDescription, { children: description }) : null,
       showConnectionForm ? /* @__PURE__ */ jsxs17(
@@ -3619,84 +3626,135 @@ function A2AChatCard({
         ] }) : null
       ] }) : null
     ] }) : null,
-    /* @__PURE__ */ jsx28(CardContent, { className: cn(isPanel && "min-h-0 flex-1 p-3", contentClassName), children: /* @__PURE__ */ jsxs17("div", { className: cn("grid min-w-0 gap-4", isPanel ? "h-full min-h-0 grid-rows-[auto_1fr]" : "md:grid-cols-[15rem_1fr]"), children: [
-      shouldShowRecentAgents || showTaskSessions ? /* @__PURE__ */ jsxs17("aside", { className: cn("flex min-w-0 flex-col gap-4 border-b border-border pb-4", !isPanel && "md:border-r md:border-b-0 md:pb-0 md:pr-4"), children: [
-        shouldShowRecentAgents ? /* @__PURE__ */ jsxs17("div", { className: "flex flex-col gap-2", children: [
-          /* @__PURE__ */ jsx28("div", { className: "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground", children: "Recent Agents" }),
-          /* @__PURE__ */ jsx28("div", { className: "flex max-h-40 flex-col gap-1 overflow-y-auto", children: recentAgents.length > 0 ? recentAgents.map((agent) => /* @__PURE__ */ jsx28(
-            Button,
-            {
-              type: "button",
-              variant: agent.url === url ? "default" : "outline",
-              size: "sm",
-              onClick: () => handleSelectRecentAgent(agent.url),
-              className: "justify-start",
-              title: agent.url,
-              children: /* @__PURE__ */ jsx28("span", { className: "truncate", children: getAgentButtonLabel(agent.agentName, agent.url) })
-            },
-            agent.url
-          )) : /* @__PURE__ */ jsx28("div", { className: "text-xs text-muted-foreground", children: "No recent agent connections yet." }) })
-        ] }) : null,
-        showTaskSessions ? /* @__PURE__ */ jsxs17("div", { className: "flex min-h-0 min-w-0 flex-1 flex-col gap-2", children: [
-          /* @__PURE__ */ jsxs17(
-            Button,
-            {
-              type: "button",
-              variant: "outline",
-              size: "sm",
-              onClick: handleCreateTaskSession,
-              disabled: connectionState !== "connected",
-              className: "w-full justify-start",
-              "aria-label": "New task",
-              title: "New task",
-              children: [
-                /* @__PURE__ */ jsx28(PlusIcon2, {}),
-                /* @__PURE__ */ jsx28("span", { children: "New Task" })
-              ]
-            }
-          ),
-          /* @__PURE__ */ jsx28("div", { className: "mt-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground", children: "Tasks" }),
-          /* @__PURE__ */ jsx28("div", { className: "flex min-w-0 flex-1 flex-col gap-1 overflow-y-auto pb-1", children: taskSessions.map((session) => /* @__PURE__ */ jsxs17("div", { className: "flex items-center gap-1", children: [
-            /* @__PURE__ */ jsx28(
-              Button,
-              {
-                type: "button",
-                variant: session.id === activeTaskSessionId ? "default" : "outline",
-                size: "sm",
-                onClick: () => handleSelectTaskSession(session.id),
-                className: "min-w-0 flex-1 justify-start",
-                title: session.title,
-                children: /* @__PURE__ */ jsx28("span", { className: "truncate", children: session.title })
-              }
-            ),
+    /* @__PURE__ */ jsx28(CardContent, { className: cn(fills && "min-h-0 flex-1", isPanel && "p-3", contentClassName), children: /* @__PURE__ */ jsxs17(
+      "div",
+      {
+        className: cn(
+          "grid min-w-0 gap-4",
+          isPanel ? "h-full min-h-0 grid-rows-[auto_1fr]" : cn(
+            fillHeight && "h-full min-h-0",
+            !sidebarVisible ? "grid-cols-1" : collapsed ? "md:grid-cols-[auto_1fr]" : "md:grid-cols-[15rem_1fr]"
+          )
+        ),
+        children: [
+          sidebarVisible && collapsed ? /* @__PURE__ */ jsxs17("div", { className: "flex items-center justify-between gap-2 border-b border-border pb-2 md:flex-col md:items-stretch md:justify-start md:border-b-0 md:border-r md:pb-0 md:pr-2", children: [
             /* @__PURE__ */ jsx28(
               Button,
               {
                 type: "button",
                 variant: "ghost",
                 size: "icon-sm",
-                onClick: () => handleDeleteTaskSession(session.id),
-                "aria-label": `Delete task ${session.title}`,
-                title: `Delete task ${session.title}`,
-                children: /* @__PURE__ */ jsx28(Trash2Icon, {})
+                onClick: () => setSidebarCollapsed(false),
+                "aria-label": "Expand sidebar",
+                title: "Expand sidebar",
+                children: /* @__PURE__ */ jsx28(PanelLeftOpenIcon, {})
+              }
+            ),
+            showTaskSessions ? /* @__PURE__ */ jsx28(
+              Button,
+              {
+                type: "button",
+                variant: "outline",
+                size: "icon-sm",
+                onClick: handleCreateTaskSession,
+                disabled: connectionState !== "connected",
+                "aria-label": "New task",
+                title: "New task",
+                children: /* @__PURE__ */ jsx28(PlusIcon2, {})
+              }
+            ) : null
+          ] }) : null,
+          sidebarVisible && !collapsed ? /* @__PURE__ */ jsxs17("aside", { className: cn("flex min-w-0 flex-col gap-4 border-b border-border pb-4", !isPanel && "md:border-r md:border-b-0 md:pb-0 md:pr-4"), children: [
+            canCollapse ? /* @__PURE__ */ jsx28("div", { className: "flex items-center justify-end", children: /* @__PURE__ */ jsx28(
+              Button,
+              {
+                type: "button",
+                variant: "ghost",
+                size: "icon-sm",
+                onClick: () => setSidebarCollapsed(true),
+                "aria-label": "Collapse sidebar",
+                title: "Collapse sidebar",
+                children: /* @__PURE__ */ jsx28(PanelLeftCloseIcon, {})
+              }
+            ) }) : null,
+            shouldShowRecentAgents ? /* @__PURE__ */ jsxs17("div", { className: "flex flex-col gap-2", children: [
+              /* @__PURE__ */ jsx28("div", { className: "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground", children: "Recent Agents" }),
+              /* @__PURE__ */ jsx28("div", { className: "flex max-h-40 flex-col gap-1 overflow-y-auto", children: recentAgents.length > 0 ? recentAgents.map((agent) => /* @__PURE__ */ jsx28(
+                Button,
+                {
+                  type: "button",
+                  variant: agent.url === url ? "default" : "outline",
+                  size: "sm",
+                  onClick: () => handleSelectRecentAgent(agent.url),
+                  className: "justify-start",
+                  title: agent.url,
+                  children: /* @__PURE__ */ jsx28("span", { className: "truncate", children: getAgentButtonLabel(agent.agentName, agent.url) })
+                },
+                agent.url
+              )) : /* @__PURE__ */ jsx28("div", { className: "text-xs text-muted-foreground", children: "No recent agent connections yet." }) })
+            ] }) : null,
+            showTaskSessions ? /* @__PURE__ */ jsxs17("div", { className: "flex min-h-0 min-w-0 flex-1 flex-col gap-2", children: [
+              /* @__PURE__ */ jsxs17(
+                Button,
+                {
+                  type: "button",
+                  variant: "outline",
+                  size: "sm",
+                  onClick: handleCreateTaskSession,
+                  disabled: connectionState !== "connected",
+                  className: "w-full justify-start",
+                  "aria-label": "New task",
+                  title: "New task",
+                  children: [
+                    /* @__PURE__ */ jsx28(PlusIcon2, {}),
+                    /* @__PURE__ */ jsx28("span", { children: "New Task" })
+                  ]
+                }
+              ),
+              /* @__PURE__ */ jsx28("div", { className: "mt-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground", children: "Tasks" }),
+              /* @__PURE__ */ jsx28("div", { className: "flex min-w-0 flex-1 flex-col gap-1 overflow-y-auto pb-1", children: taskSessions.map((session) => /* @__PURE__ */ jsxs17("div", { className: "flex items-center gap-1", children: [
+                /* @__PURE__ */ jsx28(
+                  Button,
+                  {
+                    type: "button",
+                    variant: session.id === activeTaskSessionId ? "default" : "outline",
+                    size: "sm",
+                    onClick: () => handleSelectTaskSession(session.id),
+                    className: "min-w-0 flex-1 justify-start",
+                    title: session.title,
+                    children: /* @__PURE__ */ jsx28("span", { className: "truncate", children: session.title })
+                  }
+                ),
+                /* @__PURE__ */ jsx28(
+                  Button,
+                  {
+                    type: "button",
+                    variant: "ghost",
+                    size: "icon-sm",
+                    onClick: () => handleDeleteTaskSession(session.id),
+                    "aria-label": `Delete task ${session.title}`,
+                    title: `Delete task ${session.title}`,
+                    children: /* @__PURE__ */ jsx28(Trash2Icon, {})
+                  }
+                )
+              ] }, session.id)) })
+            ] }) : null
+          ] }) : null,
+          /* @__PURE__ */ jsxs17("div", { className: "flex min-h-0 min-w-0 flex-col gap-3", children: [
+            /* @__PURE__ */ jsx28(MessageBox, { messages, eventRenderers, className: cn(fills && "min-h-0 flex-1", messagesClassName) }),
+            /* @__PURE__ */ jsx28(
+              InputBox,
+              {
+                value: taskInput,
+                onChange: setTaskInput,
+                onSubmit: handleSubmitTask,
+                disabled: connectionState !== "connected" || isSending
               }
             )
-          ] }, session.id)) })
-        ] }) : null
-      ] }) : null,
-      /* @__PURE__ */ jsxs17("div", { className: "flex min-h-0 min-w-0 flex-col gap-3", children: [
-        /* @__PURE__ */ jsx28(MessageBox, { messages, eventRenderers, className: cn(isPanel && "min-h-0 flex-1", messagesClassName) }),
-        /* @__PURE__ */ jsx28(
-          InputBox,
-          {
-            value: taskInput,
-            onChange: setTaskInput,
-            onSubmit: handleSubmitTask,
-            disabled: connectionState !== "connected" || isSending
-          }
-        )
-      ] })
-    ] }) })
+          ] })
+        ]
+      }
+    ) })
   ] });
 }
 function A2AChat(props) {
