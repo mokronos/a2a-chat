@@ -1,10 +1,12 @@
 import React from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { PanelLeftCloseIcon, PanelLeftOpenIcon, PlusIcon, Trash2Icon } from "lucide-react"
+import { ImageIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, PencilIcon, PlusIcon, SearchIcon, Trash2Icon } from "lucide-react"
 
 import { InputBox } from "./components/shared/input-box"
 import { MessageBox } from "./components/shared/message-box"
 import type { MessageTimelineEventRenderer } from "./components/shared/message-box"
+import { Suggestion, Suggestions } from "./components/ai-elements/suggestion"
+import type { PromptInputMessage } from "./components/ai-elements/prompt-input"
 import {
   Card,
   CardContent,
@@ -24,6 +26,12 @@ export type A2AAgentSuggestion = {
   label: string
   url: string
   description?: string
+}
+
+export type A2AChatPromptSuggestion = {
+  label: string
+  prompt?: string
+  icon?: React.ReactNode
 }
 
 export type A2AChatProps = {
@@ -46,9 +54,18 @@ export type A2AChatProps = {
   collapsibleSidebar?: boolean
   layout?: "default" | "panel"
   agentSuggestions?: A2AAgentSuggestion[]
+  promptSuggestions?: A2AChatPromptSuggestion[]
+  welcomeMessage?: string
+  inputPlaceholder?: string
   eventRenderers?: MessageTimelineEventRenderer[]
   persistence?: A2AChatPersistenceAdapter
 }
+
+const defaultPromptSuggestions: A2AChatPromptSuggestion[] = [
+  { label: "Create an image", icon: <ImageIcon className="size-4" aria-hidden="true" /> },
+  { label: "Write or edit", icon: <PencilIcon className="size-4" aria-hidden="true" /> },
+  { label: "Look something up", icon: <SearchIcon className="size-4" aria-hidden="true" /> },
+]
 
 function getStatusClasses(state: ConnectionState) {
   if (state === "connected") {
@@ -92,6 +109,9 @@ function A2AChatCard({
   collapsibleSidebar = false,
   layout = "default",
   agentSuggestions = [],
+  promptSuggestions = defaultPromptSuggestions,
+  welcomeMessage = "How can I help?",
+  inputPlaceholder = "Ask anything",
   eventRenderers = inspectorEventRenderers,
   persistence,
 }: A2AChatProps) {
@@ -129,6 +149,31 @@ function A2AChatCard({
   const canCollapse = collapsibleSidebar && !isPanel
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false)
   const collapsed = canCollapse && sidebarCollapsed
+  const isEmpty = messages.length === 0
+
+  const submitTask = React.useCallback(
+    (message?: PromptInputMessage) => {
+      const files = message?.files ?? []
+
+      const baseText = message?.text ?? taskInput
+      const fileSummary = files
+        .map((file) => file.filename)
+        .filter((filename): filename is string => typeof filename === "string" && filename.length > 0)
+        .join(", ")
+      const taskText = fileSummary.length > 0 ? `${baseText}\n\nAttached files: ${fileSummary}` : baseText
+
+      handleSubmitTask(taskText)
+    },
+    [handleSubmitTask, setTaskInput, taskInput]
+  )
+
+  const handlePromptSuggestion = React.useCallback(
+    (suggestion: A2AChatPromptSuggestion) => {
+      const prompt = suggestion.prompt ?? suggestion.label
+      setTaskInput(prompt)
+    },
+    [setTaskInput]
+  )
 
   return (
     <Card className={cn("w-full max-w-5xl", fills && "flex h-full min-w-0 max-w-none flex-col overflow-hidden", className)}>
@@ -329,14 +374,55 @@ function A2AChatCard({
             </aside>
           ) : null}
 
-          <div className="flex min-h-0 min-w-0 flex-col gap-3">
-            <MessageBox messages={messages} eventRenderers={eventRenderers} className={cn(fills && "min-h-0 flex-1", messagesClassName)} />
-            <InputBox
-              value={taskInput}
-              onChange={setTaskInput}
-              onSubmit={handleSubmitTask}
-              disabled={connectionState !== "connected" || isSending}
-            />
+          <div
+            className={cn(
+              "flex min-h-0 min-w-0 flex-col gap-3 transition-all duration-300",
+              isEmpty ? "justify-center py-8" : "justify-end",
+              fills && "h-full",
+            )}
+          >
+            {!isEmpty ? (
+              <MessageBox messages={messages} eventRenderers={eventRenderers} className={cn(fills && "min-h-0 flex-1", messagesClassName)} />
+            ) : null}
+            {isEmpty ? (
+              <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-6">
+                {welcomeMessage ? (
+                  <h2 className="text-center text-3xl font-medium tracking-tight text-foreground sm:text-4xl">
+                    {welcomeMessage}
+                  </h2>
+                ) : null}
+                <InputBox
+                  value={taskInput}
+                  onChange={setTaskInput}
+                  onSubmit={submitTask}
+                  disabled={connectionState !== "connected" || isSending}
+                  placeholder={inputPlaceholder}
+                  className="w-full"
+                />
+                {promptSuggestions.length > 0 ? (
+                  <Suggestions>
+                    {promptSuggestions.map((suggestion) => (
+                      <Suggestion
+                        key={suggestion.label}
+                        suggestion={suggestion.label}
+                        onClick={() => handlePromptSuggestion(suggestion)}
+                      >
+                        {suggestion.icon}
+                        <span>{suggestion.label}</span>
+                      </Suggestion>
+                    ))}
+                  </Suggestions>
+                ) : null}
+              </div>
+            ) : (
+              <InputBox
+                value={taskInput}
+                onChange={setTaskInput}
+                onSubmit={submitTask}
+                disabled={connectionState !== "connected" || isSending}
+                placeholder={inputPlaceholder}
+              />
+            )}
           </div>
         </div>
       </CardContent>

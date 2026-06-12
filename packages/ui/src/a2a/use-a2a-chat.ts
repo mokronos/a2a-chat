@@ -121,7 +121,7 @@ export type UseA2AChatResult = {
   activeTaskSessionId: string | null
   handleConnect: () => void
   handleSelectRecentAgent: (agentUrl: string) => void
-  handleSubmitTask: () => void
+  handleSubmitTask: (taskTextOverride?: string) => void
   handleCreateTaskSession: () => void
   handleSelectTaskSession: (sessionId: string) => void
   handleDeleteTaskSession: (sessionId: string) => void
@@ -1326,8 +1326,8 @@ export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
     void hydratePersistedSessions(baseUrl)
   }, [baseUrl, hydratePersistedSessions])
 
-  const handleSubmitTask = React.useCallback(() => {
-    const taskText = taskInput.trim()
+  const handleSubmitTask = React.useCallback((taskTextOverride?: string) => {
+    const taskText = (taskTextOverride ?? taskInput).trim()
     const connection = connectionQuery.data
     if (
       taskText.length === 0 ||

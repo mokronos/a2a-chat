@@ -1,10 +1,11 @@
 // src/A2AChat.tsx
-import React15 from "react";
+import React16 from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { PanelLeftCloseIcon, PanelLeftOpenIcon, PlusIcon as PlusIcon2, Trash2Icon } from "lucide-react";
+import { ImageIcon as ImageIcon2, PanelLeftCloseIcon, PanelLeftOpenIcon, PencilIcon, PlusIcon as PlusIcon2, SearchIcon as SearchIcon3, Trash2Icon } from "lucide-react";
 
 // src/components/shared/input-box.tsx
 import "react";
+import { MicIcon, PaperclipIcon, XIcon as XIcon3 } from "lucide-react";
 
 // src/components/ui/command.tsx
 import "react";
@@ -226,6 +227,59 @@ import "react";
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
 import { ChevronRightIcon, CheckIcon as CheckIcon2 } from "lucide-react";
 import { jsx as jsx7, jsxs as jsxs3 } from "react/jsx-runtime";
+function DropdownMenu({ ...props }) {
+  return /* @__PURE__ */ jsx7(MenuPrimitive.Root, { "data-slot": "dropdown-menu", ...props });
+}
+function DropdownMenuTrigger({ ...props }) {
+  return /* @__PURE__ */ jsx7(MenuPrimitive.Trigger, { "data-slot": "dropdown-menu-trigger", ...props });
+}
+function DropdownMenuContent({
+  align = "start",
+  alignOffset = 0,
+  side = "bottom",
+  sideOffset = 4,
+  className,
+  ...props
+}) {
+  return /* @__PURE__ */ jsx7(MenuPrimitive.Portal, { children: /* @__PURE__ */ jsx7(
+    MenuPrimitive.Positioner,
+    {
+      className: "isolate z-50 outline-none",
+      align,
+      alignOffset,
+      side,
+      sideOffset,
+      children: /* @__PURE__ */ jsx7(
+        MenuPrimitive.Popup,
+        {
+          "data-slot": "dropdown-menu-content",
+          className: cn("z-50 max-h-(--available-height) w-(--anchor-width) min-w-32 origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 outline-none data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:overflow-hidden data-closed:fade-out-0 data-closed:zoom-out-95", className),
+          ...props
+        }
+      )
+    }
+  ) });
+}
+function DropdownMenuItem({
+  className,
+  inset,
+  variant = "default",
+  ...props
+}) {
+  return /* @__PURE__ */ jsx7(
+    MenuPrimitive.Item,
+    {
+      "data-slot": "dropdown-menu-item",
+      "data-inset": inset,
+      "data-variant": variant,
+      className: cn(
+        "group/dropdown-menu-item relative flex min-h-7 cursor-default items-center gap-2 rounded-md px-2 py-1 text-xs/relaxed outline-hidden select-none focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-inset:pl-7.5 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 data-[variant=destructive]:focus:text-destructive dark:data-[variant=destructive]:focus:bg-destructive/20 data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5 data-[variant=destructive]:*:[svg]:text-destructive",
+        className
+      ),
+      ...props
+    }
+  );
+}
 
 // src/components/ui/hover-card.tsx
 import { PreviewCard as PreviewCardPrimitive } from "@base-ui/react/preview-card";
@@ -257,6 +311,47 @@ function Spinner({ className, ...props }) {
 // src/components/ui/tooltip.tsx
 import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
 import { jsx as jsx11, jsxs as jsxs5 } from "react/jsx-runtime";
+function Tooltip({ ...props }) {
+  return /* @__PURE__ */ jsx11(TooltipPrimitive.Root, { "data-slot": "tooltip", ...props });
+}
+function TooltipTrigger({ ...props }) {
+  return /* @__PURE__ */ jsx11(TooltipPrimitive.Trigger, { "data-slot": "tooltip-trigger", ...props });
+}
+function TooltipContent({
+  className,
+  side = "top",
+  sideOffset = 4,
+  align = "center",
+  alignOffset = 0,
+  children,
+  ...props
+}) {
+  return /* @__PURE__ */ jsx11(TooltipPrimitive.Portal, { children: /* @__PURE__ */ jsx11(
+    TooltipPrimitive.Positioner,
+    {
+      align,
+      alignOffset,
+      side,
+      sideOffset,
+      className: "isolate z-50",
+      children: /* @__PURE__ */ jsxs5(
+        TooltipPrimitive.Popup,
+        {
+          "data-slot": "tooltip-content",
+          className: cn(
+            "z-50 inline-flex w-fit max-w-xs origin-(--transform-origin) items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs text-background has-data-[slot=kbd]:pr-1.5 data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 **:data-[slot=kbd]:relative **:data-[slot=kbd]:isolate **:data-[slot=kbd]:z-50 **:data-[slot=kbd]:rounded-sm data-[state=delayed-open]:animate-in data-[state=delayed-open]:fade-in-0 data-[state=delayed-open]:zoom-in-95 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+            className
+          ),
+          ...props,
+          children: [
+            children,
+            /* @__PURE__ */ jsx11(TooltipPrimitive.Arrow, { className: "z-50 size-2.5 translate-y-[calc(-50%-2px)] rotate-45 rounded-[2px] bg-foreground fill-foreground data-[side=bottom]:top-1 data-[side=inline-end]:top-1/2! data-[side=inline-end]:-left-1 data-[side=inline-end]:-translate-y-1/2 data-[side=inline-start]:top-1/2! data-[side=inline-start]:-right-1 data-[side=inline-start]:-translate-y-1/2 data-[side=left]:top-1/2! data-[side=left]:-right-1 data-[side=left]:-translate-y-1/2 data-[side=right]:top-1/2! data-[side=right]:-left-1 data-[side=right]:-translate-y-1/2 data-[side=top]:-bottom-2.5" })
+          ]
+        }
+      )
+    }
+  ) });
+}
 
 // src/components/ai-elements/prompt-input.tsx
 import {
@@ -314,6 +409,24 @@ var usePromptInputAttachments = () => {
   return context;
 };
 var LocalReferencedSourcesContext = createContext(null);
+var PromptInputActionAddAttachments = ({
+  label = "Add photos or files",
+  ...props
+}) => {
+  const attachments = usePromptInputAttachments();
+  const handleSelect = useCallback(
+    (e) => {
+      e.preventDefault();
+      attachments.openFileDialog();
+    },
+    [attachments]
+  );
+  return /* @__PURE__ */ jsxs6(DropdownMenuItem, { ...props, onClick: handleSelect, children: [
+    /* @__PURE__ */ jsx12(ImageIcon, { className: "mr-2 size-4" }),
+    " ",
+    label
+  ] });
+};
 var PromptInput = ({
   className,
   accept,
@@ -769,6 +882,48 @@ var PromptInputTools = ({
     ...props
   }
 );
+var PromptInputButton = ({
+  variant = "ghost",
+  className,
+  size,
+  tooltip,
+  ...props
+}) => {
+  const newSize = size ?? (Children.count(props.children) > 1 ? "sm" : "icon-sm");
+  const button = /* @__PURE__ */ jsx12(
+    InputGroupButton,
+    {
+      className: cn(className),
+      size: newSize,
+      type: "button",
+      variant,
+      ...props
+    }
+  );
+  if (!tooltip) {
+    return button;
+  }
+  const tooltipContent = typeof tooltip === "string" ? tooltip : tooltip.content;
+  const shortcut = typeof tooltip === "string" ? void 0 : tooltip.shortcut;
+  const side = typeof tooltip === "string" ? "top" : tooltip.side ?? "top";
+  return /* @__PURE__ */ jsxs6(Tooltip, { children: [
+    /* @__PURE__ */ jsx12(TooltipTrigger, { children: button }),
+    /* @__PURE__ */ jsxs6(TooltipContent, { side, children: [
+      tooltipContent,
+      shortcut && /* @__PURE__ */ jsx12("span", { className: "ml-2 text-muted-foreground", children: shortcut })
+    ] })
+  ] });
+};
+var PromptInputActionMenu = (props) => /* @__PURE__ */ jsx12(DropdownMenu, { ...props });
+var PromptInputActionMenuTrigger = ({
+  className,
+  children,
+  ...props
+}) => /* @__PURE__ */ jsx12(DropdownMenuTrigger, { render: /* @__PURE__ */ jsx12(PromptInputButton, { className, ...props }), children: children ?? /* @__PURE__ */ jsx12(PlusIcon, { className: "size-4" }) });
+var PromptInputActionMenuContent = ({
+  className,
+  ...props
+}) => /* @__PURE__ */ jsx12(DropdownMenuContent, { align: "start", className: cn(className), ...props });
 var PromptInputSubmit = ({
   className,
   variant = "default",
@@ -816,29 +971,74 @@ var PromptInputSubmit = ({
 
 // src/components/shared/input-box.tsx
 import { jsx as jsx13, jsxs as jsxs7 } from "react/jsx-runtime";
-function InputBox({ value, onChange, onSubmit, disabled = false }) {
+function AttachmentList() {
+  const attachments = usePromptInputAttachments();
+  if (attachments.files.length === 0) {
+    return null;
+  }
+  return /* @__PURE__ */ jsx13("div", { className: "flex flex-wrap gap-2 px-3 pt-3", children: attachments.files.map((file) => /* @__PURE__ */ jsxs7(
+    "div",
+    {
+      className: "flex max-w-56 items-center gap-2 rounded-full border border-border bg-muted px-3 py-1 text-xs text-muted-foreground",
+      children: [
+        /* @__PURE__ */ jsx13(PaperclipIcon, { className: "size-3", "aria-hidden": "true" }),
+        /* @__PURE__ */ jsx13("span", { className: "truncate", children: file.filename ?? "Attachment" }),
+        /* @__PURE__ */ jsx13(
+          "button",
+          {
+            type: "button",
+            className: "rounded-full text-muted-foreground transition-colors hover:text-foreground",
+            onClick: () => attachments.remove(file.id),
+            "aria-label": `Remove ${file.filename ?? "attachment"}`,
+            children: /* @__PURE__ */ jsx13(XIcon3, { className: "size-3", "aria-hidden": "true" })
+          }
+        )
+      ]
+    },
+    file.id
+  )) });
+}
+function InputBox({
+  value,
+  onChange,
+  onSubmit,
+  disabled = false,
+  className,
+  placeholder = "Ask anything",
+  submitLabel = "Send message"
+}) {
   const canSubmit = !disabled && value.trim().length > 0;
   return /* @__PURE__ */ jsxs7(
     PromptInput,
     {
-      onSubmit: () => {
-        if (canSubmit) {
-          onSubmit();
+      className: cn("rounded-[2rem] border-border bg-muted/60 shadow-sm", className),
+      multiple: true,
+      onSubmit: (message) => {
+        if (!disabled && message.text.trim().length > 0) {
+          onSubmit(message);
         }
       },
       children: [
+        /* @__PURE__ */ jsx13(AttachmentList, {}),
         /* @__PURE__ */ jsx13(PromptInputBody, { children: /* @__PURE__ */ jsx13(
           PromptInputTextarea,
           {
-            placeholder: "Write a message...",
+            placeholder,
             value,
             onChange: (event) => onChange(event.currentTarget.value),
-            disabled
+            disabled,
+            className: "min-h-14 px-4 py-4 text-base"
           }
         ) }),
-        /* @__PURE__ */ jsxs7(PromptInputFooter, { children: [
-          /* @__PURE__ */ jsx13(PromptInputTools, {}),
-          /* @__PURE__ */ jsx13(PromptInputSubmit, { disabled: !canSubmit, "aria-label": "Send message" })
+        /* @__PURE__ */ jsxs7(PromptInputFooter, { className: "px-3 pb-3", children: [
+          /* @__PURE__ */ jsxs7(PromptInputTools, { children: [
+            /* @__PURE__ */ jsxs7(PromptInputActionMenu, { children: [
+              /* @__PURE__ */ jsx13(PromptInputActionMenuTrigger, { tooltip: "Attach files", disabled, children: /* @__PURE__ */ jsx13(PaperclipIcon, { className: "size-4" }) }),
+              /* @__PURE__ */ jsx13(PromptInputActionMenuContent, { children: /* @__PURE__ */ jsx13(PromptInputActionAddAttachments, {}) })
+            ] }),
+            /* @__PURE__ */ jsx13(PromptInputButton, { tooltip: "Voice input", disabled, "aria-label": "Voice input", children: /* @__PURE__ */ jsx13(MicIcon, { className: "size-4" }) })
+          ] }),
+          /* @__PURE__ */ jsx13(PromptInputSubmit, { disabled: !canSubmit, "aria-label": submitLabel })
         ] })
       ]
     }
@@ -1853,15 +2053,42 @@ function MessageBox({ messages, eventRenderers = [], className }) {
   );
 }
 
-// src/components/ui/card.tsx
+// src/components/ai-elements/suggestion.tsx
 import "react";
 import { jsx as jsx25 } from "react/jsx-runtime";
+function Suggestions({ className, ...props }) {
+  return /* @__PURE__ */ jsx25(
+    "div",
+    {
+      className: cn("flex flex-wrap items-center justify-center gap-2", className),
+      ...props
+    }
+  );
+}
+function Suggestion({ className, suggestion, onClick, children, ...props }) {
+  return /* @__PURE__ */ jsx25(
+    Button,
+    {
+      type: "button",
+      variant: "outline",
+      size: "lg",
+      className: cn("rounded-full bg-background/80 px-4 text-sm", className),
+      onClick: () => onClick?.(suggestion),
+      ...props,
+      children: children ?? suggestion
+    }
+  );
+}
+
+// src/components/ui/card.tsx
+import "react";
+import { jsx as jsx26 } from "react/jsx-runtime";
 function Card({
   className,
   size = "default",
   ...props
 }) {
-  return /* @__PURE__ */ jsx25(
+  return /* @__PURE__ */ jsx26(
     "div",
     {
       "data-slot": "card",
@@ -1875,7 +2102,7 @@ function Card({
   );
 }
 function CardHeader({ className, ...props }) {
-  return /* @__PURE__ */ jsx25(
+  return /* @__PURE__ */ jsx26(
     "div",
     {
       "data-slot": "card-header",
@@ -1888,7 +2115,7 @@ function CardHeader({ className, ...props }) {
   );
 }
 function CardTitle({ className, ...props }) {
-  return /* @__PURE__ */ jsx25(
+  return /* @__PURE__ */ jsx26(
     "div",
     {
       "data-slot": "card-title",
@@ -1898,7 +2125,7 @@ function CardTitle({ className, ...props }) {
   );
 }
 function CardDescription({ className, ...props }) {
-  return /* @__PURE__ */ jsx25(
+  return /* @__PURE__ */ jsx26(
     "div",
     {
       "data-slot": "card-description",
@@ -1908,7 +2135,7 @@ function CardDescription({ className, ...props }) {
   );
 }
 function CardContent({ className, ...props }) {
-  return /* @__PURE__ */ jsx25(
+  return /* @__PURE__ */ jsx26(
     "div",
     {
       "data-slot": "card-content",
@@ -1919,7 +2146,7 @@ function CardContent({ className, ...props }) {
 }
 
 // src/a2a/use-a2a-chat.ts
-import React13 from "react";
+import React14 from "react";
 import { Effect as Effect2 } from "effect";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -2462,12 +2689,12 @@ function useA2AChat(options = {}) {
     persistence
   } = options;
   const queryClient = useQueryClient();
-  const [url, setUrl] = React13.useState(initialUrl);
-  const [taskInput, setTaskInput] = React13.useState("");
-  const runnerControllersRef = React13.useRef(/* @__PURE__ */ new Map());
-  const didAutoConnectRef = React13.useRef(/* @__PURE__ */ new Set());
-  const baseUrl = React13.useMemo(() => normalizeBaseUrl(url), [url]);
-  const transport = React13.useMemo(() => createProxyTransport(proxyBasePath), [proxyBasePath]);
+  const [url, setUrl] = React14.useState(initialUrl);
+  const [taskInput, setTaskInput] = React14.useState("");
+  const runnerControllersRef = React14.useRef(/* @__PURE__ */ new Map());
+  const didAutoConnectRef = React14.useRef(/* @__PURE__ */ new Set());
+  const baseUrl = React14.useMemo(() => normalizeBaseUrl(url), [url]);
+  const transport = React14.useMemo(() => createProxyTransport(proxyBasePath), [proxyBasePath]);
   const connectionQuery = useQuery({
     queryKey: connectionKey,
     queryFn: async () => getConnectionInitialState(),
@@ -2482,7 +2709,7 @@ function useA2AChat(options = {}) {
     staleTime: Number.POSITIVE_INFINITY,
     gcTime: Number.POSITIVE_INFINITY
   });
-  const setConnectionStore = React13.useCallback(
+  const setConnectionStore = React14.useCallback(
     (updater) => {
       queryClient.setQueryData(
         connectionKey,
@@ -2491,13 +2718,13 @@ function useA2AChat(options = {}) {
     },
     [queryClient]
   );
-  const setChatStore = React13.useCallback(
+  const setChatStore = React14.useCallback(
     (updater) => {
       queryClient.setQueryData(chatKey, (current) => updater(current ?? getChatInitialState()));
     },
     [queryClient]
   );
-  const ensureUrlChatState = React13.useCallback(
+  const ensureUrlChatState = React14.useCallback(
     (urlKey) => {
       setChatStore((current) => {
         if (current.byUrl[urlKey]) {
@@ -2514,7 +2741,7 @@ function useA2AChat(options = {}) {
     },
     [setChatStore]
   );
-  const updateTaskSession = React13.useCallback(
+  const updateTaskSession = React14.useCallback(
     (urlKey, sessionId, updater) => {
       setChatStore((current) => {
         const urlState = current.byUrl[urlKey];
@@ -2553,7 +2780,7 @@ function useA2AChat(options = {}) {
     },
     [setChatStore]
   );
-  const hydratePersistedSessions = React13.useCallback(
+  const hydratePersistedSessions = React14.useCallback(
     async (urlKey) => {
       if (!persistence) {
         return;
@@ -2586,7 +2813,7 @@ function useA2AChat(options = {}) {
     },
     [ensureUrlChatState, persistence, setChatStore]
   );
-  const updateAssistantMessage = React13.useCallback(
+  const updateAssistantMessage = React14.useCallback(
     (urlKey, sessionId, messageId, updater) => {
       updateTaskSession(urlKey, sessionId, (currentSession) => ({
         ...currentSession,
@@ -2600,7 +2827,7 @@ function useA2AChat(options = {}) {
     },
     [updateTaskSession]
   );
-  const setAssistantStatus = React13.useCallback(
+  const setAssistantStatus = React14.useCallback(
     (urlKey, sessionId, messageId, nextStatus, isWorking) => {
       updateAssistantMessage(urlKey, sessionId, messageId, (currentMessage) => {
         const statusHistory = currentMessage.statusHistory ?? [];
@@ -2616,7 +2843,7 @@ function useA2AChat(options = {}) {
     },
     [updateAssistantMessage]
   );
-  const appendAssistantEvent = React13.useCallback(
+  const appendAssistantEvent = React14.useCallback(
     (urlKey, sessionId, messageId, event) => {
       updateAssistantMessage(urlKey, sessionId, messageId, (currentMessage) => ({
         ...currentMessage,
@@ -2632,7 +2859,7 @@ function useA2AChat(options = {}) {
     },
     [updateAssistantMessage]
   );
-  const hydrateTaskOutput = React13.useCallback(
+  const hydrateTaskOutput = React14.useCallback(
     async (client, urlKey, sessionId, assistantMessageId, taskId) => {
       try {
         const snapshot = await Effect2.runPromise(getTaskById(client, taskId));
@@ -2660,7 +2887,7 @@ function useA2AChat(options = {}) {
     },
     [appendAssistantEvent, updateAssistantMessage]
   );
-  const processTaskStreamEvent = React13.useCallback(
+  const processTaskStreamEvent = React14.useCallback(
     async (client, urlKey, sessionId, assistantMessageId, currentTask, event) => {
       const artifactUpdate = getArtifactUpdateEvent(event);
       if (!artifactUpdate) {
@@ -2774,7 +3001,7 @@ function useA2AChat(options = {}) {
       updateTaskSession
     ]
   );
-  const startTaskResubscribeLoop = React13.useCallback(
+  const startTaskResubscribeLoop = React14.useCallback(
     (client, urlKey, sessionId, initialTask, assistantMessageId) => {
       const controllerKey = `${urlKey}::${initialTask.id}`;
       const existing = runnerControllersRef.current.get(controllerKey);
@@ -2828,7 +3055,7 @@ function useA2AChat(options = {}) {
     },
     [processTaskStreamEvent, setAssistantStatus]
   );
-  React13.useEffect(() => {
+  React14.useEffect(() => {
     return () => {
       for (const controller of runnerControllersRef.current.values()) {
         controller.abort();
@@ -3038,7 +3265,7 @@ function useA2AChat(options = {}) {
     }
   });
   const activeUrlState = chatQuery.data.byUrl[baseUrl] ?? null;
-  const recentAgents = React13.useMemo(
+  const recentAgents = React14.useMemo(
     () => Object.entries(chatQuery.data.byUrl).map(([connectedUrl, state]) => ({
       url: connectedUrl,
       agentName: state.agentName,
@@ -3047,7 +3274,7 @@ function useA2AChat(options = {}) {
     [chatQuery.data.byUrl]
   );
   const activeTaskSession = activeUrlState ? activeUrlState.sessions.find((session) => session.id === activeUrlState.activeSessionId) ?? activeUrlState.sessions[0] ?? null : null;
-  const taskSessions = React13.useMemo(
+  const taskSessions = React14.useMemo(
     () => [...activeUrlState?.sessions ?? []].sort((a, b) => b.updatedAt - a.updatedAt).map((session) => ({
       id: session.id,
       title: session.title,
@@ -3055,17 +3282,17 @@ function useA2AChat(options = {}) {
     })),
     [activeUrlState?.sessions]
   );
-  const handleConnect = React13.useCallback(() => {
+  const handleConnect = React14.useCallback(() => {
     connectMutation.mutate(baseUrl);
   }, [baseUrl, connectMutation]);
-  const handleSelectRecentAgent = React13.useCallback(
+  const handleSelectRecentAgent = React14.useCallback(
     (agentUrl) => {
       setUrl(agentUrl);
       ensureUrlChatState(agentUrl);
     },
     [ensureUrlChatState]
   );
-  React13.useEffect(() => {
+  React14.useEffect(() => {
     if (!autoConnect || connectMutation.isPending || didAutoConnectRef.current.has(baseUrl)) {
       return;
     }
@@ -3076,11 +3303,11 @@ function useA2AChat(options = {}) {
     didAutoConnectRef.current.add(baseUrl);
     connectMutation.mutate(baseUrl);
   }, [autoConnect, baseUrl, connectMutation, connectionQuery.data]);
-  React13.useEffect(() => {
+  React14.useEffect(() => {
     void hydratePersistedSessions(baseUrl);
   }, [baseUrl, hydratePersistedSessions]);
-  const handleSubmitTask = React13.useCallback(() => {
-    const taskText = taskInput.trim();
+  const handleSubmitTask = React14.useCallback((taskTextOverride) => {
+    const taskText = (taskTextOverride ?? taskInput).trim();
     const connection = connectionQuery.data;
     if (taskText.length === 0 || sendTaskMutation.isPending || !activeTaskSession || connection.state !== "connected" || connection.connectedUrl !== baseUrl || !connection.client) {
       return;
@@ -3092,7 +3319,7 @@ function useA2AChat(options = {}) {
       taskSessionId: activeTaskSession.id
     });
   }, [activeTaskSession, baseUrl, connectionQuery.data, sendTaskMutation, taskInput]);
-  const handleCreateTaskSession = React13.useCallback(() => {
+  const handleCreateTaskSession = React14.useCallback(() => {
     setChatStore((current) => {
       const urlState = current.byUrl[baseUrl];
       if (!urlState) {
@@ -3112,7 +3339,7 @@ function useA2AChat(options = {}) {
       };
     });
   }, [baseUrl, setChatStore]);
-  const handleSelectTaskSession = React13.useCallback(
+  const handleSelectTaskSession = React14.useCallback(
     (sessionId) => {
       setChatStore((current) => {
         const urlState = current.byUrl[baseUrl];
@@ -3136,7 +3363,7 @@ function useA2AChat(options = {}) {
     },
     [baseUrl, setChatStore]
   );
-  const handleDeleteTaskSession = React13.useCallback(
+  const handleDeleteTaskSession = React14.useCallback(
     (sessionId) => {
       const deletePersistedSession = persistence?.deleteSession;
       if (deletePersistedSession) {
@@ -3219,8 +3446,8 @@ import {
   XCircleIcon
 } from "lucide-react";
 import { isValidElement } from "react";
-import { jsx as jsx26, jsxs as jsxs15 } from "react/jsx-runtime";
-var Tool = ({ className, ...props }) => /* @__PURE__ */ jsx26(
+import { jsx as jsx27, jsxs as jsxs15 } from "react/jsx-runtime";
+var Tool = ({ className, ...props }) => /* @__PURE__ */ jsx27(
   Collapsible,
   {
     className: cn("group not-prose mb-4 w-full rounded-md border", className),
@@ -3237,13 +3464,13 @@ var statusLabels = {
   "output-error": "Error"
 };
 var statusIcons = {
-  "approval-requested": /* @__PURE__ */ jsx26(ClockIcon, { className: "size-4 text-yellow-600" }),
-  "approval-responded": /* @__PURE__ */ jsx26(CheckCircleIcon, { className: "size-4 text-blue-600" }),
-  "input-available": /* @__PURE__ */ jsx26(ClockIcon, { className: "size-4 animate-pulse" }),
-  "input-streaming": /* @__PURE__ */ jsx26(CircleIcon, { className: "size-4" }),
-  "output-available": /* @__PURE__ */ jsx26(CheckCircleIcon, { className: "size-4 text-green-600" }),
-  "output-denied": /* @__PURE__ */ jsx26(XCircleIcon, { className: "size-4 text-orange-600" }),
-  "output-error": /* @__PURE__ */ jsx26(XCircleIcon, { className: "size-4 text-red-600" })
+  "approval-requested": /* @__PURE__ */ jsx27(ClockIcon, { className: "size-4 text-yellow-600" }),
+  "approval-responded": /* @__PURE__ */ jsx27(CheckCircleIcon, { className: "size-4 text-blue-600" }),
+  "input-available": /* @__PURE__ */ jsx27(ClockIcon, { className: "size-4 animate-pulse" }),
+  "input-streaming": /* @__PURE__ */ jsx27(CircleIcon, { className: "size-4" }),
+  "output-available": /* @__PURE__ */ jsx27(CheckCircleIcon, { className: "size-4 text-green-600" }),
+  "output-denied": /* @__PURE__ */ jsx27(XCircleIcon, { className: "size-4 text-orange-600" }),
+  "output-error": /* @__PURE__ */ jsx27(XCircleIcon, { className: "size-4 text-red-600" })
 };
 var getStatusBadge = (status) => /* @__PURE__ */ jsxs15(Badge, { className: "gap-1.5 rounded-full text-xs", variant: "secondary", children: [
   statusIcons[status],
@@ -3268,16 +3495,16 @@ var ToolHeader = ({
       ...props,
       children: [
         /* @__PURE__ */ jsxs15("div", { className: "flex items-center gap-2", children: [
-          /* @__PURE__ */ jsx26(WrenchIcon, { className: "size-4 text-muted-foreground" }),
-          /* @__PURE__ */ jsx26("span", { className: "font-medium text-sm", children: title ?? derivedName }),
+          /* @__PURE__ */ jsx27(WrenchIcon, { className: "size-4 text-muted-foreground" }),
+          /* @__PURE__ */ jsx27("span", { className: "font-medium text-sm", children: title ?? derivedName }),
           getStatusBadge(state)
         ] }),
-        /* @__PURE__ */ jsx26(ChevronDownIcon5, { className: "size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" })
+        /* @__PURE__ */ jsx27(ChevronDownIcon5, { className: "size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" })
       ]
     }
   );
 };
-var ToolContent = ({ className, ...props }) => /* @__PURE__ */ jsx26(
+var ToolContent = ({ className, ...props }) => /* @__PURE__ */ jsx27(
   CollapsibleContent,
   {
     className: cn(
@@ -3288,8 +3515,8 @@ var ToolContent = ({ className, ...props }) => /* @__PURE__ */ jsx26(
   }
 );
 var ToolInput = ({ className, input, ...props }) => /* @__PURE__ */ jsxs15("div", { className: cn("space-y-2 overflow-hidden", className), ...props, children: [
-  /* @__PURE__ */ jsx26("h4", { className: "font-medium text-muted-foreground text-xs uppercase tracking-wide", children: "Parameters" }),
-  /* @__PURE__ */ jsx26("div", { className: "rounded-md bg-muted/50", children: /* @__PURE__ */ jsx26(CodeBlock, { code: JSON.stringify(input, null, 2), language: "json" }) })
+  /* @__PURE__ */ jsx27("h4", { className: "font-medium text-muted-foreground text-xs uppercase tracking-wide", children: "Parameters" }),
+  /* @__PURE__ */ jsx27("div", { className: "rounded-md bg-muted/50", children: /* @__PURE__ */ jsx27(CodeBlock, { code: JSON.stringify(input, null, 2), language: "json" }) })
 ] });
 var ToolOutput = ({
   className,
@@ -3300,14 +3527,14 @@ var ToolOutput = ({
   if (!(output || errorText)) {
     return null;
   }
-  let Output = /* @__PURE__ */ jsx26("div", { children: output });
+  let Output = /* @__PURE__ */ jsx27("div", { children: output });
   if (typeof output === "object" && !isValidElement(output)) {
-    Output = /* @__PURE__ */ jsx26(CodeBlock, { code: JSON.stringify(output, null, 2), language: "json" });
+    Output = /* @__PURE__ */ jsx27(CodeBlock, { code: JSON.stringify(output, null, 2), language: "json" });
   } else if (typeof output === "string") {
-    Output = /* @__PURE__ */ jsx26(CodeBlock, { code: output, language: "json" });
+    Output = /* @__PURE__ */ jsx27(CodeBlock, { code: output, language: "json" });
   }
   return /* @__PURE__ */ jsxs15("div", { className: cn("space-y-2", className), ...props, children: [
-    /* @__PURE__ */ jsx26("h4", { className: "font-medium text-muted-foreground text-xs uppercase tracking-wide", children: errorText ? "Error" : "Result" }),
+    /* @__PURE__ */ jsx27("h4", { className: "font-medium text-muted-foreground text-xs uppercase tracking-wide", children: errorText ? "Error" : "Result" }),
     /* @__PURE__ */ jsxs15(
       "div",
       {
@@ -3316,7 +3543,7 @@ var ToolOutput = ({
           errorText ? "bg-destructive/10 text-destructive" : "bg-muted/50 text-foreground"
         ),
         children: [
-          errorText && /* @__PURE__ */ jsx26("div", { children: errorText }),
+          errorText && /* @__PURE__ */ jsx27("div", { children: errorText }),
           Output
         ]
       }
@@ -3325,7 +3552,7 @@ var ToolOutput = ({
 };
 
 // src/a2a/inspector-event-renderers.tsx
-import { jsx as jsx27, jsxs as jsxs16 } from "react/jsx-runtime";
+import { jsx as jsx28, jsxs as jsxs16 } from "react/jsx-runtime";
 function isRecord2(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -3378,19 +3605,19 @@ function getArtifactText(event) {
 function renderSendTaskTool(data) {
   const input = isRecord2(data.input) ? data.input : {};
   return /* @__PURE__ */ jsxs16(Tool, { defaultOpen: true, children: [
-    /* @__PURE__ */ jsx27(ToolHeader, { type: "tool-send_task", state: "input-available", title: "Calling subagent" }),
-    /* @__PURE__ */ jsx27(ToolContent, { children: /* @__PURE__ */ jsx27(ToolInput, { input }) })
+    /* @__PURE__ */ jsx28(ToolHeader, { type: "tool-send_task", state: "input-available", title: "Calling subagent" }),
+    /* @__PURE__ */ jsx28(ToolContent, { children: /* @__PURE__ */ jsx28(ToolInput, { input }) })
   ] });
 }
 function renderSendTaskResult(data) {
   const output = isRecord2(data.output) ? data.output : null;
   const taskId = output && typeof output.task_id === "string" ? output.task_id : null;
   return /* @__PURE__ */ jsxs16(Tool, { defaultOpen: true, children: [
-    /* @__PURE__ */ jsx27(ToolHeader, { type: "tool-send_task", state: "output-available", title: "Subagent task created" }),
-    /* @__PURE__ */ jsx27(ToolContent, { children: /* @__PURE__ */ jsx27(
+    /* @__PURE__ */ jsx28(ToolHeader, { type: "tool-send_task", state: "output-available", title: "Subagent task created" }),
+    /* @__PURE__ */ jsx28(ToolContent, { children: /* @__PURE__ */ jsx28(
       ToolOutput,
       {
-        output: taskId ? /* @__PURE__ */ jsx27("div", { className: "p-2 font-mono text-[11px] text-foreground", children: taskId }) : data.output,
+        output: taskId ? /* @__PURE__ */ jsx28("div", { className: "p-2 font-mono text-[11px] text-foreground", children: taskId }) : data.output,
         errorText: void 0
       }
     ) })
@@ -3399,7 +3626,7 @@ function renderSendTaskResult(data) {
 function renderCheckTaskStatusCall(data) {
   const input = isRecord2(data.input) ? data.input : {};
   return /* @__PURE__ */ jsxs16(Tool, { defaultOpen: true, children: [
-    /* @__PURE__ */ jsx27(
+    /* @__PURE__ */ jsx28(
       ToolHeader,
       {
         type: "tool-check_task_status",
@@ -3407,7 +3634,7 @@ function renderCheckTaskStatusCall(data) {
         title: "Checking subagent status"
       }
     ),
-    /* @__PURE__ */ jsx27(ToolContent, { children: /* @__PURE__ */ jsx27(ToolInput, { input }) })
+    /* @__PURE__ */ jsx28(ToolContent, { children: /* @__PURE__ */ jsx28(ToolInput, { input }) })
   ] });
 }
 function renderCheckTaskStatusResult(data) {
@@ -3423,7 +3650,7 @@ function renderCheckTaskStatusResult(data) {
     );
   }).join("");
   return /* @__PURE__ */ jsxs16(Tool, { defaultOpen: true, children: [
-    /* @__PURE__ */ jsx27(
+    /* @__PURE__ */ jsx28(
       ToolHeader,
       {
         type: "tool-check_task_status",
@@ -3431,10 +3658,10 @@ function renderCheckTaskStatusResult(data) {
         title: `Subagent status: ${status}`
       }
     ),
-    /* @__PURE__ */ jsx27(ToolContent, { children: /* @__PURE__ */ jsx27(
+    /* @__PURE__ */ jsx28(ToolContent, { children: /* @__PURE__ */ jsx28(
       ToolOutput,
       {
-        output: artifactText.length > 0 ? /* @__PURE__ */ jsx27(MessageResponse, { className: "p-2 text-xs", children: artifactText }) : data.output,
+        output: artifactText.length > 0 ? /* @__PURE__ */ jsx28(MessageResponse, { className: "p-2 text-xs", children: artifactText }) : data.output,
         errorText: void 0
       }
     ) })
@@ -3444,7 +3671,7 @@ function renderGenericToolData(data) {
   const isResult = data.type === "tool-result";
   const toolName = typeof data.toolName === "string" ? data.toolName : "unknown_tool";
   return /* @__PURE__ */ jsxs16(Tool, { defaultOpen: true, children: [
-    /* @__PURE__ */ jsx27(
+    /* @__PURE__ */ jsx28(
       ToolHeader,
       {
         type: `tool-${toolName}`,
@@ -3452,8 +3679,8 @@ function renderGenericToolData(data) {
       }
     ),
     /* @__PURE__ */ jsxs16(ToolContent, { children: [
-      !isResult && data.input !== void 0 ? /* @__PURE__ */ jsx27(ToolInput, { input: data.input }) : null,
-      isResult ? /* @__PURE__ */ jsx27(ToolOutput, { output: data.output ?? data, errorText: void 0 }) : null
+      !isResult && data.input !== void 0 ? /* @__PURE__ */ jsx28(ToolInput, { input: data.input }) : null,
+      isResult ? /* @__PURE__ */ jsx28(ToolOutput, { output: data.output ?? data, errorText: void 0 }) : null
     ] })
   ] });
 }
@@ -3485,7 +3712,7 @@ var renderInspectorArtifactEvent = (event) => {
   if (!text) {
     return null;
   }
-  return /* @__PURE__ */ jsx27(CodeBlock, { code: text, language: "markdown", className: "text-[11px]" });
+  return /* @__PURE__ */ jsx28(CodeBlock, { code: text, language: "markdown", className: "text-[11px]" });
 };
 var inspectorEventRenderers = [
   renderInspectorToolEvent,
@@ -3493,7 +3720,12 @@ var inspectorEventRenderers = [
 ];
 
 // src/A2AChat.tsx
-import { jsx as jsx28, jsxs as jsxs17 } from "react/jsx-runtime";
+import { jsx as jsx29, jsxs as jsxs17 } from "react/jsx-runtime";
+var defaultPromptSuggestions = [
+  { label: "Create an image", icon: /* @__PURE__ */ jsx29(ImageIcon2, { className: "size-4", "aria-hidden": "true" }) },
+  { label: "Write or edit", icon: /* @__PURE__ */ jsx29(PencilIcon, { className: "size-4", "aria-hidden": "true" }) },
+  { label: "Look something up", icon: /* @__PURE__ */ jsx29(SearchIcon3, { className: "size-4", "aria-hidden": "true" }) }
+];
 function getStatusClasses(state) {
   if (state === "connected") {
     return "border-emerald-500/40 bg-emerald-500/10 text-emerald-700";
@@ -3530,6 +3762,9 @@ function A2AChatCard({
   collapsibleSidebar = false,
   layout = "default",
   agentSuggestions = [],
+  promptSuggestions = defaultPromptSuggestions,
+  welcomeMessage = "How can I help?",
+  inputPlaceholder = "Ask anything",
   eventRenderers = inspectorEventRenderers,
   persistence
 }) {
@@ -3563,12 +3798,32 @@ function A2AChatCard({
   const fills = isPanel || fillHeight;
   const sidebarVisible = shouldShowRecentAgents || showTaskSessions;
   const canCollapse = collapsibleSidebar && !isPanel;
-  const [sidebarCollapsed, setSidebarCollapsed] = React15.useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = React16.useState(false);
   const collapsed = canCollapse && sidebarCollapsed;
+  const isEmpty = messages.length === 0;
+  const submitTask = React16.useCallback(
+    (message) => {
+      const files = message?.files ?? [];
+      const baseText = message?.text ?? taskInput;
+      const fileSummary = files.map((file) => file.filename).filter((filename) => typeof filename === "string" && filename.length > 0).join(", ");
+      const taskText = fileSummary.length > 0 ? `${baseText}
+
+Attached files: ${fileSummary}` : baseText;
+      handleSubmitTask(taskText);
+    },
+    [handleSubmitTask, setTaskInput, taskInput]
+  );
+  const handlePromptSuggestion = React16.useCallback(
+    (suggestion) => {
+      const prompt = suggestion.prompt ?? suggestion.label;
+      setTaskInput(prompt);
+    },
+    [setTaskInput]
+  );
   return /* @__PURE__ */ jsxs17(Card, { className: cn("w-full max-w-5xl", fills && "flex h-full min-w-0 max-w-none flex-col overflow-hidden", className), children: [
     showHeader ? /* @__PURE__ */ jsxs17(CardHeader, { className: cn("border-b border-border", fills && "shrink-0", isPanel && "gap-2 p-3"), children: [
-      /* @__PURE__ */ jsx28(CardTitle, { className: cn(isPanel && "text-base"), children: title }),
-      description ? /* @__PURE__ */ jsx28(CardDescription, { children: description }) : null,
+      /* @__PURE__ */ jsx29(CardTitle, { className: cn(isPanel && "text-base"), children: title }),
+      description ? /* @__PURE__ */ jsx29(CardDescription, { children: description }) : null,
       showConnectionForm ? /* @__PURE__ */ jsxs17(
         "form",
         {
@@ -3578,7 +3833,7 @@ function A2AChatCard({
             handleConnect();
           },
           children: [
-            /* @__PURE__ */ jsx28(
+            /* @__PURE__ */ jsx29(
               Input,
               {
                 value: url,
@@ -3588,7 +3843,7 @@ function A2AChatCard({
                 list: agentSuggestions.length > 0 ? "a2a-agent-suggestions" : void 0
               }
             ),
-            agentSuggestions.length > 0 ? /* @__PURE__ */ jsx28("datalist", { id: "a2a-agent-suggestions", children: agentSuggestions.map((suggestion) => /* @__PURE__ */ jsx28(
+            agentSuggestions.length > 0 ? /* @__PURE__ */ jsx29("datalist", { id: "a2a-agent-suggestions", children: agentSuggestions.map((suggestion) => /* @__PURE__ */ jsx29(
               "option",
               {
                 value: suggestion.url,
@@ -3596,7 +3851,7 @@ function A2AChatCard({
               },
               suggestion.url
             )) }) : null,
-            /* @__PURE__ */ jsx28(
+            /* @__PURE__ */ jsx29(
               Button,
               {
                 type: "submit",
@@ -3610,7 +3865,7 @@ function A2AChatCard({
         }
       ) : null,
       showConnectionStatus ? /* @__PURE__ */ jsxs17("div", { className: "mt-2 flex flex-wrap items-center gap-2", children: [
-        /* @__PURE__ */ jsx28(
+        /* @__PURE__ */ jsx29(
           "div",
           {
             className: cn(
@@ -3626,7 +3881,7 @@ function A2AChatCard({
         ] }) : null
       ] }) : null
     ] }) : null,
-    /* @__PURE__ */ jsx28(CardContent, { className: cn(fills && "min-h-0 flex-1", isPanel && "p-3", contentClassName), children: /* @__PURE__ */ jsxs17(
+    /* @__PURE__ */ jsx29(CardContent, { className: cn(fills && "min-h-0 flex-1", isPanel && "p-3", contentClassName), children: /* @__PURE__ */ jsxs17(
       "div",
       {
         className: cn(
@@ -3638,7 +3893,7 @@ function A2AChatCard({
         ),
         children: [
           sidebarVisible && collapsed ? /* @__PURE__ */ jsxs17("div", { className: "flex items-center justify-between gap-2 border-b border-border pb-2 md:flex-col md:items-stretch md:justify-start md:border-b-0 md:border-r md:pb-0 md:pr-2", children: [
-            /* @__PURE__ */ jsx28(
+            /* @__PURE__ */ jsx29(
               Button,
               {
                 type: "button",
@@ -3647,10 +3902,10 @@ function A2AChatCard({
                 onClick: () => setSidebarCollapsed(false),
                 "aria-label": "Expand sidebar",
                 title: "Expand sidebar",
-                children: /* @__PURE__ */ jsx28(PanelLeftOpenIcon, {})
+                children: /* @__PURE__ */ jsx29(PanelLeftOpenIcon, {})
               }
             ),
-            showTaskSessions ? /* @__PURE__ */ jsx28(
+            showTaskSessions ? /* @__PURE__ */ jsx29(
               Button,
               {
                 type: "button",
@@ -3660,12 +3915,12 @@ function A2AChatCard({
                 disabled: connectionState !== "connected",
                 "aria-label": "New task",
                 title: "New task",
-                children: /* @__PURE__ */ jsx28(PlusIcon2, {})
+                children: /* @__PURE__ */ jsx29(PlusIcon2, {})
               }
             ) : null
           ] }) : null,
           sidebarVisible && !collapsed ? /* @__PURE__ */ jsxs17("aside", { className: cn("flex min-w-0 flex-col gap-4 border-b border-border pb-4", !isPanel && "md:border-r md:border-b-0 md:pb-0 md:pr-4"), children: [
-            canCollapse ? /* @__PURE__ */ jsx28("div", { className: "flex items-center justify-end", children: /* @__PURE__ */ jsx28(
+            canCollapse ? /* @__PURE__ */ jsx29("div", { className: "flex items-center justify-end", children: /* @__PURE__ */ jsx29(
               Button,
               {
                 type: "button",
@@ -3674,12 +3929,12 @@ function A2AChatCard({
                 onClick: () => setSidebarCollapsed(true),
                 "aria-label": "Collapse sidebar",
                 title: "Collapse sidebar",
-                children: /* @__PURE__ */ jsx28(PanelLeftCloseIcon, {})
+                children: /* @__PURE__ */ jsx29(PanelLeftCloseIcon, {})
               }
             ) }) : null,
             shouldShowRecentAgents ? /* @__PURE__ */ jsxs17("div", { className: "flex flex-col gap-2", children: [
-              /* @__PURE__ */ jsx28("div", { className: "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground", children: "Recent Agents" }),
-              /* @__PURE__ */ jsx28("div", { className: "flex max-h-40 flex-col gap-1 overflow-y-auto", children: recentAgents.length > 0 ? recentAgents.map((agent) => /* @__PURE__ */ jsx28(
+              /* @__PURE__ */ jsx29("div", { className: "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground", children: "Recent Agents" }),
+              /* @__PURE__ */ jsx29("div", { className: "flex max-h-40 flex-col gap-1 overflow-y-auto", children: recentAgents.length > 0 ? recentAgents.map((agent) => /* @__PURE__ */ jsx29(
                 Button,
                 {
                   type: "button",
@@ -3688,10 +3943,10 @@ function A2AChatCard({
                   onClick: () => handleSelectRecentAgent(agent.url),
                   className: "justify-start",
                   title: agent.url,
-                  children: /* @__PURE__ */ jsx28("span", { className: "truncate", children: getAgentButtonLabel(agent.agentName, agent.url) })
+                  children: /* @__PURE__ */ jsx29("span", { className: "truncate", children: getAgentButtonLabel(agent.agentName, agent.url) })
                 },
                 agent.url
-              )) : /* @__PURE__ */ jsx28("div", { className: "text-xs text-muted-foreground", children: "No recent agent connections yet." }) })
+              )) : /* @__PURE__ */ jsx29("div", { className: "text-xs text-muted-foreground", children: "No recent agent connections yet." }) })
             ] }) : null,
             showTaskSessions ? /* @__PURE__ */ jsxs17("div", { className: "flex min-h-0 min-w-0 flex-1 flex-col gap-2", children: [
               /* @__PURE__ */ jsxs17(
@@ -3706,14 +3961,14 @@ function A2AChatCard({
                   "aria-label": "New task",
                   title: "New task",
                   children: [
-                    /* @__PURE__ */ jsx28(PlusIcon2, {}),
-                    /* @__PURE__ */ jsx28("span", { children: "New Task" })
+                    /* @__PURE__ */ jsx29(PlusIcon2, {}),
+                    /* @__PURE__ */ jsx29("span", { children: "New Task" })
                   ]
                 }
               ),
-              /* @__PURE__ */ jsx28("div", { className: "mt-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground", children: "Tasks" }),
-              /* @__PURE__ */ jsx28("div", { className: "flex min-w-0 flex-1 flex-col gap-1 overflow-y-auto pb-1", children: taskSessions.map((session) => /* @__PURE__ */ jsxs17("div", { className: "flex items-center gap-1", children: [
-                /* @__PURE__ */ jsx28(
+              /* @__PURE__ */ jsx29("div", { className: "mt-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground", children: "Tasks" }),
+              /* @__PURE__ */ jsx29("div", { className: "flex min-w-0 flex-1 flex-col gap-1 overflow-y-auto pb-1", children: taskSessions.map((session) => /* @__PURE__ */ jsxs17("div", { className: "flex items-center gap-1", children: [
+                /* @__PURE__ */ jsx29(
                   Button,
                   {
                     type: "button",
@@ -3722,10 +3977,10 @@ function A2AChatCard({
                     onClick: () => handleSelectTaskSession(session.id),
                     className: "min-w-0 flex-1 justify-start",
                     title: session.title,
-                    children: /* @__PURE__ */ jsx28("span", { className: "truncate", children: session.title })
+                    children: /* @__PURE__ */ jsx29("span", { className: "truncate", children: session.title })
                   }
                 ),
-                /* @__PURE__ */ jsx28(
+                /* @__PURE__ */ jsx29(
                   Button,
                   {
                     type: "button",
@@ -3734,32 +3989,68 @@ function A2AChatCard({
                     onClick: () => handleDeleteTaskSession(session.id),
                     "aria-label": `Delete task ${session.title}`,
                     title: `Delete task ${session.title}`,
-                    children: /* @__PURE__ */ jsx28(Trash2Icon, {})
+                    children: /* @__PURE__ */ jsx29(Trash2Icon, {})
                   }
                 )
               ] }, session.id)) })
             ] }) : null
           ] }) : null,
-          /* @__PURE__ */ jsxs17("div", { className: "flex min-h-0 min-w-0 flex-col gap-3", children: [
-            /* @__PURE__ */ jsx28(MessageBox, { messages, eventRenderers, className: cn(fills && "min-h-0 flex-1", messagesClassName) }),
-            /* @__PURE__ */ jsx28(
-              InputBox,
-              {
-                value: taskInput,
-                onChange: setTaskInput,
-                onSubmit: handleSubmitTask,
-                disabled: connectionState !== "connected" || isSending
-              }
-            )
-          ] })
+          /* @__PURE__ */ jsxs17(
+            "div",
+            {
+              className: cn(
+                "flex min-h-0 min-w-0 flex-col gap-3 transition-all duration-300",
+                isEmpty ? "justify-center py-8" : "justify-end",
+                fills && "h-full"
+              ),
+              children: [
+                !isEmpty ? /* @__PURE__ */ jsx29(MessageBox, { messages, eventRenderers, className: cn(fills && "min-h-0 flex-1", messagesClassName) }) : null,
+                isEmpty ? /* @__PURE__ */ jsxs17("div", { className: "mx-auto flex w-full max-w-4xl flex-col items-center gap-6", children: [
+                  welcomeMessage ? /* @__PURE__ */ jsx29("h2", { className: "text-center text-3xl font-medium tracking-tight text-foreground sm:text-4xl", children: welcomeMessage }) : null,
+                  /* @__PURE__ */ jsx29(
+                    InputBox,
+                    {
+                      value: taskInput,
+                      onChange: setTaskInput,
+                      onSubmit: submitTask,
+                      disabled: connectionState !== "connected" || isSending,
+                      placeholder: inputPlaceholder,
+                      className: "w-full"
+                    }
+                  ),
+                  promptSuggestions.length > 0 ? /* @__PURE__ */ jsx29(Suggestions, { children: promptSuggestions.map((suggestion) => /* @__PURE__ */ jsxs17(
+                    Suggestion,
+                    {
+                      suggestion: suggestion.label,
+                      onClick: () => handlePromptSuggestion(suggestion),
+                      children: [
+                        suggestion.icon,
+                        /* @__PURE__ */ jsx29("span", { children: suggestion.label })
+                      ]
+                    },
+                    suggestion.label
+                  )) }) : null
+                ] }) : /* @__PURE__ */ jsx29(
+                  InputBox,
+                  {
+                    value: taskInput,
+                    onChange: setTaskInput,
+                    onSubmit: submitTask,
+                    disabled: connectionState !== "connected" || isSending,
+                    placeholder: inputPlaceholder
+                  }
+                )
+              ]
+            }
+          )
         ]
       }
     ) })
   ] });
 }
 function A2AChat(props) {
-  const [queryClient] = React15.useState(() => new QueryClient());
-  return /* @__PURE__ */ jsx28(QueryClientProvider, { client: queryClient, children: /* @__PURE__ */ jsx28(A2AChatCard, { ...props }) });
+  const [queryClient] = React16.useState(() => new QueryClient());
+  return /* @__PURE__ */ jsx29(QueryClientProvider, { client: queryClient, children: /* @__PURE__ */ jsx29(A2AChatCard, { ...props }) });
 }
 export {
   A2AChat,

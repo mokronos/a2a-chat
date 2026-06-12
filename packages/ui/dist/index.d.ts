@@ -55,6 +55,11 @@ type A2AAgentSuggestion = {
     url: string;
     description?: string;
 };
+type A2AChatPromptSuggestion = {
+    label: string;
+    prompt?: string;
+    icon?: React.ReactNode;
+};
 type A2AChatProps = {
     className?: string;
     contentClassName?: string;
@@ -75,6 +80,9 @@ type A2AChatProps = {
     collapsibleSidebar?: boolean;
     layout?: "default" | "panel";
     agentSuggestions?: A2AAgentSuggestion[];
+    promptSuggestions?: A2AChatPromptSuggestion[];
+    welcomeMessage?: string;
+    inputPlaceholder?: string;
     eventRenderers?: MessageTimelineEventRenderer[];
     persistence?: A2AChatPersistenceAdapter;
 };
