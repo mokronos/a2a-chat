@@ -18,6 +18,27 @@ To build everything:
 bun run build
 ```
 
+## Versioning GitHub installs
+
+When this repo is consumed directly from GitHub, pin the dependency to a Git tag instead of an unversioned branch:
+
+```json
+{
+  "dependencies": {
+    "a2a-chat": "github:mokronos/a2a-chat#v0.0.1"
+  }
+}
+```
+
+GitHub dependencies are locked to a commit in `bun.lock`, so pushing to this repo is not enough for another repo to receive changes. Cut a new version here, push the tag, then update the consuming repo to that tag.
+
+```bash
+bun run version:patch
+git push --follow-tags
+```
+
+Use `bun run version:minor` or `bun run version:major` when the change warrants it.
+
 To create a local package tarball for testing without publishing:
 
 ```bash

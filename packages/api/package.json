@@ -1,5 +1,6 @@
 {
   "name": "@a2a-chat/api",
+  "version": "0.0.1",
   "devDependencies": {
     "@types/bun": "latest"
   },

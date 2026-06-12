@@ -1,5 +1,6 @@
 {
   "name": "a2a-chat",
+  "version": "0.0.1",
   "private": true,
   "type": "module",
   "main": "./packages/ui/dist/index.js",
@@ -20,6 +21,9 @@
     "build:ui": "bun run --cwd packages/ui build",
     "bunx:server": "bunx --package a2a-chat-server@file:$PWD/apps/server a2a-chat-server",
     "pack:server": "bun pm pack --cwd apps/server",
+    "version:patch": "bun pm version patch",
+    "version:minor": "bun pm version minor",
+    "version:major": "bun pm version major",
     "typecheck": "bun run --cwd packages/ui typecheck && bun tsc --noEmit",
     "prepare": "bun run build:ui",
     "dev:server": "bun run --cwd apps/server dev"
