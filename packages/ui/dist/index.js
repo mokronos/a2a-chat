@@ -755,11 +755,11 @@ var PromptInput = ({
     /* @__PURE__ */ jsx12(
       "form",
       {
-        className: cn("w-full", className),
+        className: "w-full",
         onSubmit: handleSubmit,
         ref: formRef,
         ...props,
-        children: /* @__PURE__ */ jsx12(InputGroup, { className: "overflow-hidden", children })
+        children: /* @__PURE__ */ jsx12(InputGroup, { className: cn("overflow-hidden", className), children })
       }
     )
   ] });
@@ -1003,6 +1003,8 @@ function InputBox({
   onChange,
   onSubmit,
   disabled = false,
+  isSending = false,
+  onCancel,
   className,
   placeholder = "Ask anything",
   submitLabel = "Send message"
@@ -1011,10 +1013,10 @@ function InputBox({
   return /* @__PURE__ */ jsxs7(
     PromptInput,
     {
-      className: cn("rounded-[2rem] border-border bg-muted/60 shadow-sm", className),
+      className: cn("min-h-32 rounded-3xl border-border bg-muted/70 shadow-sm", className),
       multiple: true,
       onSubmit: (message) => {
-        if (!disabled && message.text.trim().length > 0) {
+        if (!disabled && !isSending && message.text.trim().length > 0) {
           onSubmit(message);
         }
       },
@@ -1026,19 +1028,27 @@ function InputBox({
             placeholder,
             value,
             onChange: (event) => onChange(event.currentTarget.value),
-            disabled,
-            className: "min-h-14 px-4 py-4 text-base"
+            disabled: disabled || isSending,
+            className: "min-h-16 px-5 py-5 text-base"
           }
         ) }),
-        /* @__PURE__ */ jsxs7(PromptInputFooter, { className: "px-3 pb-3", children: [
+        /* @__PURE__ */ jsxs7(PromptInputFooter, { className: "px-4 pb-4", children: [
           /* @__PURE__ */ jsxs7(PromptInputTools, { children: [
             /* @__PURE__ */ jsxs7(PromptInputActionMenu, { children: [
-              /* @__PURE__ */ jsx13(PromptInputActionMenuTrigger, { tooltip: "Attach files", disabled, children: /* @__PURE__ */ jsx13(PaperclipIcon, { className: "size-4" }) }),
+              /* @__PURE__ */ jsx13(PromptInputActionMenuTrigger, { tooltip: "Attach files", disabled: disabled || isSending, children: /* @__PURE__ */ jsx13(PaperclipIcon, { className: "size-4" }) }),
               /* @__PURE__ */ jsx13(PromptInputActionMenuContent, { children: /* @__PURE__ */ jsx13(PromptInputActionAddAttachments, {}) })
             ] }),
-            /* @__PURE__ */ jsx13(PromptInputButton, { tooltip: "Voice input", disabled, "aria-label": "Voice input", children: /* @__PURE__ */ jsx13(MicIcon, { className: "size-4" }) })
+            /* @__PURE__ */ jsx13(PromptInputButton, { tooltip: "Voice input", disabled: disabled || isSending, "aria-label": "Voice input", children: /* @__PURE__ */ jsx13(MicIcon, { className: "size-4" }) })
           ] }),
-          /* @__PURE__ */ jsx13(PromptInputSubmit, { disabled: !canSubmit, "aria-label": submitLabel })
+          /* @__PURE__ */ jsx13(
+            PromptInputSubmit,
+            {
+              disabled: isSending ? false : !canSubmit,
+              status: isSending ? "streaming" : void 0,
+              onStop: onCancel,
+              "aria-label": isSending ? "Cancel task" : submitLabel
+            }
+          )
         ] })
       ]
     }
@@ -1452,7 +1462,7 @@ ReasoningContent.displayName = "ReasoningContent";
 // src/components/ai-elements/task.tsx
 import { ChevronDownIcon as ChevronDownIcon3, SearchIcon as SearchIcon2 } from "lucide-react";
 import { jsx as jsx21, jsxs as jsxs11 } from "react/jsx-runtime";
-var TaskItem = ({ children, className, ...props }) => /* @__PURE__ */ jsx21("div", { className: cn("text-muted-foreground text-sm", className), ...props, children });
+var TaskItem = ({ children, className, ...props }) => /* @__PURE__ */ jsx21("div", { className: cn("rounded-md px-2 py-1.5 text-muted-foreground text-sm", className), ...props, children });
 var Task = ({
   defaultOpen = true,
   className,
@@ -1480,7 +1490,7 @@ var TaskContent = ({
       className
     ),
     ...props,
-    children: /* @__PURE__ */ jsx21("div", { className: "mt-4 space-y-2 border-muted border-l-2 pl-4", children })
+    children: /* @__PURE__ */ jsx21("div", { className: "mt-3 space-y-2 rounded-lg border border-border bg-muted/30 p-3", children })
   }
 );
 
@@ -1979,7 +1989,7 @@ function MessageStatus({ message }) {
         ")"
       ] })
     ] }) }),
-    /* @__PURE__ */ jsx24(TaskContent, { children: statusHistory.map((statusItem) => /* @__PURE__ */ jsxs14(TaskItem, { className: "flex items-center gap-2 text-xs", children: [
+    /* @__PURE__ */ jsx24(TaskContent, { children: statusHistory.map((statusItem) => /* @__PURE__ */ jsxs14(TaskItem, { className: "flex items-center gap-3 text-xs", children: [
       /* @__PURE__ */ jsx24("span", { className: "font-mono opacity-80", children: formatEventTime(statusItem.at) }),
       /* @__PURE__ */ jsx24("span", { children: statusItem.label })
     ] }, statusItem.id)) })
@@ -2348,6 +2358,10 @@ var resubscribeToTask = (client, taskId, signal) => Effect.sync(() => client.res
 var getTaskById = (client, taskId) => Effect.tryPromise({
   try: () => client.getTask({ id: taskId }),
   catch: (cause) => cause instanceof Error ? cause : new Error("Could not fetch task from A2A server")
+});
+var cancelTaskById = (client, taskId) => Effect.tryPromise({
+  try: () => client.cancelTask({ id: taskId }),
+  catch: (cause) => cause instanceof Error ? cause : new Error("Could not cancel task on the A2A server")
 });
 
 // src/a2a/use-a2a-chat.ts
@@ -3319,6 +3333,42 @@ function useA2AChat(options = {}) {
       taskSessionId: activeTaskSession.id
     });
   }, [activeTaskSession, baseUrl, connectionQuery.data, sendTaskMutation, taskInput]);
+  const handleCancelTask = React14.useCallback(() => {
+    const connection = connectionQuery.data;
+    if (!activeTaskSession || connection.state !== "connected" || connection.connectedUrl !== baseUrl || !connection.client) {
+      return;
+    }
+    const taskId = activeTaskSession.conversationState.taskId;
+    const workingAssistantMessage = [...activeTaskSession.messages].reverse().find((message) => message.role === "assistant" && message.isWorking);
+    if (!workingAssistantMessage) {
+      return;
+    }
+    const controllerKey = taskId ? `${baseUrl}::${taskId}` : `${baseUrl}::${workingAssistantMessage.id}`;
+    runnerControllersRef.current.get(controllerKey)?.abort();
+    if (!taskId) {
+      setAssistantStatus(baseUrl, activeTaskSession.id, workingAssistantMessage.id, "Canceled", false);
+      return;
+    }
+    void Effect2.runPromise(cancelTaskById(connection.client, taskId)).then((task) => {
+      updateAssistantMessage(baseUrl, activeTaskSession.id, workingAssistantMessage.id, (currentMessage) => ({
+        ...currentMessage,
+        text: getTaskText(task)
+      }));
+      setAssistantStatus(
+        baseUrl,
+        activeTaskSession.id,
+        workingAssistantMessage.id,
+        formatTaskStatus(task.status.state),
+        !isTerminalTask(task)
+      );
+    }).catch((error) => {
+      updateAssistantMessage(baseUrl, activeTaskSession.id, workingAssistantMessage.id, (currentMessage) => ({
+        ...currentMessage,
+        text: getErrorMessage(error, "Could not cancel task on the A2A server.")
+      }));
+      setAssistantStatus(baseUrl, activeTaskSession.id, workingAssistantMessage.id, "Cancel Failed", false);
+    });
+  }, [activeTaskSession, baseUrl, connectionQuery.data, setAssistantStatus, updateAssistantMessage]);
   const handleCreateTaskSession = React14.useCallback(() => {
     setChatStore((current) => {
       const urlState = current.byUrl[baseUrl];
@@ -3427,6 +3477,7 @@ function useA2AChat(options = {}) {
     handleConnect,
     handleSelectRecentAgent,
     handleSubmitTask,
+    handleCancelTask,
     handleCreateTaskSession,
     handleSelectTaskSession,
     handleDeleteTaskSession
@@ -3738,12 +3789,6 @@ function getStatusClasses(state) {
   }
   return "border-border bg-muted text-muted-foreground";
 }
-function getAgentButtonLabel(agentName, agentUrl) {
-  if (agentName && agentName.trim().length > 0) {
-    return agentName.trim();
-  }
-  return agentUrl;
-}
 function A2AChatCard({
   className,
   contentClassName,
@@ -3756,7 +3801,6 @@ function A2AChatCard({
   showConnectionForm = true,
   showHeader = true,
   showConnectionStatus = true,
-  showRecentAgents,
   showTaskSessions = true,
   fillHeight = false,
   collapsibleSidebar = false,
@@ -3778,12 +3822,11 @@ function A2AChatCard({
     setTaskInput,
     isSending,
     messages,
-    recentAgents,
     taskSessions,
     activeTaskSessionId,
     handleConnect,
-    handleSelectRecentAgent,
     handleSubmitTask,
+    handleCancelTask,
     handleCreateTaskSession,
     handleSelectTaskSession,
     handleDeleteTaskSession
@@ -3794,13 +3837,20 @@ function A2AChatCard({
     persistence
   });
   const isPanel = layout === "panel";
-  const shouldShowRecentAgents = showRecentAgents ?? !isPanel;
   const fills = isPanel || fillHeight;
-  const sidebarVisible = shouldShowRecentAgents || showTaskSessions;
+  const sidebarVisible = showTaskSessions;
   const canCollapse = collapsibleSidebar && !isPanel;
   const [sidebarCollapsed, setSidebarCollapsed] = React16.useState(false);
+  const [taskSearch, setTaskSearch] = React16.useState("");
   const collapsed = canCollapse && sidebarCollapsed;
   const isEmpty = messages.length === 0;
+  const filteredTaskSessions = React16.useMemo(() => {
+    const query = taskSearch.trim().toLowerCase();
+    if (query.length === 0) {
+      return taskSessions;
+    }
+    return taskSessions.filter((session) => session.title.toLowerCase().includes(query));
+  }, [taskSearch, taskSessions]);
   const submitTask = React16.useCallback(
     (message) => {
       const files = message?.files ?? [];
@@ -3932,67 +3982,80 @@ Attached files: ${fileSummary}` : baseText;
                 children: /* @__PURE__ */ jsx29(PanelLeftCloseIcon, {})
               }
             ) }) : null,
-            shouldShowRecentAgents ? /* @__PURE__ */ jsxs17("div", { className: "flex flex-col gap-2", children: [
-              /* @__PURE__ */ jsx29("div", { className: "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground", children: "Recent Agents" }),
-              /* @__PURE__ */ jsx29("div", { className: "flex max-h-40 flex-col gap-1 overflow-y-auto", children: recentAgents.length > 0 ? recentAgents.map((agent) => /* @__PURE__ */ jsx29(
-                Button,
-                {
-                  type: "button",
-                  variant: agent.url === url ? "default" : "outline",
-                  size: "sm",
-                  onClick: () => handleSelectRecentAgent(agent.url),
-                  className: "justify-start",
-                  title: agent.url,
-                  children: /* @__PURE__ */ jsx29("span", { className: "truncate", children: getAgentButtonLabel(agent.agentName, agent.url) })
-                },
-                agent.url
-              )) : /* @__PURE__ */ jsx29("div", { className: "text-xs text-muted-foreground", children: "No recent agent connections yet." }) })
-            ] }) : null,
-            showTaskSessions ? /* @__PURE__ */ jsxs17("div", { className: "flex min-h-0 min-w-0 flex-1 flex-col gap-2", children: [
-              /* @__PURE__ */ jsxs17(
-                Button,
-                {
-                  type: "button",
-                  variant: "outline",
-                  size: "sm",
-                  onClick: handleCreateTaskSession,
-                  disabled: connectionState !== "connected",
-                  className: "w-full justify-start",
-                  "aria-label": "New task",
-                  title: "New task",
-                  children: [
-                    /* @__PURE__ */ jsx29(PlusIcon2, {}),
-                    /* @__PURE__ */ jsx29("span", { children: "New Task" })
-                  ]
-                }
-              ),
-              /* @__PURE__ */ jsx29("div", { className: "mt-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground", children: "Tasks" }),
-              /* @__PURE__ */ jsx29("div", { className: "flex min-w-0 flex-1 flex-col gap-1 overflow-y-auto pb-1", children: taskSessions.map((session) => /* @__PURE__ */ jsxs17("div", { className: "flex items-center gap-1", children: [
-                /* @__PURE__ */ jsx29(
+            showTaskSessions ? /* @__PURE__ */ jsxs17("div", { className: "flex min-h-0 min-w-0 flex-1 flex-col gap-3", children: [
+              /* @__PURE__ */ jsxs17("div", { className: "flex items-center justify-between gap-2", children: [
+                /* @__PURE__ */ jsx29("div", { className: "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground", children: "Tasks" }),
+                /* @__PURE__ */ jsxs17(
                   Button,
                   {
                     type: "button",
-                    variant: session.id === activeTaskSessionId ? "default" : "outline",
+                    variant: "outline",
                     size: "sm",
-                    onClick: () => handleSelectTaskSession(session.id),
-                    className: "min-w-0 flex-1 justify-start",
-                    title: session.title,
-                    children: /* @__PURE__ */ jsx29("span", { className: "truncate", children: session.title })
-                  }
-                ),
-                /* @__PURE__ */ jsx29(
-                  Button,
-                  {
-                    type: "button",
-                    variant: "ghost",
-                    size: "icon-sm",
-                    onClick: () => handleDeleteTaskSession(session.id),
-                    "aria-label": `Delete task ${session.title}`,
-                    title: `Delete task ${session.title}`,
-                    children: /* @__PURE__ */ jsx29(Trash2Icon, {})
+                    onClick: handleCreateTaskSession,
+                    disabled: connectionState !== "connected",
+                    "aria-label": "New task",
+                    title: "New task",
+                    children: [
+                      /* @__PURE__ */ jsx29(PlusIcon2, {}),
+                      /* @__PURE__ */ jsx29("span", { children: "New" })
+                    ]
                   }
                 )
-              ] }, session.id)) })
+              ] }),
+              /* @__PURE__ */ jsxs17("div", { className: "relative", children: [
+                /* @__PURE__ */ jsx29(SearchIcon3, { className: "pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground", "aria-hidden": "true" }),
+                /* @__PURE__ */ jsx29(
+                  Input,
+                  {
+                    value: taskSearch,
+                    onChange: (event) => setTaskSearch(event.target.value),
+                    placeholder: "Search tasks",
+                    "aria-label": "Search tasks",
+                    className: "h-9 pl-9"
+                  }
+                )
+              ] }),
+              /* @__PURE__ */ jsx29("div", { className: "flex min-w-0 flex-1 flex-col gap-2 overflow-y-auto pb-1", children: filteredTaskSessions.length > 0 ? filteredTaskSessions.map((session) => {
+                const selected = session.id === activeTaskSessionId;
+                return /* @__PURE__ */ jsxs17(
+                  "div",
+                  {
+                    className: cn(
+                      "group flex min-w-0 items-center gap-2 rounded-xl border p-2 transition-colors",
+                      selected ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card hover:bg-muted/60"
+                    ),
+                    children: [
+                      /* @__PURE__ */ jsxs17(
+                        "button",
+                        {
+                          type: "button",
+                          onClick: () => handleSelectTaskSession(session.id),
+                          className: "min-w-0 flex-1 text-left",
+                          title: session.title,
+                          children: [
+                            /* @__PURE__ */ jsx29("span", { className: "block truncate text-sm font-medium", children: session.title }),
+                            /* @__PURE__ */ jsx29("span", { className: cn("mt-1 block text-xs", selected ? "text-primary-foreground/70" : "text-muted-foreground"), children: "Task session" })
+                          ]
+                        }
+                      ),
+                      /* @__PURE__ */ jsx29(
+                        Button,
+                        {
+                          type: "button",
+                          variant: selected ? "secondary" : "ghost",
+                          size: "icon-sm",
+                          onClick: () => handleDeleteTaskSession(session.id),
+                          "aria-label": `Delete task ${session.title}`,
+                          title: `Delete task ${session.title}`,
+                          className: "shrink-0",
+                          children: /* @__PURE__ */ jsx29(Trash2Icon, {})
+                        }
+                      )
+                    ]
+                  },
+                  session.id
+                );
+              }) : /* @__PURE__ */ jsx29("div", { className: "rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground", children: "No tasks match your search." }) })
             ] }) : null
           ] }) : null,
           /* @__PURE__ */ jsxs17(
@@ -4013,7 +4076,9 @@ Attached files: ${fileSummary}` : baseText;
                       value: taskInput,
                       onChange: setTaskInput,
                       onSubmit: submitTask,
-                      disabled: connectionState !== "connected" || isSending,
+                      disabled: connectionState !== "connected",
+                      isSending,
+                      onCancel: handleCancelTask,
                       placeholder: inputPlaceholder,
                       className: "w-full"
                     }
@@ -4036,7 +4101,9 @@ Attached files: ${fileSummary}` : baseText;
                     value: taskInput,
                     onChange: setTaskInput,
                     onSubmit: submitTask,
-                    disabled: connectionState !== "connected" || isSending,
+                    disabled: connectionState !== "connected",
+                    isSending,
+                    onCancel: handleCancelTask,
                     placeholder: inputPlaceholder
                   }
                 )
