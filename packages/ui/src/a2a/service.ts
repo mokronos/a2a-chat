@@ -30,3 +30,10 @@ export const getTaskById = (client: A2AClient, taskId: string) =>
     catch: (cause) =>
       cause instanceof Error ? cause : new Error("Could not fetch task from A2A server"),
   })
+
+export const cancelTaskById = (client: A2AClient, taskId: string) =>
+  Effect.tryPromise({
+    try: () => client.cancelTask({ id: taskId }),
+    catch: (cause) =>
+      cause instanceof Error ? cause : new Error("Could not cancel task on the A2A server"),
+  })

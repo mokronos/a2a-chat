@@ -115,7 +115,7 @@ function MessageStatus({ message }: { message: Message }) {
       </TaskTrigger>
       <TaskContent>
         {statusHistory.map((statusItem) => (
-          <TaskItem key={statusItem.id} className="flex items-center gap-2 text-xs">
+          <TaskItem key={statusItem.id} className="flex items-center gap-3 text-xs">
             <span className="font-mono opacity-80">{formatEventTime(statusItem.at)}</span>
             <span>{statusItem.label}</span>
           </TaskItem>

@@ -23,6 +23,8 @@ type InputBoxProps = {
   onChange: (value: string) => void
   onSubmit: (message?: PromptInputMessage) => void
   disabled?: boolean
+  isSending?: boolean
+  onCancel?: () => void
   className?: string
   placeholder?: string
   submitLabel?: string
@@ -63,6 +65,8 @@ function InputBox({
   onChange,
   onSubmit,
   disabled = false,
+  isSending = false,
+  onCancel,
   className,
   placeholder = "Ask anything",
   submitLabel = "Send message",
@@ -71,10 +75,10 @@ function InputBox({
 
   return (
     <PromptInput
-      className={cn("rounded-[2rem] border-border bg-muted/60 shadow-sm", className)}
+      className={cn("min-h-32 rounded-3xl border-border bg-muted/70 shadow-sm", className)}
       multiple
       onSubmit={(message) => {
-        if (!disabled && message.text.trim().length > 0) {
+        if (!disabled && !isSending && message.text.trim().length > 0) {
           onSubmit(message)
         }
       }}
@@ -85,25 +89,30 @@ function InputBox({
           placeholder={placeholder}
           value={value}
           onChange={(event) => onChange(event.currentTarget.value)}
-          disabled={disabled}
-          className="min-h-14 px-4 py-4 text-base"
+          disabled={disabled || isSending}
+          className="min-h-16 px-5 py-5 text-base"
         />
       </PromptInputBody>
-      <PromptInputFooter className="px-3 pb-3">
+      <PromptInputFooter className="px-4 pb-4">
         <PromptInputTools>
           <PromptInputActionMenu>
-            <PromptInputActionMenuTrigger tooltip="Attach files" disabled={disabled}>
+            <PromptInputActionMenuTrigger tooltip="Attach files" disabled={disabled || isSending}>
               <PaperclipIcon className="size-4" />
             </PromptInputActionMenuTrigger>
             <PromptInputActionMenuContent>
               <PromptInputActionAddAttachments />
             </PromptInputActionMenuContent>
           </PromptInputActionMenu>
-          <PromptInputButton tooltip="Voice input" disabled={disabled} aria-label="Voice input">
+          <PromptInputButton tooltip="Voice input" disabled={disabled || isSending} aria-label="Voice input">
             <MicIcon className="size-4" />
           </PromptInputButton>
         </PromptInputTools>
-        <PromptInputSubmit disabled={!canSubmit} aria-label={submitLabel} />
+        <PromptInputSubmit
+          disabled={isSending ? false : !canSubmit}
+          status={isSending ? "streaming" : undefined}
+          onStop={onCancel}
+          aria-label={isSending ? "Cancel task" : submitLabel}
+        />
       </PromptInputFooter>
     </PromptInput>
   )

@@ -83,14 +83,6 @@ function getStatusClasses(state: ConnectionState) {
   return "border-border bg-muted text-muted-foreground"
 }
 
-function getAgentButtonLabel(agentName: string | null, agentUrl: string): string {
-  if (agentName && agentName.trim().length > 0) {
-    return agentName.trim()
-  }
-
-  return agentUrl
-}
-
 function A2AChatCard({
   className,
   contentClassName,
@@ -103,7 +95,6 @@ function A2AChatCard({
   showConnectionForm = true,
   showHeader = true,
   showConnectionStatus = true,
-  showRecentAgents,
   showTaskSessions = true,
   fillHeight = false,
   collapsibleSidebar = false,
@@ -125,12 +116,11 @@ function A2AChatCard({
     setTaskInput,
     isSending,
     messages,
-    recentAgents,
     taskSessions,
     activeTaskSessionId,
     handleConnect,
-    handleSelectRecentAgent,
     handleSubmitTask,
+    handleCancelTask,
     handleCreateTaskSession,
     handleSelectTaskSession,
     handleDeleteTaskSession,
@@ -142,14 +132,22 @@ function A2AChatCard({
   })
 
   const isPanel = layout === "panel"
-  const shouldShowRecentAgents = showRecentAgents ?? !isPanel
   // The panel layout always fills its parent; default layout opts in via `fillHeight`.
   const fills = isPanel || fillHeight
-  const sidebarVisible = shouldShowRecentAgents || showTaskSessions
+  const sidebarVisible = showTaskSessions
   const canCollapse = collapsibleSidebar && !isPanel
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false)
+  const [taskSearch, setTaskSearch] = React.useState("")
   const collapsed = canCollapse && sidebarCollapsed
   const isEmpty = messages.length === 0
+  const filteredTaskSessions = React.useMemo(() => {
+    const query = taskSearch.trim().toLowerCase()
+    if (query.length === 0) {
+      return taskSessions
+    }
+
+    return taskSessions.filter((session) => session.title.toLowerCase().includes(query))
+  }, [taskSearch, taskSessions])
 
   const submitTask = React.useCallback(
     (message?: PromptInputMessage) => {
@@ -300,75 +298,73 @@ function A2AChatCard({
                   </Button>
                 </div>
               ) : null}
-              {shouldShowRecentAgents ? (
-                <div className="flex flex-col gap-2">
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Recent Agents
-                  </div>
-                  <div className="flex max-h-40 flex-col gap-1 overflow-y-auto">
-                    {recentAgents.length > 0 ? (
-                      recentAgents.map((agent) => (
-                        <Button
-                          key={agent.url}
-                          type="button"
-                          variant={agent.url === url ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => handleSelectRecentAgent(agent.url)}
-                          className="justify-start"
-                          title={agent.url}
-                        >
-                          <span className="truncate">{getAgentButtonLabel(agent.agentName, agent.url)}</span>
-                        </Button>
-                      ))
-                    ) : (
-                      <div className="text-xs text-muted-foreground">No recent agent connections yet.</div>
-                    )}
-                  </div>
+            {showTaskSessions ? <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Tasks
                 </div>
-              ) : null}
-
-            {showTaskSessions ? <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleCreateTaskSession}
-                disabled={connectionState !== "connected"}
-                className="w-full justify-start"
-                aria-label="New task"
-                title="New task"
-              >
-                <PlusIcon />
-                <span>New Task</span>
-              </Button>
-              <div className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Tasks
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCreateTaskSession}
+                  disabled={connectionState !== "connected"}
+                  aria-label="New task"
+                  title="New task"
+                >
+                  <PlusIcon />
+                  <span>New</span>
+                </Button>
               </div>
-              <div className="flex min-w-0 flex-1 flex-col gap-1 overflow-y-auto pb-1">
-                {taskSessions.map((session) => (
-                  <div key={session.id} className="flex items-center gap-1">
-                    <Button
-                      type="button"
-                      variant={session.id === activeTaskSessionId ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handleSelectTaskSession(session.id)}
-                      className="min-w-0 flex-1 justify-start"
-                      title={session.title}
+              <div className="relative">
+                <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                <Input
+                  value={taskSearch}
+                  onChange={(event) => setTaskSearch(event.target.value)}
+                  placeholder="Search tasks"
+                  aria-label="Search tasks"
+                  className="h-9 pl-9"
+                />
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col gap-2 overflow-y-auto pb-1">
+                {filteredTaskSessions.length > 0 ? filteredTaskSessions.map((session) => {
+                  const selected = session.id === activeTaskSessionId
+
+                  return (
+                    <div
+                      key={session.id}
+                      className={cn(
+                        "group flex min-w-0 items-center gap-2 rounded-xl border p-2 transition-colors",
+                        selected ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card hover:bg-muted/60"
+                      )}
                     >
-                      <span className="truncate">{session.title}</span>
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => handleDeleteTaskSession(session.id)}
-                      aria-label={`Delete task ${session.title}`}
-                      title={`Delete task ${session.title}`}
-                    >
-                      <Trash2Icon />
-                    </Button>
+                      <button
+                        type="button"
+                        onClick={() => handleSelectTaskSession(session.id)}
+                        className="min-w-0 flex-1 text-left"
+                        title={session.title}
+                      >
+                        <span className="block truncate text-sm font-medium">{session.title}</span>
+                        <span className={cn("mt-1 block text-xs", selected ? "text-primary-foreground/70" : "text-muted-foreground")}>Task session</span>
+                      </button>
+                      <Button
+                        type="button"
+                        variant={selected ? "secondary" : "ghost"}
+                        size="icon-sm"
+                        onClick={() => handleDeleteTaskSession(session.id)}
+                        aria-label={`Delete task ${session.title}`}
+                        title={`Delete task ${session.title}`}
+                        className="shrink-0"
+                      >
+                        <Trash2Icon />
+                      </Button>
+                    </div>
+                  )
+                }) : (
+                  <div className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">
+                    No tasks match your search.
                   </div>
-                ))}
+                )}
               </div>
             </div> : null}
             </aside>
@@ -395,7 +391,9 @@ function A2AChatCard({
                   value={taskInput}
                   onChange={setTaskInput}
                   onSubmit={submitTask}
-                  disabled={connectionState !== "connected" || isSending}
+                  disabled={connectionState !== "connected"}
+                  isSending={isSending}
+                  onCancel={handleCancelTask}
                   placeholder={inputPlaceholder}
                   className="w-full"
                 />
@@ -419,7 +417,9 @@ function A2AChatCard({
                 value={taskInput}
                 onChange={setTaskInput}
                 onSubmit={submitTask}
-                disabled={connectionState !== "connected" || isSending}
+                disabled={connectionState !== "connected"}
+                isSending={isSending}
+                onCancel={handleCancelTask}
                 placeholder={inputPlaceholder}
               />
             )}

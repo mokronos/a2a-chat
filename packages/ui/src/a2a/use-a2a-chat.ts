@@ -19,6 +19,7 @@ import {
 } from "./helpers"
 import { createProxyTransport } from "./proxy"
 import {
+  cancelTaskById,
   connectJsonRpc,
   getTaskById,
   resubscribeToTask,
@@ -122,6 +123,7 @@ export type UseA2AChatResult = {
   handleConnect: () => void
   handleSelectRecentAgent: (agentUrl: string) => void
   handleSubmitTask: (taskTextOverride?: string) => void
+  handleCancelTask: () => void
   handleCreateTaskSession: () => void
   handleSelectTaskSession: (sessionId: string) => void
   handleDeleteTaskSession: (sessionId: string) => void
@@ -1348,6 +1350,59 @@ export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
     })
   }, [activeTaskSession, baseUrl, connectionQuery.data, sendTaskMutation, taskInput])
 
+  const handleCancelTask = React.useCallback(() => {
+    const connection = connectionQuery.data
+    if (
+      !activeTaskSession ||
+      connection.state !== "connected" ||
+      connection.connectedUrl !== baseUrl ||
+      !connection.client
+    ) {
+      return
+    }
+
+    const taskId = activeTaskSession.conversationState.taskId
+    const workingAssistantMessage = [...activeTaskSession.messages]
+      .reverse()
+      .find((message) => message.role === "assistant" && message.isWorking)
+
+    if (!workingAssistantMessage) {
+      return
+    }
+
+    const controllerKey = taskId
+      ? `${baseUrl}::${taskId}`
+      : `${baseUrl}::${workingAssistantMessage.id}`
+    runnerControllersRef.current.get(controllerKey)?.abort()
+
+    if (!taskId) {
+      setAssistantStatus(baseUrl, activeTaskSession.id, workingAssistantMessage.id, "Canceled", false)
+      return
+    }
+
+    void Effect.runPromise(cancelTaskById(connection.client, taskId))
+      .then((task) => {
+        updateAssistantMessage(baseUrl, activeTaskSession.id, workingAssistantMessage.id, (currentMessage) => ({
+          ...currentMessage,
+          text: getTaskText(task),
+        }))
+        setAssistantStatus(
+          baseUrl,
+          activeTaskSession.id,
+          workingAssistantMessage.id,
+          formatTaskStatus(task.status.state),
+          !isTerminalTask(task)
+        )
+      })
+      .catch((error) => {
+        updateAssistantMessage(baseUrl, activeTaskSession.id, workingAssistantMessage.id, (currentMessage) => ({
+          ...currentMessage,
+          text: getErrorMessage(error, "Could not cancel task on the A2A server."),
+        }))
+        setAssistantStatus(baseUrl, activeTaskSession.id, workingAssistantMessage.id, "Cancel Failed", false)
+      })
+  }, [activeTaskSession, baseUrl, connectionQuery.data, setAssistantStatus, updateAssistantMessage])
+
   const handleCreateTaskSession = React.useCallback(() => {
     setChatStore((current) => {
       const urlState = current.byUrl[baseUrl]
@@ -1481,6 +1536,7 @@ export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
     handleConnect,
     handleSelectRecentAgent,
     handleSubmitTask,
+    handleCancelTask,
     handleCreateTaskSession,
     handleSelectTaskSession,
     handleDeleteTaskSession,
