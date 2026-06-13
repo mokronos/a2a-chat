@@ -571,7 +571,7 @@ function createStatusEntry(label: string): MessageStatusHistoryEntry {
   }
 }
 
-export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
+export function useA2AChatController(options: UseA2AChatOptions = {}): UseA2AChatResult {
   const {
     initialUrl = "http://localhost:8000",
     proxyBasePath,
@@ -1049,7 +1049,7 @@ export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
       setConnectionStore((current) => ({
         ...current,
         state: "connecting",
-        message: `Checking ${targetUrl}...`,
+        message: "Connecting…",
         client: null,
         connectedUrl: null,
         pendingUrl: targetUrl,
@@ -1057,7 +1057,7 @@ export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
         agentName: null,
       }))
     },
-    onSuccess: ({ client, endpoint, acceptedOutputModes, agentName }, targetUrl) => {
+    onSuccess: ({ client, acceptedOutputModes, agentName }, targetUrl) => {
       setChatStore((current) => {
         const urlState = current.byUrl[targetUrl] ?? getUrlChatInitialState()
 
@@ -1077,7 +1077,7 @@ export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
       setConnectionStore((current) => ({
         ...current,
         state: "connected",
-        message: `Connected via JSONRPC (${endpoint})`,
+        message: "Connected",
         client,
         connectedUrl: targetUrl,
         pendingUrl: null,

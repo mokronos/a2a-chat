@@ -61,6 +61,7 @@ type MessageBoxProps = {
   messages: Message[]
   eventRenderers?: MessageTimelineEventRenderer[]
   className?: string
+  contentClassName?: string
 }
 
 function formatEventTime(timestamp: number): string {
@@ -162,12 +163,14 @@ function MessageEventTimeline({
   )
 }
 
-function MessageBox({ messages, eventRenderers = [], className }: MessageBoxProps) {
+function MessageBox({ messages, eventRenderers = [], className, contentClassName }: MessageBoxProps) {
+  // Fills its parent by default — the parent decides the height. Box styling
+  // (border, background, fixed height) is left to `className`.
   return (
     <Conversation
-      className={cn("h-72 rounded-md border border-border bg-background", className)}
+      className={cn("size-full min-h-0 bg-transparent", className)}
     >
-      <ConversationContent className="gap-3 p-3">
+      <ConversationContent className={cn("gap-3 p-3", contentClassName)}>
         {messages.length === 0 ? (
           <ConversationEmptyState
             icon={<MessageSquareIcon className="size-10" aria-hidden="true" />}
