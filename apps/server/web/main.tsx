@@ -1,5 +1,6 @@
-import { StrictMode } from "react"
+import { StrictMode, useEffect, useState } from "react"
 import { createRoot } from "react-dom/client"
+import { MenuIcon, XIcon } from "lucide-react"
 import {
   A2AChatProvider,
   A2AConnectionBar,
@@ -10,8 +11,14 @@ import {
   A2APromptSuggestions,
   A2ATaskList,
   inspectorEventRenderers,
+  useA2AChat,
 } from "@mokronos/a2a-chat-ui"
 import type { A2AAgentSuggestion } from "@mokronos/a2a-chat-ui"
+
+// Minimal class joiner (the library keeps its `cn` internal). No conflicting
+// utilities are combined here, so a plain filter+join is enough.
+const cn = (...classes: Array<string | false | null | undefined>) =>
+  classes.filter(Boolean).join(" ")
 
 /*
  * A2A Inspector — example host application (ChatGPT-style full-screen layout).
@@ -55,7 +62,13 @@ const agentSuggestions: A2AAgentSuggestion[] = [
 // ─────────────────────────────────────────────────────────────────────────
 
 const GREETING = "How can I help?"
-const STARTER_PROMPTS = ["What can you do?", "Summarize the latest task output"]
+const STARTER_PROMPTS = [
+  "What can you do?",
+  "Summarize the latest task output",
+  "Tell another agent to tell you a joke",
+  "Show me the available tools",
+]
+const TITLE = "A2A Inspector"
 
 // Width of the conversation column + input (the ChatGPT ~768px column).
 const COLUMN = "mx-auto w-full max-w-3xl"
@@ -63,13 +76,69 @@ const COLUMN = "mx-auto w-full max-w-3xl"
 // ─────────────────────────────────────────────────────────────────────────
 // [CONFIGURABLE] Layout — connection lives in the sidebar; the right pane is
 // pure chat using the full height and width.
+//
+// Responsive: on desktop (md+) the sidebar is a static column. On mobile it
+// collapses into an off-canvas drawer toggled from a slim top bar, so the chat
+// gets the full screen width instead of being squeezed beside a cramped panel.
 // ─────────────────────────────────────────────────────────────────────────
 
 function Inspector() {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  // Auto-close the mobile drawer once a task session is created/selected so the
+  // user lands straight back on the conversation. No-op when already closed.
+  const { activeTaskSessionId } = useA2AChat()
+  useEffect(() => {
+    setSidebarOpen(false)
+  }, [activeTaskSessionId])
+
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
-      {/* Sidebar: connection + tasks. */}
-      <aside className="flex w-72 shrink-0 flex-col gap-3 border-r border-border bg-muted/20 p-3">
+    <div className="flex h-dvh w-full flex-col overflow-hidden bg-background text-foreground md:flex-row">
+      {/* Mobile-only top bar: title + menu toggle. Hidden on desktop. */}
+      <header className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2 md:hidden">
+        <button
+          type="button"
+          onClick={() => setSidebarOpen(true)}
+          aria-label="Open menu"
+          className="inline-flex size-9 items-center justify-center rounded-md text-foreground hover:bg-muted/60"
+        >
+          <MenuIcon className="size-5" aria-hidden="true" />
+        </button>
+        <span className="truncate text-sm font-semibold">{TITLE}</span>
+      </header>
+
+      {/* Backdrop behind the mobile drawer. Tap to dismiss. Desktop never shows it. */}
+      {sidebarOpen ? (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      ) : null}
+
+      {/* Sidebar: connection + tasks. Static column on desktop; off-canvas
+          drawer on mobile (fixed + slide-in, capped so it never fills the
+          screen). */}
+      <aside
+        className={cn(
+          "flex w-72 shrink-0 flex-col gap-3 border-r border-border bg-background p-3",
+          "fixed inset-y-0 left-0 z-50 max-w-[85vw] shadow-xl transition-transform duration-300 ease-in-out",
+          "md:static md:z-auto md:max-w-none md:translate-x-0 md:bg-muted/20 md:shadow-none",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full",
+        )}
+      >
+        {/* Drawer close affordance, mobile only. */}
+        <div className="flex items-center justify-between md:hidden">
+          <span className="text-sm font-semibold">{TITLE}</span>
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Close menu"
+            className="inline-flex size-9 items-center justify-center rounded-md text-foreground hover:bg-muted/60"
+          >
+            <XIcon className="size-5" aria-hidden="true" />
+          </button>
+        </div>
+
         {/* [EXTERNAL] target via provider; [CONFIGURABLE] suggestions. A2AConnectionBar
             stacks the form + status vertically for the sidebar. */}
         <A2AConnectionBar orientation="vertical" agentSuggestions={agentSuggestions} />
@@ -79,7 +148,7 @@ function Inspector() {
       </aside>
 
       {/* Right pane: messages + input, nothing else competing for space. */}
-      <main className="flex min-w-0 flex-1 flex-col">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="relative min-h-0 flex-1">
           {/* [INTERNAL] streaming/timeline. [CONFIGURABLE] maxWidth centers the
               content column; the scroll area itself stays full-bleed. */}
@@ -88,7 +157,7 @@ function Inspector() {
           {/* [CONFIGURABLE] A2AEmptyState overlays the empty conversation with a
               greeting + starter prompts; it disappears on the first message. */}
           <A2AEmptyState className="absolute inset-0 gap-6 bg-background px-4">
-            <h1 className="text-3xl font-semibold tracking-tight">{GREETING}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{GREETING}</h1>
             <A2APromptSuggestions className="max-w-3xl justify-center">
               {STARTER_PROMPTS.map((prompt) => (
                 <A2APromptSuggestion key={prompt} prompt={prompt} />
@@ -98,7 +167,7 @@ function Inspector() {
         </div>
 
         {/* Input docked at the bottom, centered to the same column. */}
-        <div className="shrink-0 px-4 pb-6 pt-2">
+        <div className="shrink-0 px-3 pb-4 pt-2 sm:px-4 sm:pb-6">
           <div className={COLUMN}>
             {/* [INTERNAL] A2AInput owns submit/cancel + streaming state. */}
             <A2AInput placeholder="Ask anything" />
@@ -124,7 +193,7 @@ createRoot(rootElement).render(
     {/* [EXTERNAL] connection target (+ optional persistence) is configured here.
         [INTERNAL] the provider runs the A2A client, streaming, and task-session
         state, and shares it with every primitive below via context. */}
-    <A2AChatProvider proxyBasePath={PROXY_BASE_PATH} initialUrl={INITIAL_URL}>
+    <A2AChatProvider proxyBasePath={PROXY_BASE_PATH} initialUrl={INITIAL_URL} autoConnect>
       <Inspector />
     </A2AChatProvider>
   </StrictMode>

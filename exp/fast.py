@@ -4,6 +4,8 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
+import anyio
+
 from fasta2a import FastA2A, Worker
 from fasta2a.broker import InMemoryBroker
 from fasta2a.schema import (
@@ -30,17 +32,73 @@ from pydantic_ai import (
     TextPartDelta,
     ThinkingPart,
 )
+from pydantic_ai.messages import (
+    ModelMessage,
+    ModelRequest,
+    ModelResponse,
+    TextPart as ModelTextPart,
+    UserPromptPart,
+)
 
 Context = list[Message]
 """The shape of the context you store in the storage."""
 
-from agent import agent
+from agent import agent, progress_callback
 
 logger = logging.getLogger(__name__)
 
 
 class InMemoryWorker(Worker[Context]):
+    # Cancel scopes for tasks that are currently running, keyed by task id.
+    _cancel_scopes: dict[str, anyio.CancelScope]
+    _task_group: anyio.abc.TaskGroup
+
+    @asynccontextmanager
+    async def run(self) -> AsyncIterator[None]:
+        """Run the worker.
+
+        We override the base implementation so task execution happens in
+        background tasks within this group. Otherwise `run_task` would block the
+        worker's operation loop, and a `cancel` operation could never be received
+        until the task it is meant to cancel had already finished.
+        """
+        self._cancel_scopes = {}
+        async with anyio.create_task_group() as tg:
+            self._task_group = tg
+            tg.start_soon(self._loop)
+            yield
+            tg.cancel_scope.cancel()
+
     async def run_task(self, params: TaskSendParams) -> None:
+        # Hand the actual work off so the worker loop stays free to receive a
+        # subsequent `cancel` operation for this task.
+        self._task_group.start_soon(self._execute_task, params)
+
+    async def _execute_task(self, params: TaskSendParams) -> None:
+        task_id = params['id']
+        try:
+            with anyio.CancelScope() as scope:
+                self._cancel_scopes[task_id] = scope
+                await self._run_task_impl(params)
+        except Exception as e:
+            # Mark the task failed instead of crashing the worker's task group.
+            logger.exception(e)
+            task = await self.storage.update_task(task_id, state='failed')
+            await self.broker.event_bus.emit(
+                task_id,
+                StreamResponse(
+                    status_update=TaskStatusUpdateEvent(
+                        task_id=task_id,
+                        context_id=task['context_id'],
+                        status=TaskStatus(state='failed'),
+                    )
+                ),
+            )
+            await self.broker.event_bus.close(task_id)
+        finally:
+            self._cancel_scopes.pop(task_id, None)
+
+    async def _run_task_impl(self, params: TaskSendParams) -> None:
         task = await self.storage.load_task(params['id'])
         assert task is not None
 
@@ -73,14 +131,28 @@ class InMemoryWorker(Worker[Context]):
 
         await update_task_with_status(state='working')
 
-        context = await self.storage.load_context(task['context_id']) or []
+        context = list(await self.storage.load_context(task['context_id']) or [])
         context.extend(task.get('history', []))
 
-        user_message = context[-1]['parts'][0]['text']
+        user_message = self.get_latest_user_text(context)
+        message_history = self.build_message_history(context[:-1])
         current_artifact_id = None
 
+        async def emit_tool_progress(data: dict[str, Any]) -> None:
+            message = Message(
+                role='agent',
+                parts=[Part(data=data)],
+                message_id=str(uuid.uuid4()),
+            )
+            context.append(message)
+            await update_task_with_status(state='working', new_messages=[message])
+
         try:
-            async for event in agent.run_stream_events(user_message):
+            progress_token = progress_callback.set(emit_tool_progress)
+            async for event in agent.run_stream_events(
+                user_message,
+                message_history=message_history,
+            ):
                 if isinstance(event, PartStartEvent):
                     # PartStartEvent(index=1, part=TextPart(content='The weather in New York is **sunny with a temperature of 25°C**.'), previous_part_kind='thinking')
                     if isinstance(event.part, TextPart):
@@ -94,8 +166,12 @@ class InMemoryWorker(Worker[Context]):
                             artifact_id=current_artifact_id,
                             parts=[Part(text=text_content)],
                         )
-                            
-                        await update_task_with_status(state='working', new_artifacts=[artifact])
+
+                        await self.storage.update_task(
+                            task['id'],
+                            state='working',
+                            new_artifacts=[artifact],
+                        )
                         await self.broker.event_bus.emit(
                             task['id'],
                             StreamResponse(
@@ -128,8 +204,12 @@ class InMemoryWorker(Worker[Context]):
                             artifact_id=current_artifact_id,
                             parts=[Part(text=content_delta)],
                         )
-                            
-                        await update_task_with_status(state='working', new_artifacts=[artifact])
+
+                        await self.storage.update_task(
+                            task['id'],
+                            state='working',
+                            new_artifacts=[artifact],
+                        )
                         await self.broker.event_bus.emit(
                             task['id'],
                             StreamResponse(
@@ -157,7 +237,14 @@ class InMemoryWorker(Worker[Context]):
                         thinking_content = event.part.content
                         message = Message(
                             role='agent',
-                            parts=[Part(text=thinking_content)],
+                            parts=[
+                                Part(
+                                    data={
+                                        "type": "thinking",
+                                        "text": thinking_content,
+                                    }
+                                )
+                            ],
                             message_id=str(uuid.uuid4()),
                         )
                         context.append(message)
@@ -177,9 +264,11 @@ class InMemoryWorker(Worker[Context]):
                     tool_call_id = event.part.tool_call_id
 
                     tool_data = {
-                        "tool_name": tool_name,
+                        "type": "tool-call",
+                        "toolName": tool_name,
                         "args": args,
-                        "tool_call_id": tool_call_id,
+                        "toolCallId": tool_call_id,
+                        "input": args,
                     }
                     message = Message(
                         role='agent',
@@ -197,10 +286,12 @@ class InMemoryWorker(Worker[Context]):
                     timestamp = event.result.timestamp
 
                     tool_return_data = {
-                        "tool_name": tool_name,
+                        "type": "tool-result",
+                        "toolName": tool_name,
                         "content": content,
-                        "tool_call_id": tool_call_id,
+                        "toolCallId": tool_call_id,
                         "timestamp": timestamp,
+                        "output": content,
                     }
 
                     message = Message(
@@ -234,12 +325,66 @@ class InMemoryWorker(Worker[Context]):
         except Exception as e:
             logger.exception(e)
             raise
+        finally:
+            progress_callback.reset(progress_token)
 
         await self.storage.update_context(task['context_id'], context)
 
-    async def cancel_task(self, params: TaskIdParams) -> None: ...
+    async def cancel_task(self, params: TaskIdParams) -> None:
+        task_id = params['id']
 
-    def build_message_history(self, history: list[Message]) -> list[Any]: ...
+        # Stop the in-flight run, if any. The cancel scope interrupts the agent
+        # stream at its next await, so no further updates are emitted.
+        scope = self._cancel_scopes.pop(task_id, None)
+        if scope is not None:
+            scope.cancel()
+
+        task = await self.storage.update_task(task_id, state='canceled')
+        await self.broker.event_bus.emit(
+            task_id,
+            StreamResponse(
+                status_update=TaskStatusUpdateEvent(
+                    task_id=task_id,
+                    context_id=task['context_id'],
+                    status=TaskStatus(state='canceled'),
+                )
+            ),
+        )
+        await self.broker.event_bus.close(task_id)
+
+    def get_message_text(self, message: Message) -> str:
+        fragments: list[str] = []
+        for part in message.get('parts', []):
+            text = part.get('text')
+            if isinstance(text, str) and text.strip():
+                fragments.append(text.strip())
+        return '\n'.join(fragments)
+
+    def get_latest_user_text(self, history: list[Message]) -> str:
+        for message in reversed(history):
+            if message.get('role') != 'user':
+                continue
+
+            text = self.get_message_text(message)
+            if text:
+                return text
+
+        raise ValueError('Task history does not contain a user text message')
+
+    def build_message_history(self, history: list[Message]) -> list[Any]:
+        message_history: list[ModelMessage] = []
+        for message in history:
+            text = self.get_message_text(message)
+            if not text:
+                continue
+
+            role = message.get('role')
+            if role == 'user':
+                message_history.append(ModelRequest(parts=[UserPromptPart(content=text)]))
+            elif role == 'agent':
+                message_history.append(ModelResponse(parts=[ModelTextPart(content=text)]))
+
+        return message_history
 
     def build_artifacts(self, result: Any) -> list[Artifact]: ...
 

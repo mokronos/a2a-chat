@@ -24,7 +24,6 @@ import {
   ChainOfThoughtHeader,
   ChainOfThoughtStep,
 } from "../ai-elements/chain-of-thought"
-import { CodeBlock } from "../ai-elements/code-block"
 import { Spinner } from "../ui/spinner"
 import { cn } from "../../lib/utils"
 
@@ -133,31 +132,28 @@ function MessageEventTimeline({
   events: MessageTimelineEvent[]
   eventRenderers: MessageTimelineEventRenderer[]
 }) {
+  const renderedEvents = events.flatMap((event) => {
+    const content = renderEventContent(event, eventRenderers)
+    return content ? [{ event, content }] : []
+  })
+
+  if (renderedEvents.length === 0) {
+    return null
+  }
+
   return (
     <ChainOfThought defaultOpen={false}>
-      <ChainOfThoughtHeader>Event Timeline ({events.length})</ChainOfThoughtHeader>
+      <ChainOfThoughtHeader>Event Timeline ({renderedEvents.length})</ChainOfThoughtHeader>
       <ChainOfThoughtContent>
-        {events.map((eventItem) => {
-          const customContent = renderEventContent(eventItem, eventRenderers)
-
-          return (
-            <ChainOfThoughtStep
-              key={eventItem.id}
-              label={`${eventItem.kind}: ${eventItem.summary}`}
-              description={
-                eventItem.details
-                  ? `${formatEventTime(eventItem.at)} — ${eventItem.details}`
-                  : formatEventTime(eventItem.at)
-              }
-            >
-              {customContent ? (
-                <div className="min-w-0">{customContent}</div>
-              ) : eventItem.raw ? (
-                <CodeBlock code={eventItem.raw} language="json" className="text-[10px]" />
-              ) : null}
-            </ChainOfThoughtStep>
-          )
-        })}
+        {renderedEvents.map(({ event, content }) => (
+          <ChainOfThoughtStep
+            key={event.id}
+            label={event.summary}
+            description={formatEventTime(event.at)}
+          >
+            <div className="min-w-0">{content}</div>
+          </ChainOfThoughtStep>
+        ))}
       </ChainOfThoughtContent>
     </ChainOfThought>
   )
