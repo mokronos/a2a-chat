@@ -67,6 +67,7 @@ const STARTER_PROMPTS = [
   "Summarize the latest task output",
   "Tell another agent to tell you a joke",
   "Show me the available tools",
+  'Send another agent the task "Tell another agent to tell you a joke"',
 ]
 const TITLE = "A2A Inspector"
 

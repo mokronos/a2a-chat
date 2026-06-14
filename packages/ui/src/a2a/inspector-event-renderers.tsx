@@ -178,22 +178,88 @@ function renderSendTaskResult(data: Record<string, unknown>) {
 }
 
 function renderSendTaskProgress(data: Record<string, unknown>) {
-  const state = typeof data.state === "string" ? data.state : "updated"
-  const url = typeof data.url === "string" ? data.url : null
-  const taskId = typeof data.taskId === "string" ? data.taskId : null
-  const text = typeof data.text === "string" ? data.text.trim() : ""
-  const nestedData = getNestedStreamDataPart(data.rawEvent)
-  const nestedTool =
-    nestedData && nestedData !== data && typeof nestedData.type === "string"
-      ? renderToolData(nestedData, false)
-      : null
-  const nestedThinking =
-    nestedData?.type === "thinking" && typeof nestedData.text === "string"
-      ? nestedData.text.trim()
-      : ""
+  return renderSendTaskRun([data])
+}
+
+function getSendTaskRunData(event: MessageTimelineEvent): Record<string, unknown>[] | null {
+  if (!isRecord(event.rawEvent) || event.rawEvent.kind !== "send-task-run") {
+    return null
+  }
+
+  const rawEvents = event.rawEvent.events
+  if (!Array.isArray(rawEvents)) {
+    return null
+  }
+
+  const progress = rawEvents.flatMap((rawEvent) => {
+    const data = getStatusMessageData({
+      ...event,
+      rawEvent,
+    })
+    return data?.type === "send-task-progress" ? [data] : []
+  })
+
+  return progress.length > 0 ? progress : null
+}
+
+type RunActivity =
+  | { kind: "event"; data: Record<string, unknown>; key: string }
+  | { kind: "run"; data: Record<string, unknown>[]; key: string }
+
+function groupRunActivity(progress: Record<string, unknown>[]): RunActivity[] {
+  const activity: RunActivity[] = []
+  const nestedRuns = new Map<string, Extract<RunActivity, { kind: "run" }>>()
+
+  progress.forEach((item, index) => {
+    const nestedData = getNestedStreamDataPart(item.rawEvent)
+    if (!nestedData || typeof nestedData.type !== "string") {
+      return
+    }
+
+    if (nestedData.type === "send-task-progress" && typeof nestedData.taskId === "string") {
+      const existing = nestedRuns.get(nestedData.taskId)
+      if (existing) {
+        existing.data.push(nestedData)
+        return
+      }
+
+      const run: Extract<RunActivity, { kind: "run" }> = {
+        kind: "run",
+        data: [nestedData],
+        key: `run-${nestedData.taskId}`,
+      }
+      nestedRuns.set(nestedData.taskId, run)
+      activity.push(run)
+      return
+    }
+
+    activity.push({
+      kind: "event",
+      data: nestedData,
+      key: `${nestedData.type}-${index}`,
+    })
+  })
+
+  return activity
+}
+
+function renderSendTaskRun(progress: Record<string, unknown>[]) {
+  const latest = progress.at(-1) ?? {}
+  const first = progress[0] ?? {}
+  const state = typeof latest.state === "string" ? latest.state : "updated"
+  const url = typeof first.url === "string" ? first.url : null
+  const taskId =
+    typeof first.taskId === "string"
+      ? first.taskId
+      : typeof latest.taskId === "string"
+        ? latest.taskId
+        : null
+  const activity = groupRunActivity(progress)
+  const finalText =
+    typeof latest.text === "string" && latest.state === "completed" ? latest.text.trim() : ""
 
   return (
-    <Task defaultOpen>
+    <Task defaultOpen className="min-w-0">
       <TaskTrigger title="Subagent progress">
         <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
           <GitBranchIcon className="size-4 shrink-0" aria-hidden="true" />
@@ -208,18 +274,30 @@ function renderSendTaskProgress(data: Record<string, unknown>) {
         {url ? (
           <TaskItem className="truncate px-0 py-0 font-mono text-[10px]">{url}</TaskItem>
         ) : null}
-        {nestedTool ? <TaskItem className="border-l px-0 py-0 pl-3">{nestedTool}</TaskItem> : null}
-        {nestedThinking ? (
-          <TaskItem className="px-0 py-0">
-            <Reasoning defaultOpen={false}>
-              <ReasoningTrigger />
-              <ReasoningContent>{nestedThinking}</ReasoningContent>
-            </Reasoning>
-          </TaskItem>
+        {activity.length > 0 ? (
+          <div className="space-y-3 border-l border-border pl-3">
+            {activity.map((item) => {
+              if (item.kind === "run") {
+                return <div key={item.key}>{renderSendTaskRun(item.data)}</div>
+              }
+
+              if (item.data.type === "thinking" && typeof item.data.text === "string") {
+                return (
+                  <Reasoning defaultOpen={false} key={item.key}>
+                    <ReasoningTrigger />
+                    <ReasoningContent>{item.data.text}</ReasoningContent>
+                  </Reasoning>
+                )
+              }
+
+              const rendered = renderToolData(item.data, false)
+              return rendered ? <div key={item.key}>{rendered}</div> : null
+            })}
+          </div>
         ) : null}
-        {text.length > 0 ? (
+        {finalText.length > 0 ? (
           <TaskItem className="px-0 py-0 text-foreground">
-            <MessageResponse className="text-xs">{text}</MessageResponse>
+            <MessageResponse className="text-xs">{finalText}</MessageResponse>
           </TaskItem>
         ) : null}
       </TaskContent>
@@ -335,13 +413,31 @@ function renderToolData(data: Record<string, unknown>, defaultOpen = true) {
   return null
 }
 
+function renderThinkingData(data: Record<string, unknown>) {
+  if (data.type !== "thinking" || typeof data.text !== "string" || data.text.trim().length === 0) {
+    return null
+  }
+
+  return (
+    <Reasoning defaultOpen={false}>
+      <ReasoningTrigger />
+      <ReasoningContent>{data.text}</ReasoningContent>
+    </Reasoning>
+  )
+}
+
 export const renderInspectorToolEvent: MessageTimelineEventRenderer = (event) => {
+  const runData = getSendTaskRunData(event)
+  if (runData) {
+    return renderSendTaskRun(runData)
+  }
+
   const data = getStatusMessageData(event)
   if (!data || typeof data.type !== "string") {
     return null
   }
 
-  return renderToolData(data)
+  return renderThinkingData(data) ?? renderToolData(data)
 }
 
 export const renderInspectorArtifactEvent: MessageTimelineEventRenderer = (event) => {

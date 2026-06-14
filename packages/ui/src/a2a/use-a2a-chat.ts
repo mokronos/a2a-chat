@@ -493,7 +493,12 @@ function isTimelineData(data: Record<string, unknown> | null): data is Record<st
     return false
   }
 
-  return data.type === "tool-call" || data.type === "tool-result" || data.type === "send-task-progress"
+  return (
+    data.type === "thinking" ||
+    data.type === "tool-call" ||
+    data.type === "tool-result" ||
+    data.type === "send-task-progress"
+  )
 }
 
 function shouldAppendTimelineEvent(event: unknown): boolean {
@@ -512,6 +517,10 @@ function summarizeToolData(data: Record<string, unknown>): string | null {
   }
 
   const toolName = typeof data.toolName === "string" ? data.toolName : "tool"
+
+  if (data.type === "thinking") {
+    return "Thinking"
+  }
 
   if (data.type === "send-task-progress") {
     const state = typeof data.state === "string" ? formatTaskStatus(data.state) : "Updated"
@@ -542,6 +551,21 @@ function buildTimelineEvent(event: unknown): Omit<MessageTimelineEvent, "id" | "
   const normalizedEvent = normalizeStreamEvent(event)
   const raw = safeSerialize(normalizedEvent)
   const task = extractTask(normalizedEvent)
+  const timelineData = task
+    ? getLatestAgentDataPartFromTask(task)
+    : getStatusUpdateDataPart(normalizedEvent)
+
+  if (timelineData?.type === "send-task-progress" && typeof timelineData.taskId === "string") {
+    return {
+      kind: "send-task-run",
+      summary: `Subagent ${timelineData.taskId}`,
+      rawEvent: {
+        kind: "send-task-run",
+        taskId: timelineData.taskId,
+        events: [normalizedEvent],
+      },
+    }
+  }
 
   if (task) {
     const state = formatTaskStatus(task.status.state)
@@ -819,17 +843,52 @@ export function useA2AChatController(options: UseA2AChatOptions = {}): UseA2ACha
       messageId: string,
       event: Omit<MessageTimelineEvent, "id" | "at">
     ) => {
-      updateAssistantMessage(urlKey, sessionId, messageId, (currentMessage) => ({
-        ...currentMessage,
-        events: [
-          ...(currentMessage.events ?? []),
-          {
-            ...event,
-            id: createId("evt"),
-            at: Date.now(),
-          },
-        ],
-      }))
+      updateAssistantMessage(urlKey, sessionId, messageId, (currentMessage) => {
+        const events = currentMessage.events ?? []
+        const rawEvent = event.rawEvent
+
+        if (
+          event.kind === "send-task-run" &&
+          isRecord(rawEvent) &&
+          typeof rawEvent.taskId === "string" &&
+          Array.isArray(rawEvent.events)
+        ) {
+          const existingIndex = events.findIndex(
+            (item) =>
+              item.kind === "send-task-run" &&
+              isRecord(item.rawEvent) &&
+              item.rawEvent.taskId === rawEvent.taskId
+          )
+
+          if (existingIndex >= 0) {
+            const existing = events[existingIndex]
+            if (existing && isRecord(existing.rawEvent) && Array.isArray(existing.rawEvent.events)) {
+              const nextEvents = [...events]
+              nextEvents[existingIndex] = {
+                ...existing,
+                summary: event.summary,
+                rawEvent: {
+                  ...existing.rawEvent,
+                  events: [...existing.rawEvent.events, ...rawEvent.events],
+                },
+              }
+              return { ...currentMessage, events: nextEvents }
+            }
+          }
+        }
+
+        return {
+          ...currentMessage,
+          events: [
+            ...events,
+            {
+              ...event,
+              id: createId("evt"),
+              at: Date.now(),
+            },
+          ],
+        }
+      })
     },
     [updateAssistantMessage]
   )
@@ -917,12 +976,9 @@ export function useA2AChatController(options: UseA2AChatOptions = {}): UseA2ACha
         if (outputSnapshot !== null || outputChunks.length > 0 || thinkingChunks.length > 0) {
           updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => {
             const nextText = outputSnapshot ?? `${currentMessage.text}${outputChunks.join("")}`
-            const nextThinkingText = `${currentMessage.thinkingText ?? ""}${thinkingChunks.join("")}`
-
             return {
               ...currentMessage,
               text: nextText,
-              thinkingText: nextThinkingText.length > 0 ? nextThinkingText : currentMessage.thinkingText,
             }
           })
         }
@@ -959,10 +1015,7 @@ export function useA2AChatController(options: UseA2AChatOptions = {}): UseA2ACha
         }
         updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => {
           if (statusData?.type === "thinking" && typeof statusData.text === "string") {
-            return {
-              ...currentMessage,
-              thinkingText: statusData.text,
-            }
+            return currentMessage
           }
 
           return {

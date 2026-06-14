@@ -12,11 +12,6 @@ import {
   MessageContent,
   MessageResponse,
 } from "../ai-elements/message"
-import {
-  Reasoning,
-  ReasoningContent,
-  ReasoningTrigger,
-} from "../ai-elements/reasoning"
 import { Task, TaskContent, TaskItem, TaskTrigger } from "../ai-elements/task"
 import {
   ChainOfThought,
@@ -128,21 +123,34 @@ function MessageStatus({ message }: { message: Message }) {
 function MessageEventTimeline({
   events,
   eventRenderers,
+  isWorking,
 }: {
   events: MessageTimelineEvent[]
   eventRenderers: MessageTimelineEventRenderer[]
+  isWorking: boolean
 }) {
+  const [isOpen, setIsOpen] = React.useState(isWorking)
+  const wasWorking = React.useRef(isWorking)
   const renderedEvents = events.flatMap((event) => {
     const content = renderEventContent(event, eventRenderers)
     return content ? [{ event, content }] : []
   })
+
+  React.useEffect(() => {
+    if (isWorking) {
+      setIsOpen(true)
+    } else if (wasWorking.current) {
+      setIsOpen(false)
+    }
+    wasWorking.current = isWorking
+  }, [isWorking])
 
   if (renderedEvents.length === 0) {
     return null
   }
 
   return (
-    <ChainOfThought defaultOpen={false}>
+    <ChainOfThought open={isOpen} onOpenChange={setIsOpen}>
       <ChainOfThoughtHeader>Event Timeline ({renderedEvents.length})</ChainOfThoughtHeader>
       <ChainOfThoughtContent>
         {renderedEvents.map(({ event, content }) => (
@@ -199,13 +207,8 @@ function MessageBox({ messages, eventRenderers = [], className, contentClassName
                   <MessageEventTimeline
                     events={timelineEvents}
                     eventRenderers={eventRenderers}
+                    isWorking={message.isWorking === true}
                   />
-                ) : null}
-                {message.thinkingText && message.thinkingText.trim().length > 0 ? (
-                  <Reasoning className="w-full" isStreaming={message.isWorking === true}>
-                    <ReasoningTrigger />
-                    <ReasoningContent>{message.thinkingText}</ReasoningContent>
-                  </Reasoning>
                 ) : null}
                 {message.text.trim().length > 0 ? (
                   <MessageContent>
