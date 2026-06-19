@@ -2,7 +2,10 @@
     "compilerOptions": {
         "baseUrl": ".",
         "paths": {
-            "@/*": ["./packages/ui/src/*"]
+            "@/*": ["./packages/ui/src/*"],
+            "@mokronos/a2a-chat-api": ["./packages/api/src/index.ts"],
+            "@mokronos/a2a-react": ["./packages/react/src/index.ts"],
+            "@mokronos/a2a-chat-ui": ["./packages/ui/src/index.ts"]
         },
         "lib": ["ESNext", "DOM", "DOM.Iterable"],
         "target": "ESNext",

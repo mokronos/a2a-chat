@@ -1,8 +1,8 @@
 import React from "react"
 
-import { useA2AChat } from "../../a2a/context"
+import { useA2AChat } from "@mokronos/a2a-react"
 import { cn } from "../../lib/utils"
-import type { ConnectionState } from "../../a2a/types"
+import type { ConnectionState } from "@mokronos/a2a-react"
 
 export type A2AConnectionStatusProps = {
   className?: string

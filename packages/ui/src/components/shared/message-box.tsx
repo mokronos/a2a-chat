@@ -1,5 +1,6 @@
 import React from "react"
 import { MessageSquareIcon } from "lucide-react"
+import type { Message, MessageTimelineEvent } from "@mokronos/a2a-react"
 
 import {
   Conversation,
@@ -22,34 +23,7 @@ import {
 import { Spinner } from "../ui/spinner"
 import { cn } from "../../lib/utils"
 
-export type MessageStatusHistoryEntry = {
-  id: string
-  label: string
-  at: number
-}
-
-export type MessageTimelineEvent = {
-  id: string
-  kind: string
-  summary: string
-  details?: string
-  raw?: string
-  rawEvent?: unknown
-  at: number
-}
-
 export type MessageTimelineEventRenderer = (event: MessageTimelineEvent) => React.ReactNode
-
-export type Message = {
-  id: string
-  role: "user" | "assistant"
-  text: string
-  thinkingText?: string
-  status?: string
-  isWorking?: boolean
-  statusHistory?: MessageStatusHistoryEntry[]
-  events?: MessageTimelineEvent[]
-}
 
 type MessageBoxProps = {
   messages: Message[]

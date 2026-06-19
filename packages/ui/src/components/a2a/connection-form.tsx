@@ -1,6 +1,6 @@
 import React from "react"
 
-import { useA2AChat } from "../../a2a/context"
+import { useA2AChat } from "@mokronos/a2a-react"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { cn } from "../../lib/utils"

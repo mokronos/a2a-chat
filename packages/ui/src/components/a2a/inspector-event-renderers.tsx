@@ -1,30 +1,28 @@
 import React from "react"
 import { GitBranchIcon } from "lucide-react"
 
-import { CodeBlock } from "../components/ai-elements/code-block"
-import { MessageResponse } from "../components/ai-elements/message"
+import { CodeBlock } from "../ai-elements/code-block"
+import { MessageResponse } from "../ai-elements/message"
 import {
   Reasoning,
   ReasoningContent,
   ReasoningTrigger,
-} from "../components/ai-elements/reasoning"
+} from "../ai-elements/reasoning"
 import {
   Task,
   TaskContent,
   TaskItem,
   TaskTrigger,
-} from "../components/ai-elements/task"
+} from "../ai-elements/task"
 import {
   Tool,
   ToolContent,
   ToolHeader,
   ToolInput,
   ToolOutput,
-} from "../components/ai-elements/tool"
-import type {
-  MessageTimelineEvent,
-  MessageTimelineEventRenderer,
-} from "../components/shared/message-box"
+} from "../ai-elements/tool"
+import type { MessageTimelineEvent } from "@mokronos/a2a-react"
+import type { MessageTimelineEventRenderer } from "../shared/message-box"
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)

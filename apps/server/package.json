@@ -12,13 +12,17 @@
   "scripts": {
     "build": "bun run build:web && bun run build:cli",
     "build:cli": "bun build ./src/server.ts --outfile ./dist/cli.js --target bun --banner '#!/usr/bin/env bun' && chmod +x ./dist/cli.js",
-    "build:web": "bun run --cwd ../../packages/ui build && bun build ./web/main.tsx --outfile ./public/assets/app.js --target browser --format esm && ../../node_modules/.bin/tailwindcss -i ./web/app.css -o ./public/assets/styles.css --minify && cp node_modules/katex/dist/katex.min.css ./public/assets/katex.min.css && mkdir -p ./public/assets/fonts && cp node_modules/katex/dist/fonts/* ./public/assets/fonts/",
+    "build:web": "bun run --cwd ../../packages/react build && bun run --cwd ../../packages/ui build && bun build ./web/main.tsx --outfile ./public/assets/app.js --target browser --format esm && ../../node_modules/.bin/tailwindcss -i ./web/app.css -o ./public/assets/styles.css --minify && cp node_modules/katex/dist/katex.min.css ./public/assets/katex.min.css && mkdir -p ./public/assets/fonts && cp node_modules/katex/dist/fonts/* ./public/assets/fonts/",
     "dev": "bun run build:web && bun run --hot src/server.ts",
     "prepack": "bun run build"
   },
   "devDependencies": {
     "@effect/platform": "^0.96.0",
+    "@mokronos/a2a-chat-api": "workspace:*",
+    "@mokronos/a2a-chat-ui": "workspace:*",
+    "@mokronos/a2a-react": "workspace:*",
     "@types/bun": "latest",
+    "@types/react-dom": "^19.0.0",
     "effect": "^3.21.1",
     "katex": "^0.16.27",
     "react": "^19.0.0",

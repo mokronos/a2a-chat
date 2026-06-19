@@ -1,8 +1,8 @@
 import React from "react"
 import { ImageIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, PencilIcon, PlusIcon, SearchIcon } from "lucide-react"
 
-import { A2AChatProvider, useA2AChat } from "./a2a/context"
-import type { A2AChatProviderProps } from "./a2a/context"
+import { A2AChatProvider, useA2AChat } from "@mokronos/a2a-react"
+import type { A2AChatProviderProps } from "@mokronos/a2a-react"
 import { A2AConnectionForm } from "./components/a2a/connection-form"
 import type { A2AAgentSuggestion } from "./components/a2a/connection-form"
 import { A2AConnectionStatus } from "./components/a2a/connection-status"

@@ -7,7 +7,7 @@ import type {
   Message,
   MessageStatusHistoryEntry,
   MessageTimelineEvent,
-} from "../components/shared/message-box"
+} from "./message"
 import {
   buildA2AMessage,
   createId,
@@ -143,6 +143,10 @@ function formatTaskStatus(status: string) {
 
 function getErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message
+  }
+
+  if (isRecord(error) && typeof error.message === "string" && error.message.trim().length > 0) {
     return error.message
   }
 

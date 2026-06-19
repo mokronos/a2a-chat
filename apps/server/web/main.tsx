@@ -1,8 +1,8 @@
 import { StrictMode, useEffect, useState } from "react"
 import { createRoot } from "react-dom/client"
 import { MenuIcon, XIcon } from "lucide-react"
+import { A2AChatProvider, useA2AChat } from "@mokronos/a2a-react"
 import {
-  A2AChatProvider,
   A2AConnectionBar,
   A2AEmptyState,
   A2AInput,
@@ -11,7 +11,6 @@ import {
   A2APromptSuggestions,
   A2ATaskList,
   inspectorEventRenderers,
-  useA2AChat,
 } from "@mokronos/a2a-chat-ui"
 import type { A2AAgentSuggestion } from "@mokronos/a2a-chat-ui"
 

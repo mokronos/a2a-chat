@@ -1,4 +1,4 @@
-import { InspectorApi, CoreHandlers } from "@a2a-chat/api";
+import { InspectorApi, CoreHandlers } from "@mokronos/a2a-chat-api";
 import { HttpApiBuilder, HttpServer } from "@effect/platform";
 import { Layer } from "effect";
 import { extname, resolve } from "node:path";
@@ -7,7 +7,7 @@ const PORT = 19999
 const PUBLIC_DIR = resolve(import.meta.dir, "..", "public")
 
 const InspectorApiLive = HttpApiBuilder.api(InspectorApi).pipe(Layer.provide(CoreHandlers))
-const ApiLayer = Layer.mergeAll(InspectorApiLive, HttpServer.layerContext) as Layer.Layer<any, any, any>
+const ApiLayer = Layer.mergeAll(InspectorApiLive, HttpServer.layerContext) as Layer.Layer<any, any, never>
 const { handler: apiHandler } = HttpApiBuilder.toWebHandler(ApiLayer)
 
 const CONTENT_TYPES: Record<string, string> = {
@@ -33,27 +33,30 @@ async function serveStatic(pathname: string, acceptEncoding: string): Promise<Re
     }
 
     let file = Bun.file(filePath)
+    let fileName = file.name ?? filePath
 
     if (!(await file.exists())) {
-        file = Bun.file(resolve(PUBLIC_DIR, "index.html"))
+        const fallbackPath = resolve(PUBLIC_DIR, "index.html")
+        file = Bun.file(fallbackPath)
+        fileName = file.name ?? fallbackPath
         if (!(await file.exists())) {
             return new Response("Not found", { status: 404 })
         }
     }
 
     const headers = new Headers()
-    const contentType = getContentType(file.name)
+    const contentType = getContentType(fileName)
     if (contentType) {
         headers.set("content-type", contentType)
     }
 
     // Cache fingerprint-free assets briefly so phone reloads don't re-pull the big bundle.
-    if (file.name.startsWith(resolve(PUBLIC_DIR, "assets"))) {
+    if (fileName.startsWith(resolve(PUBLIC_DIR, "assets"))) {
         headers.set("cache-control", "public, max-age=3600")
     }
 
     // Gzip text assets — the unminified bundle is ~24MB raw but a few MB gzipped.
-    const ext = extname(file.name)
+    const ext = extname(fileName)
     if (COMPRESSIBLE.has(ext) && acceptEncoding.includes("gzip")) {
         const compressed = Bun.gzipSync(new Uint8Array(await file.arrayBuffer()))
         headers.set("content-encoding", "gzip")

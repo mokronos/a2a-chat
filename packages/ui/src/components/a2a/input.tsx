@@ -1,6 +1,6 @@
 import React from "react"
 
-import { useA2AChat } from "../../a2a/context"
+import { useA2AChat } from "@mokronos/a2a-react"
 import { InputBox } from "../shared/input-box"
 import type { PromptInputMessage } from "../ai-elements/prompt-input"
 

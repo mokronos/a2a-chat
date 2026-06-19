@@ -1,9 +1,9 @@
 import React from "react"
 
-import { useA2AChat } from "../../a2a/context"
+import { useA2AChat } from "@mokronos/a2a-react"
 import { MessageBox } from "../shared/message-box"
 import type { MessageTimelineEventRenderer } from "../shared/message-box"
-import { inspectorEventRenderers } from "../../a2a/inspector-event-renderers"
+import { inspectorEventRenderers } from "./inspector-event-renderers"
 import { cn } from "../../lib/utils"
 
 export type A2AMessagesMaxWidth = "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "5xl" | "none"

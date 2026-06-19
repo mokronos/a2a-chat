@@ -3,8 +3,8 @@ export { A2AChat } from "./A2AChat"
 export type { A2AChatProps, A2AChatPromptSuggestion } from "./A2AChat"
 
 // Provider + context hook: own the layout, read the state directly.
-export { A2AChatProvider, useA2AChat } from "./a2a/context"
-export type { A2AChatProviderProps } from "./a2a/context"
+export { A2AChatProvider, useA2AChat } from "@mokronos/a2a-react"
+export type { A2AChatProviderProps } from "@mokronos/a2a-react"
 
 // Composable primitives: arrange these inside an A2AChatProvider.
 export { A2AConnectionForm } from "./components/a2a/connection-form"
@@ -25,11 +25,17 @@ export { A2ATaskList } from "./components/a2a/task-list"
 export type { A2ATaskListProps } from "./components/a2a/task-list"
 
 // Shared types + helpers.
-export { inspectorEventRenderers } from "./a2a/inspector-event-renderers"
+export { inspectorEventRenderers } from "./components/a2a/inspector-event-renderers"
 export type {
   Message,
   MessageTimelineEvent,
+  MessageStatusHistoryEntry,
+} from "@mokronos/a2a-react"
+export type {
   MessageTimelineEventRenderer,
 } from "./components/shared/message-box"
-export type { UseA2AChatResult } from "./a2a/use-a2a-chat"
-export type { A2AChatPersistenceAdapter, PersistedTaskSession } from "./a2a/use-a2a-chat"
+export type {
+  A2AChatPersistenceAdapter,
+  PersistedTaskSession,
+  UseA2AChatResult,
+} from "@mokronos/a2a-react"
