@@ -2,6 +2,12 @@
   "name": "@mokronos/a2a-chat-api",
   "version": "0.3.0",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mokronos/a2a-chat.git",
+    "directory": "packages/api"
+  },
+  "homepage": "https://github.com/mokronos/a2a-chat#readme",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
