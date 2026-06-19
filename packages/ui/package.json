@@ -1,6 +1,6 @@
 {
   "name": "@mokronos/a2a-chat-ui",
-  "version": "0.0.2",
+  "version": "0.3.0",
   "type": "module",
   "repository": {
     "type": "git",
@@ -32,7 +32,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
-    "@mokronos/a2a-react": "0.0.2",
+    "@mokronos/a2a-react": "0.3.0",
     "@radix-ui/react-use-controllable-state": "^1.2.2",
     "@streamdown/cjk": "^1.0.3",
     "@streamdown/code": "^1.1.1",
