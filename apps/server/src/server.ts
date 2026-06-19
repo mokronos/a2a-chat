@@ -22,7 +22,9 @@ function getContentType(pathname: string) {
     return CONTENT_TYPES[extname(pathname)]
 }
 
-async function serveStatic(pathname: string): Promise<Response> {
+const COMPRESSIBLE = new Set([".css", ".html", ".js", ".json", ".svg"])
+
+async function serveStatic(pathname: string, acceptEncoding: string): Promise<Response> {
     const normalizedPath = pathname === "/" ? "/index.html" : pathname
     const filePath = resolve(PUBLIC_DIR, `.${normalizedPath}`)
 
@@ -45,6 +47,20 @@ async function serveStatic(pathname: string): Promise<Response> {
         headers.set("content-type", contentType)
     }
 
+    // Cache fingerprint-free assets briefly so phone reloads don't re-pull the big bundle.
+    if (file.name.startsWith(resolve(PUBLIC_DIR, "assets"))) {
+        headers.set("cache-control", "public, max-age=3600")
+    }
+
+    // Gzip text assets — the unminified bundle is ~24MB raw but a few MB gzipped.
+    const ext = extname(file.name)
+    if (COMPRESSIBLE.has(ext) && acceptEncoding.includes("gzip")) {
+        const compressed = Bun.gzipSync(new Uint8Array(await file.arrayBuffer()))
+        headers.set("content-encoding", "gzip")
+        headers.set("vary", "accept-encoding")
+        return new Response(compressed, { headers })
+    }
+
     return new Response(file, { headers })
 }
 
@@ -56,7 +72,7 @@ Bun.serve({
             return apiHandler(request)
         }
 
-        return serveStatic(url.pathname)
+        return serveStatic(url.pathname, request.headers.get("accept-encoding") ?? "")
     },
 })
 
