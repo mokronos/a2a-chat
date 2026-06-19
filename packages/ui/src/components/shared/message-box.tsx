@@ -1,5 +1,6 @@
 import React from "react"
 import { MessageSquareIcon } from "lucide-react"
+import type { Message, MessageTimelineEvent } from "@mokronos/a2a-react"
 
 import {
   Conversation,
@@ -12,11 +13,6 @@ import {
   MessageContent,
   MessageResponse,
 } from "../ai-elements/message"
-import {
-  Reasoning,
-  ReasoningContent,
-  ReasoningTrigger,
-} from "../ai-elements/reasoning"
 import { Task, TaskContent, TaskItem, TaskTrigger } from "../ai-elements/task"
 import {
   ChainOfThought,
@@ -24,43 +20,16 @@ import {
   ChainOfThoughtHeader,
   ChainOfThoughtStep,
 } from "../ai-elements/chain-of-thought"
-import { CodeBlock } from "../ai-elements/code-block"
 import { Spinner } from "../ui/spinner"
 import { cn } from "../../lib/utils"
 
-export type MessageStatusHistoryEntry = {
-  id: string
-  label: string
-  at: number
-}
-
-export type MessageTimelineEvent = {
-  id: string
-  kind: string
-  summary: string
-  details?: string
-  raw?: string
-  rawEvent?: unknown
-  at: number
-}
-
 export type MessageTimelineEventRenderer = (event: MessageTimelineEvent) => React.ReactNode
-
-export type Message = {
-  id: string
-  role: "user" | "assistant"
-  text: string
-  thinkingText?: string
-  status?: string
-  isWorking?: boolean
-  statusHistory?: MessageStatusHistoryEntry[]
-  events?: MessageTimelineEvent[]
-}
 
 type MessageBoxProps = {
   messages: Message[]
   eventRenderers?: MessageTimelineEventRenderer[]
   className?: string
+  contentClassName?: string
 }
 
 function formatEventTime(timestamp: number): string {
@@ -128,46 +97,58 @@ function MessageStatus({ message }: { message: Message }) {
 function MessageEventTimeline({
   events,
   eventRenderers,
+  isWorking,
 }: {
   events: MessageTimelineEvent[]
   eventRenderers: MessageTimelineEventRenderer[]
+  isWorking: boolean
 }) {
-  return (
-    <ChainOfThought defaultOpen={false}>
-      <ChainOfThoughtHeader>Event Timeline ({events.length})</ChainOfThoughtHeader>
-      <ChainOfThoughtContent>
-        {events.map((eventItem) => {
-          const customContent = renderEventContent(eventItem, eventRenderers)
+  const [isOpen, setIsOpen] = React.useState(isWorking)
+  const wasWorking = React.useRef(isWorking)
+  const renderedEvents = events.flatMap((event) => {
+    const content = renderEventContent(event, eventRenderers)
+    return content ? [{ event, content }] : []
+  })
 
-          return (
-            <ChainOfThoughtStep
-              key={eventItem.id}
-              label={`${eventItem.kind}: ${eventItem.summary}`}
-              description={
-                eventItem.details
-                  ? `${formatEventTime(eventItem.at)} — ${eventItem.details}`
-                  : formatEventTime(eventItem.at)
-              }
-            >
-              {customContent ? (
-                <div className="min-w-0">{customContent}</div>
-              ) : eventItem.raw ? (
-                <CodeBlock code={eventItem.raw} language="json" className="text-[10px]" />
-              ) : null}
-            </ChainOfThoughtStep>
-          )
-        })}
+  React.useEffect(() => {
+    if (isWorking) {
+      setIsOpen(true)
+    } else if (wasWorking.current) {
+      setIsOpen(false)
+    }
+    wasWorking.current = isWorking
+  }, [isWorking])
+
+  if (renderedEvents.length === 0) {
+    return null
+  }
+
+  return (
+    <ChainOfThought open={isOpen} onOpenChange={setIsOpen}>
+      <ChainOfThoughtHeader>Event Timeline ({renderedEvents.length})</ChainOfThoughtHeader>
+      <ChainOfThoughtContent>
+        {renderedEvents.map(({ event, content }) => (
+          <ChainOfThoughtStep
+            key={event.id}
+            label={event.summary}
+            description={formatEventTime(event.at)}
+          >
+            <div className="min-w-0">{content}</div>
+          </ChainOfThoughtStep>
+        ))}
       </ChainOfThoughtContent>
     </ChainOfThought>
   )
 }
 
-function MessageBox({ messages, eventRenderers = [], className }: MessageBoxProps) {
+function MessageBox({ messages, eventRenderers = [], className, contentClassName }: MessageBoxProps) {
+  // Fills its parent by default — the parent decides the height. Box styling
+  // (border, background, fixed height) is left to `className`.
   return (
     <Conversation
-      className={cn("h-72 rounded-md border border-border bg-background", className)}
+      className={cn("size-full min-h-0 bg-transparent", className)}
     >
-      <ConversationContent className="gap-3 p-3">
+      <ConversationContent className={cn("gap-3 p-3", contentClassName)}>
         {messages.length === 0 ? (
           <ConversationEmptyState
             icon={<MessageSquareIcon className="size-10" aria-hidden="true" />}
@@ -200,13 +181,8 @@ function MessageBox({ messages, eventRenderers = [], className }: MessageBoxProp
                   <MessageEventTimeline
                     events={timelineEvents}
                     eventRenderers={eventRenderers}
+                    isWorking={message.isWorking === true}
                   />
-                ) : null}
-                {message.thinkingText && message.thinkingText.trim().length > 0 ? (
-                  <Reasoning className="w-full" isStreaming={message.isWorking === true}>
-                    <ReasoningTrigger />
-                    <ReasoningContent>{message.thinkingText}</ReasoningContent>
-                  </Reasoning>
                 ) : null}
                 {message.text.trim().length > 0 ? (
                   <MessageContent>

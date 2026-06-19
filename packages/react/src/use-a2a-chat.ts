@@ -7,7 +7,7 @@ import type {
   Message,
   MessageStatusHistoryEntry,
   MessageTimelineEvent,
-} from "../components/shared/message-box"
+} from "./message"
 import {
   buildA2AMessage,
   createId,
@@ -143,6 +143,10 @@ function formatTaskStatus(status: string) {
 
 function getErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message
+  }
+
+  if (isRecord(error) && typeof error.message === "string" && error.message.trim().length > 0) {
     return error.message
   }
 
@@ -433,7 +437,11 @@ function getFirstDataPart(parts: unknown): Record<string, unknown> | null {
   }
 
   for (const part of parts) {
-    if (isRecord(part) && part.kind === "data" && isRecord(part.data)) {
+    if (
+      isRecord(part) &&
+      (part.kind === "data" || typeof part.kind === "undefined") &&
+      isRecord(part.data)
+    ) {
       return part.data
     }
   }
@@ -454,6 +462,19 @@ function summarizeStatusUpdateEvent(event: Record<string, unknown>): string | nu
   return summarizeToolData(data)
 }
 
+function getStatusUpdateDataPart(event: unknown): Record<string, unknown> | null {
+  const normalizedEvent = normalizeStreamEvent(event)
+  if (!isRecord(normalizedEvent) || normalizedEvent.kind !== "status-update") {
+    return null
+  }
+
+  if (!isRecord(normalizedEvent.status) || !isRecord(normalizedEvent.status.message)) {
+    return null
+  }
+
+  return getFirstDataPart(normalizedEvent.status.message.parts)
+}
+
 function getLatestAgentDataPartFromTask(task: Task): Record<string, unknown> | null {
   const history = Array.isArray(task.history) ? task.history : []
 
@@ -471,12 +492,46 @@ function getLatestAgentDataPartFromTask(task: Task): Record<string, unknown> | n
   return null
 }
 
+function isTimelineData(data: Record<string, unknown> | null): data is Record<string, unknown> {
+  if (!data || typeof data.type !== "string") {
+    return false
+  }
+
+  return (
+    data.type === "thinking" ||
+    data.type === "tool-call" ||
+    data.type === "tool-result" ||
+    data.type === "send-task-progress"
+  )
+}
+
+function shouldAppendTimelineEvent(event: unknown): boolean {
+  const normalizedEvent = normalizeStreamEvent(event)
+  const task = extractTask(normalizedEvent)
+  if (task) {
+    return isTimelineData(getLatestAgentDataPartFromTask(task))
+  }
+
+  return isTimelineData(getStatusUpdateDataPart(normalizedEvent))
+}
+
 function summarizeToolData(data: Record<string, unknown>): string | null {
   if (typeof data.type !== "string") {
     return null
   }
 
   const toolName = typeof data.toolName === "string" ? data.toolName : "tool"
+
+  if (data.type === "thinking") {
+    return "Thinking"
+  }
+
+  if (data.type === "send-task-progress") {
+    const state = typeof data.state === "string" ? formatTaskStatus(data.state) : "Updated"
+    const taskId = typeof data.taskId === "string" ? ` ${data.taskId}` : ""
+    return `Subagent${taskId}: ${state}.`
+  }
+
   if (data.type === "tool-call") {
     return `Calling ${toolName}.`
   }
@@ -500,6 +555,21 @@ function buildTimelineEvent(event: unknown): Omit<MessageTimelineEvent, "id" | "
   const normalizedEvent = normalizeStreamEvent(event)
   const raw = safeSerialize(normalizedEvent)
   const task = extractTask(normalizedEvent)
+  const timelineData = task
+    ? getLatestAgentDataPartFromTask(task)
+    : getStatusUpdateDataPart(normalizedEvent)
+
+  if (timelineData?.type === "send-task-progress" && typeof timelineData.taskId === "string") {
+    return {
+      kind: "send-task-run",
+      summary: `Subagent ${timelineData.taskId}`,
+      rawEvent: {
+        kind: "send-task-run",
+        taskId: timelineData.taskId,
+        events: [normalizedEvent],
+      },
+    }
+  }
 
   if (task) {
     const state = formatTaskStatus(task.status.state)
@@ -571,7 +641,7 @@ function createStatusEntry(label: string): MessageStatusHistoryEntry {
   }
 }
 
-export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
+export function useA2AChatController(options: UseA2AChatOptions = {}): UseA2AChatResult {
   const {
     initialUrl = "http://localhost:8000",
     proxyBasePath,
@@ -777,17 +847,52 @@ export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
       messageId: string,
       event: Omit<MessageTimelineEvent, "id" | "at">
     ) => {
-      updateAssistantMessage(urlKey, sessionId, messageId, (currentMessage) => ({
-        ...currentMessage,
-        events: [
-          ...(currentMessage.events ?? []),
-          {
-            ...event,
-            id: createId("evt"),
-            at: Date.now(),
-          },
-        ],
-      }))
+      updateAssistantMessage(urlKey, sessionId, messageId, (currentMessage) => {
+        const events = currentMessage.events ?? []
+        const rawEvent = event.rawEvent
+
+        if (
+          event.kind === "send-task-run" &&
+          isRecord(rawEvent) &&
+          typeof rawEvent.taskId === "string" &&
+          Array.isArray(rawEvent.events)
+        ) {
+          const existingIndex = events.findIndex(
+            (item) =>
+              item.kind === "send-task-run" &&
+              isRecord(item.rawEvent) &&
+              item.rawEvent.taskId === rawEvent.taskId
+          )
+
+          if (existingIndex >= 0) {
+            const existing = events[existingIndex]
+            if (existing && isRecord(existing.rawEvent) && Array.isArray(existing.rawEvent.events)) {
+              const nextEvents = [...events]
+              nextEvents[existingIndex] = {
+                ...existing,
+                summary: event.summary,
+                rawEvent: {
+                  ...existing.rawEvent,
+                  events: [...existing.rawEvent.events, ...rawEvent.events],
+                },
+              }
+              return { ...currentMessage, events: nextEvents }
+            }
+          }
+        }
+
+        return {
+          ...currentMessage,
+          events: [
+            ...events,
+            {
+              ...event,
+              id: createId("evt"),
+              at: Date.now(),
+            },
+          ],
+        }
+      })
     },
     [updateAssistantMessage]
   )
@@ -804,13 +909,6 @@ export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
         const snapshot = await Effect.runPromise(getTaskById(client, taskId))
         const snapshotText = getTaskText(snapshot)
 
-        appendAssistantEvent(urlKey, sessionId, assistantMessageId, {
-          kind: "task-snapshot",
-          summary: "Fetched final task snapshot.",
-          raw: safeSerialize(snapshot),
-          rawEvent: snapshot,
-        })
-
         if (snapshotText.length > 0) {
           updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => ({
             ...currentMessage,
@@ -818,15 +916,11 @@ export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
           }))
         }
         return snapshot
-      } catch (error) {
-        appendAssistantEvent(urlKey, sessionId, assistantMessageId, {
-          kind: "task-snapshot-error",
-          summary: getErrorMessage(error, "Could not fetch final task snapshot."),
-        })
+      } catch {
         return null
       }
     },
-    [appendAssistantEvent, updateAssistantMessage]
+    [updateAssistantMessage]
   )
 
   const processTaskStreamEvent = React.useCallback(
@@ -839,7 +933,7 @@ export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
       event: unknown
     ): Promise<TaskStreamProcessResult> => {
       const artifactUpdate = getArtifactUpdateEvent(event)
-      if (!artifactUpdate) {
+      if (!artifactUpdate && shouldAppendTimelineEvent(event)) {
         appendAssistantEvent(urlKey, sessionId, assistantMessageId, buildTimelineEvent(event))
       }
 
@@ -886,12 +980,9 @@ export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
         if (outputSnapshot !== null || outputChunks.length > 0 || thinkingChunks.length > 0) {
           updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => {
             const nextText = outputSnapshot ?? `${currentMessage.text}${outputChunks.join("")}`
-            const nextThinkingText = `${currentMessage.thinkingText ?? ""}${thinkingChunks.join("")}`
-
             return {
               ...currentMessage,
               text: nextText,
-              thinkingText: nextThinkingText.length > 0 ? nextThinkingText : currentMessage.thinkingText,
             }
           })
         }
@@ -921,14 +1012,21 @@ export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
 
       const statusUpdate = getStatusUpdateEvent(event)
       if (statusUpdate && statusUpdate.taskId === currentTask.id) {
+        const statusData = getStatusUpdateDataPart(event)
         const nextTask: Task = {
           ...currentTask,
           status: statusUpdate.status,
         }
-        updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => ({
-          ...currentMessage,
-          text: getTaskText(nextTask),
-        }))
+        updateAssistantMessage(urlKey, sessionId, assistantMessageId, (currentMessage) => {
+          if (statusData?.type === "thinking" && typeof statusData.text === "string") {
+            return currentMessage
+          }
+
+          return {
+            ...currentMessage,
+            text: getTaskText(nextTask),
+          }
+        })
         setAssistantStatus(
           urlKey,
           sessionId,
@@ -1049,7 +1147,7 @@ export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
       setConnectionStore((current) => ({
         ...current,
         state: "connecting",
-        message: `Checking ${targetUrl}...`,
+        message: "Connecting…",
         client: null,
         connectedUrl: null,
         pendingUrl: targetUrl,
@@ -1057,7 +1155,7 @@ export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
         agentName: null,
       }))
     },
-    onSuccess: ({ client, endpoint, acceptedOutputModes, agentName }, targetUrl) => {
+    onSuccess: ({ client, acceptedOutputModes, agentName }, targetUrl) => {
       setChatStore((current) => {
         const urlState = current.byUrl[targetUrl] ?? getUrlChatInitialState()
 
@@ -1077,7 +1175,7 @@ export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
       setConnectionStore((current) => ({
         ...current,
         state: "connected",
-        message: `Connected via JSONRPC (${endpoint})`,
+        message: "Connected",
         client,
         connectedUrl: targetUrl,
         pendingUrl: null,
@@ -1171,7 +1269,13 @@ export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
           }
         }
       } catch (error) {
-        if (!streamController.signal.aborted && currentTask && !isTerminalTask(currentTask)) {
+        // A user cancellation aborts the underlying fetch, which surfaces here
+        // (e.g. "BodyStreamBuffer was aborted"). Treat it as a clean stop instead
+        // of an error so we don't replace the message with the abort text.
+        if (streamController.signal.aborted) {
+          return
+        }
+        if (currentTask && !isTerminalTask(currentTask)) {
           startTaskResubscribeLoop(
             connection.client,
             variables.urlKey,
@@ -1189,6 +1293,11 @@ export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
         if (currentTask && runnerControllersRef.current.get(`${variables.urlKey}::${currentTask.id}`) === streamController) {
           runnerControllersRef.current.delete(`${variables.urlKey}::${currentTask.id}`)
         }
+      }
+
+      // If the loop broke because the user canceled, stop without finalizing.
+      if (streamController.signal.aborted) {
+        return
       }
 
       if (currentTask) {
@@ -1373,35 +1482,25 @@ export function useA2AChat(options: UseA2AChatOptions = {}): UseA2AChatResult {
     const controllerKey = taskId
       ? `${baseUrl}::${taskId}`
       : `${baseUrl}::${workingAssistantMessage.id}`
+
+    // Stop the current generation locally, right away. Aborting the controller
+    // tears down the in-flight stream regardless of whether the agent supports
+    // server-side cancellation, keeping whatever partial output we already have.
     runnerControllersRef.current.get(controllerKey)?.abort()
+    runnerControllersRef.current.delete(controllerKey)
+    setAssistantStatus(baseUrl, activeTaskSession.id, workingAssistantMessage.id, "Canceled", false)
 
     if (!taskId) {
-      setAssistantStatus(baseUrl, activeTaskSession.id, workingAssistantMessage.id, "Canceled", false)
       return
     }
 
-    void Effect.runPromise(cancelTaskById(connection.client, taskId))
-      .then((task) => {
-        updateAssistantMessage(baseUrl, activeTaskSession.id, workingAssistantMessage.id, (currentMessage) => ({
-          ...currentMessage,
-          text: getTaskText(task),
-        }))
-        setAssistantStatus(
-          baseUrl,
-          activeTaskSession.id,
-          workingAssistantMessage.id,
-          formatTaskStatus(task.status.state),
-          !isTerminalTask(task)
-        )
-      })
-      .catch((error) => {
-        updateAssistantMessage(baseUrl, activeTaskSession.id, workingAssistantMessage.id, (currentMessage) => ({
-          ...currentMessage,
-          text: getErrorMessage(error, "Could not cancel task on the A2A server."),
-        }))
-        setAssistantStatus(baseUrl, activeTaskSession.id, workingAssistantMessage.id, "Cancel Failed", false)
-      })
-  }, [activeTaskSession, baseUrl, connectionQuery.data, setAssistantStatus, updateAssistantMessage])
+    // Best-effort: also ask the server to cancel the task. We deliberately do
+    // not apply its response to the message — agents that ignore cancellation
+    // would otherwise overwrite the canceled message with the full result.
+    void Effect.runPromise(cancelTaskById(connection.client, taskId)).catch(() => {
+      // Cancellation is best-effort; the local stream is already stopped.
+    })
+  }, [activeTaskSession, baseUrl, connectionQuery.data, setAssistantStatus])
 
   const handleCreateTaskSession = React.useCallback(() => {
     setChatStore((current) => {

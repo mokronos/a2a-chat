@@ -2,7 +2,8 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@mokronos/a2a-react": ["../react/src/index.ts"]
     },
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "target": "ESNext",

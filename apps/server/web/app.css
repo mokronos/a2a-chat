@@ -1,0 +1,12 @@
+/*
+ * Inspector app stylesheet.
+ *
+ * The library ships a prebuilt styles.css, but that only contains the utility
+ * classes the library itself uses. This host app writes its own layout classes
+ * (h-screen, w-screen, …), so it compiles its OWN Tailwind build that scans both
+ * the library sources and this app's sources, reusing the library's theme tokens.
+ */
+@import "../../../packages/ui/src/styles/globals.css";
+
+@source "../../../packages/ui/src/**/*.{ts,tsx}";
+@source "./**/*.{ts,tsx}";
