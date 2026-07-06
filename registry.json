@@ -10,14 +10,7 @@
       "description": "Composable A2A agent chat UI components backed by the @mokronos/a2a-react headless package.",
       "dependencies": [
         "@mokronos/a2a-react@0.3.0",
-        "@radix-ui/react-collapsible@^1.1.12",
-        "@radix-ui/react-dialog@^1.1.15",
-        "@radix-ui/react-dropdown-menu@^2.1.16",
-        "@radix-ui/react-hover-card@^1.1.15",
-        "@radix-ui/react-select@^2.2.6",
-        "@radix-ui/react-slot@^1.2.4",
-        "@radix-ui/react-tooltip@^1.2.8",
-        "@radix-ui/react-use-controllable-state@^1.2.2",
+        "@base-ui/react@^1.6.0",
         "@streamdown/cjk@^1.0.3",
         "@streamdown/code@^1.1.1",
         "@streamdown/math@^1.0.2",
@@ -39,6 +32,7 @@
       ],
       "files": [
         { "path": "packages/ui/src/lib/utils.ts", "type": "registry:lib", "target": "lib/utils.ts" },
+        { "path": "packages/ui/src/lib/use-controllable-state.ts", "type": "registry:lib", "target": "lib/use-controllable-state.ts" },
 
         { "path": "packages/ui/src/components/ui/badge.tsx", "type": "registry:ui", "target": "components/ui/badge.tsx" },
         { "path": "packages/ui/src/components/ui/button.tsx", "type": "registry:ui", "target": "components/ui/button.tsx" },
