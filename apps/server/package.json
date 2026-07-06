@@ -12,8 +12,10 @@
   "scripts": {
     "build": "bun run build:web && bun run build:cli",
     "build:cli": "bun build ./src/server.ts --outfile ./dist/cli.js --target bun --banner '#!/usr/bin/env bun' && chmod +x ./dist/cli.js",
-    "build:web": "bun run --cwd ../../packages/react build && bun run --cwd ../../packages/ui build && bun build ./web/main.tsx --outfile ./public/assets/app.js --target browser --format esm && ../../node_modules/.bin/tailwindcss -i ./web/app.css -o ./public/assets/styles.css --minify && cp node_modules/katex/dist/katex.min.css ./public/assets/katex.min.css && mkdir -p ./public/assets/fonts && cp node_modules/katex/dist/fonts/* ./public/assets/fonts/",
-    "dev": "bun run build:web && bun run --hot src/server.ts",
+    "build:web": "bun run --cwd ../../packages/react build && bun run --cwd ../../packages/ui build && bun run ./build-web.ts && ../../node_modules/.bin/tailwindcss -i ./web/app.css -o ./public/assets/styles.css --minify && cp node_modules/katex/dist/katex.min.css ./public/assets/katex.min.css && mkdir -p ./public/assets/fonts && cp node_modules/katex/dist/fonts/* ./public/assets/fonts/",
+    "dev": "bun run dev:build && bun run dev:watch",
+    "dev:build": "bun run --cwd ../../packages/api build:js && bun run --cwd ../../packages/react build:js && bun run --cwd ../../packages/ui build:js && bun run ./build-web.ts && ../../node_modules/.bin/tailwindcss -i ./web/app.css -o ./public/assets/styles.css && cp node_modules/katex/dist/katex.min.css ./public/assets/katex.min.css && mkdir -p ./public/assets/fonts && cp node_modules/katex/dist/fonts/* ./public/assets/fonts/",
+    "dev:watch": "bun run --cwd ../../packages/api watch & bun run --cwd ../../packages/react watch & bun run --cwd ../../packages/ui watch & bun run ./build-web.ts --watch & ../../node_modules/.bin/tailwindcss -i ./web/app.css -o ./public/assets/styles.css --watch & bun run --hot src/server.ts",
     "prepack": "bun run build"
   },
   "devDependencies": {

@@ -20,6 +20,8 @@
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean && tailwindcss -i ./src/styles/globals.css -o ./dist/styles.css --minify",
+    "build:js": "tsup src/index.ts --format esm --clean",
+    "watch": "tsup src/index.ts --format esm --watch",
     "dev:js": "tsup src/index.ts --format esm --dts --watch",
     "dev:css": "tailwindcss -i ./src/styles/globals.css -o ./dist/styles.css --watch",
     "dev": "bun run dev:js & bun run dev:css & wait",
