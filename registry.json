@@ -9,7 +9,7 @@
       "title": "A2A Chat",
       "description": "Composable A2A agent chat UI components backed by the @mokronos/a2a-react headless package.",
       "dependencies": [
-        "@mokronos/a2a-react@0.0.2",
+        "@mokronos/a2a-react@0.3.0",
         "@radix-ui/react-collapsible@^1.1.12",
         "@radix-ui/react-dialog@^1.1.15",
         "@radix-ui/react-dropdown-menu@^2.1.16",

@@ -1,6 +1,7 @@
 {
   "name": "@mokronos/a2a-chat-ui",
   "version": "0.3.1",
+  "private": true,
   "type": "module",
   "repository": {
     "type": "git",
@@ -16,12 +17,6 @@
       "import": "./dist/index.js"
     },
     "./styles.css": "./dist/styles.css"
-  },
-  "files": [
-    "dist"
-  ],
-  "publishConfig": {
-    "access": "public"
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean && tailwindcss -i ./src/styles/globals.css -o ./dist/styles.css --minify",
