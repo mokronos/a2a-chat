@@ -2,6 +2,24 @@
 
 React building blocks for adding an A2A agent chat to a frontend.
 
+## Quickstart
+
+Run these in two terminals to try the inspector against the bundled test agent.
+
+```bash
+# 1. Start the test A2A agent → http://localhost:8000
+cd apps/server/test-agent && uv run fast.py
+```
+
+```bash
+# 2. Start the inspector UI → http://localhost:19999
+bun install && bun run dev
+```
+
+Then open http://localhost:19999 and connect to `http://localhost:8000`.
+
+> The test agent needs a model API key in `apps/server/test-agent/.env` (e.g. `OPENCODE_ZEN_API_KEY`).
+
 The repo is split into three package layers:
 
 | Package | Provides | Install when |
