@@ -156,9 +156,21 @@ A2ATaskList
 A2AConnectionForm
 A2AConnectionStatus
 A2AEmptyState
+A2AForm
+A2AInputRequest
 custom event renderers
+custom part renderers
 ai-elements primitives such as Conversation, Message, PromptInput, Tool, Task
 ```
+
+## Rendering A2A content
+
+The chat maps A2A messages, parts, and events to UI: streaming text, images and
+file downloads, structured data blocks, a live thinking/tool timeline, and
+interactive forms for `input-required` turns. If you are building the agent
+(server) side, [`docs/a2a-rendering.md`](docs/a2a-rendering.md) is the contract —
+it documents exactly what to emit and how each thing renders. The inspector's
+demo agent implements it (`/image` and `/form` in `apps/server/test-agent`).
 
 A shadcn registry item can copy those files into an app and declare `@mokronos/a2a-react` as a dependency. That lets users customize rendering and styling while still receiving headless protocol fixes through normal dependency updates.
 

@@ -3,6 +3,8 @@ import React from "react"
 import { useA2AChat } from "@mokronos/a2a-react"
 import { MessageBox } from "../shared/message-box"
 import type { MessageTimelineEventRenderer } from "../shared/message-box"
+import { defaultPartRenderers } from "./part-renderers"
+import type { A2APartRenderer } from "./part-renderers"
 import { inspectorEventRenderers } from "./inspector-event-renderers"
 import { cn } from "../../lib/utils"
 
@@ -31,6 +33,8 @@ export type A2AMessagesProps = {
   maxWidth?: A2AMessagesMaxWidth
   /** Renderers for timeline events. Defaults to the built-in inspector renderers. */
   eventRenderers?: MessageTimelineEventRenderer[]
+  /** Renderers for output content parts (images, files, data). Prepend your own for custom data. */
+  partRenderers?: A2APartRenderer[]
 }
 
 /** The message timeline for the active task session. Fills its parent. */
@@ -39,6 +43,7 @@ export function A2AMessages({
   contentClassName,
   maxWidth = "none",
   eventRenderers = inspectorEventRenderers,
+  partRenderers = defaultPartRenderers,
 }: A2AMessagesProps) {
   const { messages } = useA2AChat()
   const widthClass = MAX_WIDTH_CLASS[maxWidth]
@@ -47,6 +52,7 @@ export function A2AMessages({
     <MessageBox
       messages={messages}
       eventRenderers={eventRenderers}
+      partRenderers={partRenderers}
       className={className}
       contentClassName={cn(widthClass && `${widthClass} mx-auto w-full`, contentClassName)}
     />

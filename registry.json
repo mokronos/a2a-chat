@@ -69,6 +69,9 @@
         { "path": "packages/ui/src/components/shared/message-box.tsx", "type": "registry:component", "target": "components/shared/message-box.tsx" },
 
         { "path": "packages/ui/src/components/a2a/inspector-event-renderers.tsx", "type": "registry:component", "target": "components/a2a/inspector-event-renderers.tsx" },
+        { "path": "packages/ui/src/components/a2a/part-renderers.tsx", "type": "registry:component", "target": "components/a2a/part-renderers.tsx" },
+        { "path": "packages/ui/src/components/a2a/a2a-form.tsx", "type": "registry:component", "target": "components/a2a/a2a-form.tsx" },
+        { "path": "packages/ui/src/components/a2a/input-request.tsx", "type": "registry:component", "target": "components/a2a/input-request.tsx" },
         { "path": "packages/ui/src/components/a2a/connection-bar.tsx", "type": "registry:component", "target": "components/a2a/connection-bar.tsx" },
         { "path": "packages/ui/src/components/a2a/connection-form.tsx", "type": "registry:component", "target": "components/a2a/connection-form.tsx" },
         { "path": "packages/ui/src/components/a2a/connection-status.tsx", "type": "registry:component", "target": "components/a2a/connection-status.tsx" },

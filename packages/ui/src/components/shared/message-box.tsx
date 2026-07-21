@@ -24,6 +24,9 @@ import {
   ChainOfThoughtHeader,
   ChainOfThoughtStep,
 } from "../ai-elements/chain-of-thought"
+import { A2AInputRequest } from "../a2a/input-request"
+import { defaultPartRenderers, renderPart } from "../a2a/part-renderers"
+import type { A2APartRenderer } from "../a2a/part-renderers"
 import { Spinner } from "../ui/spinner"
 import { cn } from "../../lib/utils"
 
@@ -32,6 +35,7 @@ export type MessageTimelineEventRenderer = (event: MessageTimelineEvent) => Reac
 type MessageBoxProps = {
   messages: Message[]
   eventRenderers?: MessageTimelineEventRenderer[]
+  partRenderers?: A2APartRenderer[]
   className?: string
   contentClassName?: string
 }
@@ -145,6 +149,28 @@ function MessageEventTimeline({
   )
 }
 
+function MessageContentParts({
+  message,
+  partRenderers,
+}: {
+  message: Message
+  partRenderers: A2APartRenderer[]
+}) {
+  const parts = message.parts ?? []
+  if (parts.length === 0) {
+    return null
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      {parts.flatMap((part) => {
+        const rendered = renderPart(part, partRenderers)
+        return rendered ? [<div key={part.id} className="min-w-0">{rendered}</div>] : []
+      })}
+    </div>
+  )
+}
+
 function EmptyState() {
   return (
     <div className="flex size-full flex-col items-center justify-center gap-2 p-8 text-center text-muted-foreground">
@@ -155,7 +181,13 @@ function EmptyState() {
   )
 }
 
-function MessageBox({ messages, eventRenderers = [], className, contentClassName }: MessageBoxProps) {
+function MessageBox({
+  messages,
+  eventRenderers = [],
+  partRenderers = defaultPartRenderers,
+  className,
+  contentClassName,
+}: MessageBoxProps) {
   // Fills its parent by default — the parent decides the height. Box styling
   // (border, background, fixed height) is left to `className`.
   const anyWorking = messages.some((message) => message.isWorking === true)
@@ -197,6 +229,13 @@ function MessageBox({ messages, eventRenderers = [], className, contentClassName
                 )
               }
 
+              const request = message.inputRequest
+              const trimmedText = message.text.trim()
+              // The input-required prompt is surfaced by <A2AInputRequest>; avoid
+              // rendering the same text twice when it also landed in message.text.
+              const showText =
+                trimmedText.length > 0 && (!request?.text || trimmedText !== request.text.trim())
+
               return (
                 <MessageScrollerItem key={message.id} messageId={message.id}>
                   <MessageRow align="start">
@@ -209,12 +248,16 @@ function MessageBox({ messages, eventRenderers = [], className, contentClassName
                           isWorking={message.isWorking === true}
                         />
                       ) : null}
-                      {message.text.trim().length > 0 ? (
+                      {showText ? (
                         <Bubble variant="ghost" align="start">
                           <BubbleContent>
                             <Response>{message.text}</Response>
                           </BubbleContent>
                         </Bubble>
+                      ) : null}
+                      <MessageContentParts message={message} partRenderers={partRenderers} />
+                      {request ? (
+                        <A2AInputRequest messageId={message.id} request={request} />
                       ) : null}
                     </MessageContent>
                   </MessageRow>

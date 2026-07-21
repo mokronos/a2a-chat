@@ -1,3 +1,4 @@
+import base64
 import uuid
 import logging
 from collections.abc import AsyncIterator
@@ -134,7 +135,27 @@ class InMemoryWorker(Worker[Context]):
         context = list(await self.storage.load_context(task['context_id']) or [])
         context.extend(task.get('history', []))
 
+        # Demo dispatch: these paths show how the a2a-chat UI renders images and
+        # forms. See docs/a2a-rendering.md. A form response resumes the same task.
+        form_values = self._get_form_response(self._latest_user_message(context))
+        if form_values is not None:
+            await self._demo_ack_form(task, form_values)
+            await self.storage.update_context(task['context_id'], context)
+            return
+
         user_message = self.get_latest_user_text(context)
+        command = user_message.strip().lower()
+
+        if command == "/image":
+            await self._demo_emit_image(task)
+            await self.storage.update_context(task['context_id'], context)
+            return
+
+        if command == "/form":
+            await self._demo_emit_form(task)
+            await self.storage.update_context(task['context_id'], context)
+            return
+
         message_history = self.build_message_history(context[:-1])
         current_artifact_id = None
 
@@ -351,6 +372,128 @@ class InMemoryWorker(Worker[Context]):
             ),
         )
         await self.broker.event_bus.close(task_id)
+
+    def _latest_user_message(self, history: list[Message]) -> Message | None:
+        for message in reversed(history):
+            if isinstance(message, dict) and message.get('role') == 'user':
+                return message
+        return None
+
+    def _get_form_response(self, message: Message | None) -> dict[str, Any] | None:
+        if not isinstance(message, dict):
+            return None
+        for part in message.get('parts', []):
+            if not isinstance(part, dict):
+                continue
+            data = part.get('data')
+            if isinstance(data, dict) and data.get('type') == 'form-response':
+                values = data.get('values')
+                return values if isinstance(values, dict) else {}
+        return None
+
+    async def _demo_emit_image(self, task: dict[str, Any]) -> None:
+        # A tiny inline SVG so the demo needs no external assets. The UI renders
+        # any image/* file part inline; here we send it as an artifact (output).
+        svg = (
+            "<svg xmlns='http://www.w3.org/2000/svg' width='320' height='180'>"
+            "<rect width='320' height='180' rx='16' fill='#4f46e5'/>"
+            "<text x='160' y='98' font-family='sans-serif' font-size='22' fill='white' "
+            "text-anchor='middle'>A2A demo image</text></svg>"
+        )
+        encoded = base64.b64encode(svg.encode()).decode()
+        artifact = Artifact(
+            name='demo_image',
+            artifact_id=str(uuid.uuid4()),
+            parts=[
+                Part(text='Here is a generated image:'),
+                Part(raw=encoded, media_type='image/svg+xml', filename='demo.svg'),
+            ],
+        )
+        await self.storage.update_task(task['id'], state='working', new_artifacts=[artifact])
+        await self.broker.event_bus.emit(
+            task['id'],
+            StreamResponse(
+                artifact_update=TaskArtifactUpdateEvent(
+                    task_id=task['id'],
+                    context_id=task['context_id'],
+                    artifact=artifact,
+                    append=False,
+                    last_chunk=True,
+                )
+            ),
+        )
+        await self.storage.update_task(task['id'], state='completed')
+        await self.broker.event_bus.emit(
+            task['id'],
+            StreamResponse(
+                status_update=TaskStatusUpdateEvent(
+                    task_id=task['id'],
+                    context_id=task['context_id'],
+                    status=TaskStatus(state='completed'),
+                )
+            ),
+        )
+        await self.broker.event_bus.close(task['id'])
+
+    async def _demo_emit_form(self, task: dict[str, Any]) -> None:
+        # Ask for structured input: move to input-required with a form data part.
+        form = {
+            "type": "form",
+            "id": "demo-form",
+            "title": "Tell us about yourself",
+            "description": "A demo A2A form. Submitting resumes this same task.",
+            "submitLabel": "Submit",
+            "fields": [
+                {"name": "name", "label": "Your name", "type": "text", "required": True},
+                {
+                    "name": "role",
+                    "label": "Role",
+                    "type": "select",
+                    "required": True,
+                    "options": [
+                        {"value": "engineer", "label": "Engineer"},
+                        {"value": "designer", "label": "Designer"},
+                        {"value": "product", "label": "Product"},
+                    ],
+                },
+                {"name": "notes", "label": "Notes", "type": "textarea", "placeholder": "Anything else?"},
+                {"name": "subscribe", "label": "Subscribe to updates", "type": "boolean"},
+            ],
+        }
+        message = Message(
+            role='agent',
+            parts=[Part(text='Please fill out this form:'), Part(data=form)],
+            message_id=str(uuid.uuid4()),
+        )
+        await self.storage.update_task(task['id'], state='input-required', new_messages=[message])
+        await self.broker.event_bus.emit(
+            task['id'],
+            StreamResponse(
+                status_update=TaskStatusUpdateEvent(
+                    task_id=task['id'],
+                    context_id=task['context_id'],
+                    status=TaskStatus(state='input-required', message=message),
+                )
+            ),
+        )
+        await self.broker.event_bus.close(task['id'])
+
+    async def _demo_ack_form(self, task: dict[str, Any], values: dict[str, Any]) -> None:
+        lines = "\n".join(f"- **{key}**: {value}" for key, value in values.items())
+        text = f"Thanks! I received your form response:\n\n{lines}" if lines else "Thanks! (empty response)"
+        message = Message(role='agent', parts=[Part(text=text)], message_id=str(uuid.uuid4()))
+        await self.storage.update_task(task['id'], state='completed', new_messages=[message])
+        await self.broker.event_bus.emit(
+            task['id'],
+            StreamResponse(
+                status_update=TaskStatusUpdateEvent(
+                    task_id=task['id'],
+                    context_id=task['context_id'],
+                    status=TaskStatus(state='completed', message=message),
+                )
+            ),
+        )
+        await self.broker.event_bus.close(task['id'])
 
     def get_message_text(self, message: Message) -> str:
         fragments: list[str] = []

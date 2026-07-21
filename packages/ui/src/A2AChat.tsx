@@ -11,6 +11,7 @@ import { A2AInput } from "./components/a2a/input"
 import { A2APromptSuggestion, A2APromptSuggestions } from "./components/a2a/prompt-suggestions"
 import { A2ATaskList } from "./components/a2a/task-list"
 import type { MessageTimelineEventRenderer } from "./components/shared/message-box"
+import type { A2APartRenderer } from "./components/a2a/part-renderers"
 import {
   Card,
   CardContent,
@@ -50,6 +51,7 @@ export type A2AChatProps = Pick<
   welcomeMessage?: string
   inputPlaceholder?: string
   eventRenderers?: MessageTimelineEventRenderer[]
+  partRenderers?: A2APartRenderer[]
 }
 
 const defaultPromptSuggestions: A2AChatPromptSuggestion[] = [
@@ -81,6 +83,7 @@ function A2AChatCard({
   welcomeMessage = "How can I help?",
   inputPlaceholder = "Ask anything",
   eventRenderers,
+  partRenderers,
 }: A2AChatCardProps) {
   const { messages, connectionState, handleCreateTaskSession } = useA2AChat()
 
@@ -178,7 +181,7 @@ function A2AChatCard({
             )}
           >
             {!isEmpty ? (
-              <A2AMessages eventRenderers={eventRenderers} className={cn(fills ? "min-h-0 flex-1" : "h-96", messagesClassName)} />
+              <A2AMessages eventRenderers={eventRenderers} partRenderers={partRenderers} className={cn(fills ? "min-h-0 flex-1" : "h-96", messagesClassName)} />
             ) : null}
             {isEmpty ? (
               <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-6">
