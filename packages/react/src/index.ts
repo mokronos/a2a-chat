@@ -6,4 +6,14 @@ export type {
   UseA2AChatResult,
 } from "./use-a2a-chat"
 export type { A2AClient, A2AConversationState, A2AProxyTransport, ConnectionState } from "./types"
-export type { Message, MessageStatusHistoryEntry, MessageTimelineEvent } from "./message"
+export type {
+  FormField,
+  FormFieldOption,
+  FormFieldType,
+  FormSpec,
+  InputRequest,
+  Message,
+  MessageStatusHistoryEntry,
+  MessageTimelineEvent,
+  RenderablePart,
+} from "./message"
