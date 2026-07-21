@@ -1,5 +1,5 @@
 import React from "react"
-import { MicIcon, PaperclipIcon, XIcon } from "lucide-react"
+import { FileIcon, ImageIcon, MicIcon, PaperclipIcon, XIcon } from "lucide-react"
 
 import {
   PromptInput,
@@ -16,6 +16,15 @@ import {
   usePromptInputAttachments,
   type PromptInputMessage,
 } from "../ai-elements/prompt-input"
+import {
+  Attachment,
+  AttachmentAction,
+  AttachmentActions,
+  AttachmentContent,
+  AttachmentGroup,
+  AttachmentMedia,
+  AttachmentTitle,
+} from "../ui/attachment"
 import { cn } from "../../lib/utils"
 
 type InputBoxProps = {
@@ -38,25 +47,37 @@ function AttachmentList() {
   }
 
   return (
-    <div className="flex flex-wrap gap-2 px-3 pt-3">
-      {attachments.files.map((file) => (
-        <div
-          key={file.id}
-          className="flex max-w-56 items-center gap-2 rounded-full border border-border bg-muted px-3 py-1 text-xs text-muted-foreground"
-        >
-          <PaperclipIcon className="size-3" aria-hidden="true" />
-          <span className="truncate">{file.filename ?? "Attachment"}</span>
-          <button
-            type="button"
-            className="rounded-full text-muted-foreground transition-colors hover:text-foreground"
-            onClick={() => attachments.remove(file.id)}
-            aria-label={`Remove ${file.filename ?? "attachment"}`}
-          >
-            <XIcon className="size-3" aria-hidden="true" />
-          </button>
-        </div>
-      ))}
-    </div>
+    <AttachmentGroup className="px-3 pt-3">
+      {attachments.files.map((file) => {
+        const filename = file.filename ?? "Attachment"
+        const isImage = typeof file.mediaType === "string" && file.mediaType.startsWith("image/")
+
+        return (
+          <Attachment key={file.id} size="sm">
+            <AttachmentMedia variant={isImage && file.url ? "image" : "icon"}>
+              {isImage && file.url ? (
+                <img src={file.url} alt={filename} />
+              ) : isImage ? (
+                <ImageIcon aria-hidden="true" />
+              ) : (
+                <FileIcon aria-hidden="true" />
+              )}
+            </AttachmentMedia>
+            <AttachmentContent>
+              <AttachmentTitle>{filename}</AttachmentTitle>
+            </AttachmentContent>
+            <AttachmentActions>
+              <AttachmentAction
+                onClick={() => attachments.remove(file.id)}
+                aria-label={`Remove ${filename}`}
+              >
+                <XIcon aria-hidden="true" />
+              </AttachmentAction>
+            </AttachmentActions>
+          </Attachment>
+        )
+      })}
+    </AttachmentGroup>
   )
 }
 

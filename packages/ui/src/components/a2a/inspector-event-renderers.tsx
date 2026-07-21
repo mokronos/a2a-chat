@@ -2,7 +2,7 @@ import React from "react"
 import { GitBranchIcon } from "lucide-react"
 
 import { CodeBlock } from "../ai-elements/code-block"
-import { MessageResponse } from "../ai-elements/message"
+import { Response } from "../ai-elements/response"
 import {
   Reasoning,
   ReasoningContent,
@@ -163,7 +163,7 @@ function renderSendTaskResult(data: Record<string, unknown>) {
             taskId ? (
               <div className="p-2 font-mono text-[11px] text-foreground">{taskId}</div>
             ) : typeof output === "string" ? (
-              <MessageResponse className="p-2 text-xs">{output}</MessageResponse>
+              <Response className="p-2 text-xs">{output}</Response>
             ) : (
               output
             )
@@ -295,7 +295,7 @@ function renderSendTaskRun(progress: Record<string, unknown>[]) {
         ) : null}
         {finalText.length > 0 ? (
           <TaskItem className="px-0 py-0 text-foreground">
-            <MessageResponse className="text-xs">{finalText}</MessageResponse>
+            <Response className="text-xs">{finalText}</Response>
           </TaskItem>
         ) : null}
       </TaskContent>
@@ -349,7 +349,7 @@ function renderCheckTaskStatusResult(data: Record<string, unknown>) {
         <ToolOutput
           output={
             artifactText.length > 0 ? (
-              <MessageResponse className="p-2 text-xs">{artifactText}</MessageResponse>
+              <Response className="p-2 text-xs">{artifactText}</Response>
             ) : (
               data.output
             )

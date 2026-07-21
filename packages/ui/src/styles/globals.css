@@ -5,6 +5,38 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Chat-component support utilities. The `scroll-fade-*` and `shimmer` utilities
+ * ship with `shadcn/tailwind.css`, but the scrollbar utilities and the
+ * `data-autoscrolling` variant that MessageScroller references are not, so we
+ * define them here (they degrade gracefully if omitted).
+ */
+@custom-variant data-autoscrolling (&:where([data-autoscrolling]));
+
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@utility scrollbar-gutter-stable {
+  scrollbar-gutter: stable;
+}
+
+@utility scrollbar-thumb-transparent {
+  scrollbar-color: transparent transparent;
+}
+
+@utility scrollbar-track-transparent {
+  scrollbar-color: transparent transparent;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
