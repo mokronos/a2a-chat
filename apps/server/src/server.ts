@@ -24,7 +24,7 @@ function getContentType(pathname: string) {
 
 const COMPRESSIBLE = new Set([".css", ".html", ".js", ".json", ".svg"])
 
-async function serveStatic(pathname: string, acceptEncoding: string): Promise<Response> {
+async function serveStatic(pathname: string, acceptEncoding: string, ifNoneMatch: string): Promise<Response> {
     const normalizedPath = pathname === "/" ? "/index.html" : pathname
     const filePath = resolve(PUBLIC_DIR, `.${normalizedPath}`)
 
@@ -50,9 +50,18 @@ async function serveStatic(pathname: string, acceptEncoding: string): Promise<Re
         headers.set("content-type", contentType)
     }
 
-    // Cache fingerprint-free assets briefly so phone reloads don't re-pull the big bundle.
+    // Assets are fingerprint-free (app.js, styles.css), so they MUST revalidate —
+    // otherwise a rebuilt bundle stays hidden behind the browser cache and the
+    // page renders whatever stale JS it already has. `no-cache` + an ETag keyed
+    // on size/mtime lets the browser skip re-pulling the ~29MB bundle when it's
+    // unchanged (304) while always picking up a fresh build.
     if (fileName.startsWith(resolve(PUBLIC_DIR, "assets"))) {
-        headers.set("cache-control", "public, max-age=3600")
+        const etag = `"${file.size}-${file.lastModified}"`
+        headers.set("cache-control", "no-cache")
+        headers.set("etag", etag)
+        if (ifNoneMatch === etag) {
+            return new Response(null, { status: 304, headers })
+        }
     }
 
     // Gzip text assets — the unminified bundle is ~24MB raw but a few MB gzipped.
@@ -75,7 +84,11 @@ Bun.serve({
             return apiHandler(request)
         }
 
-        return serveStatic(url.pathname, request.headers.get("accept-encoding") ?? "")
+        return serveStatic(
+            url.pathname,
+            request.headers.get("accept-encoding") ?? "",
+            request.headers.get("if-none-match") ?? "",
+        )
     },
 })
 
