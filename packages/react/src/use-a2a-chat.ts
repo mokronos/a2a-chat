@@ -3,14 +3,22 @@ import { Effect } from "effect"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { Task } from "@a2a-js/sdk"
 
+import type { Part } from "@a2a-js/sdk"
+
 import type {
+  FormSpec,
+  InputRequest,
   Message,
   MessageStatusHistoryEntry,
   MessageTimelineEvent,
+  RenderablePart,
 } from "./message"
 import {
-  buildA2AMessage,
+  buildA2AMessageFromParts,
+  collectRenderableParts,
+  collectTaskRenderableParts,
   createId,
+  extractInputRequest,
   extractTask,
   extractTextFromParts,
   getTaskText,
@@ -89,7 +97,14 @@ type TaskStreamProcessResult = {
 }
 
 type SendTaskVariables = {
-  taskText: string
+  /** The A2A parts sent to the agent. */
+  parts: Part[]
+  /** Text shown in the user's message bubble and used to title the session. */
+  displayText: string
+  /** When set, resume this awaiting task instead of starting a new one. */
+  resumeTaskId?: string
+  /** When set, the assistant message whose input request is being answered. */
+  respondsToMessageId?: string
   assistantMessageId: string
   urlKey: string
   taskSessionId: string
@@ -123,14 +138,32 @@ export type UseA2AChatResult = {
   handleConnect: () => void
   handleSelectRecentAgent: (agentUrl: string) => void
   handleSubmitTask: (taskTextOverride?: string) => void
+  handleSubmitInputResponse: (input: {
+    messageId: string
+    request: InputRequest
+    values: Record<string, unknown>
+  }) => void
   handleCancelTask: () => void
   handleCreateTaskSession: () => void
   handleSelectTaskSession: (sessionId: string) => void
   handleDeleteTaskSession: (sessionId: string) => void
 }
 
+const AWAITING_INPUT_STATES = new Set(["input-required", "auth-required"])
+
 function isTerminalTask(task: Task) {
   return TERMINAL_STATES.has(task.status.state)
+}
+
+function isAwaitingInputTask(task: Task) {
+  return AWAITING_INPUT_STATES.has(task.status.state)
+}
+
+// The current turn is over once the task reaches a terminal state or hands
+// control back to the user (input/auth required). In both cases the message
+// stops "working" and the client stops consuming the stream for this turn.
+function isTurnComplete(task: Task) {
+  return isTerminalTask(task) || isAwaitingInputTask(task)
 }
 
 function formatTaskStatus(status: string) {
@@ -633,6 +666,24 @@ function buildTimelineEvent(event: unknown): Omit<MessageTimelineEvent, "id" | "
   }
 }
 
+function summarizeFormResponse(
+  form: FormSpec | undefined,
+  values: Record<string, unknown>
+): string {
+  const labelByName = new Map(
+    (form?.fields ?? []).map((field) => [field.name, field.label ?? field.name])
+  )
+  const lines = Object.entries(values)
+    .filter(([, value]) => value !== undefined && value !== null && value !== "")
+    .map(([name, value]) => `${labelByName.get(name) ?? name}: ${String(value)}`)
+
+  if (lines.length === 0) {
+    return form?.title ? `Submitted "${form.title}".` : "Submitted response."
+  }
+
+  return lines.join("\n")
+}
+
 function createStatusEntry(label: string): MessageStatusHistoryEntry {
   return {
     id: createId("status"),
@@ -840,6 +891,40 @@ export function useA2AChatController(options: UseA2AChatOptions = {}): UseA2ACha
     [updateAssistantMessage]
   )
 
+  const applyTaskContent = React.useCallback(
+    (urlKey: string, sessionId: string, messageId: string, task: Task) => {
+      const parts = collectTaskRenderableParts(task)
+      const inputRequest = extractInputRequest(task)
+      updateAssistantMessage(urlKey, sessionId, messageId, (currentMessage) => ({
+        ...currentMessage,
+        parts: parts.length > 0 ? parts : currentMessage.parts,
+        inputRequest: inputRequest ?? currentMessage.inputRequest,
+      }))
+    },
+    [updateAssistantMessage]
+  )
+
+  const mergeAssistantParts = React.useCallback(
+    (urlKey: string, sessionId: string, messageId: string, incoming: RenderablePart[]) => {
+      if (incoming.length === 0) {
+        return
+      }
+      updateAssistantMessage(urlKey, sessionId, messageId, (currentMessage) => {
+        const existing = currentMessage.parts ?? []
+        const seen = new Set(existing.map((part) => part.id))
+        const merged = [...existing]
+        for (const part of incoming) {
+          if (!seen.has(part.id)) {
+            seen.add(part.id)
+            merged.push(part)
+          }
+        }
+        return merged.length === existing.length ? currentMessage : { ...currentMessage, parts: merged }
+      })
+    },
+    [updateAssistantMessage]
+  )
+
   const appendAssistantEvent = React.useCallback(
     (
       urlKey: string,
@@ -915,12 +1000,13 @@ export function useA2AChatController(options: UseA2AChatOptions = {}): UseA2ACha
             text: snapshotText,
           }))
         }
+        applyTaskContent(urlKey, sessionId, assistantMessageId, snapshot)
         return snapshot
       } catch {
         return null
       }
     },
-    [updateAssistantMessage]
+    [applyTaskContent, updateAssistantMessage]
   )
 
   const processTaskStreamEvent = React.useCallback(
@@ -955,8 +1041,9 @@ export function useA2AChatController(options: UseA2AChatOptions = {}): UseA2ACha
           sessionId,
           assistantMessageId,
           formatTaskStatus(taskEvent.status.state),
-          !isTerminalTask(taskEvent)
+          !isTurnComplete(taskEvent)
         )
+        applyTaskContent(urlKey, sessionId, assistantMessageId, taskEvent)
         if (isTerminalTask(taskEvent)) {
           const snapshot = await hydrateTaskOutput(
             client,
@@ -966,6 +1053,9 @@ export function useA2AChatController(options: UseA2AChatOptions = {}): UseA2ACha
             taskEvent.id
           )
           return { task: snapshot ?? taskEvent, done: true }
+        }
+        if (isAwaitingInputTask(taskEvent)) {
+          return { task: taskEvent, done: true }
         }
         return { task: taskEvent, done: false }
       }
@@ -987,6 +1077,13 @@ export function useA2AChatController(options: UseA2AChatOptions = {}): UseA2ACha
           })
         }
 
+        mergeAssistantParts(
+          urlKey,
+          sessionId,
+          assistantMessageId,
+          collectRenderableParts(artifactUpdate.artifact?.parts)
+        )
+
         if (artifactUpdate.lastChunk) {
           const snapshot = await hydrateTaskOutput(
             client,
@@ -1001,9 +1098,9 @@ export function useA2AChatController(options: UseA2AChatOptions = {}): UseA2ACha
               sessionId,
               assistantMessageId,
               formatTaskStatus(snapshot.status.state),
-              !isTerminalTask(snapshot)
+              !isTurnComplete(snapshot)
             )
-            return { task: snapshot, done: isTerminalTask(snapshot) }
+            return { task: snapshot, done: isTurnComplete(snapshot) }
           }
         }
 
@@ -1032,8 +1129,9 @@ export function useA2AChatController(options: UseA2AChatOptions = {}): UseA2ACha
           sessionId,
           assistantMessageId,
           formatTaskStatus(nextTask.status.state),
-          !isTerminalTask(nextTask)
+          !isTurnComplete(nextTask)
         )
+        applyTaskContent(urlKey, sessionId, assistantMessageId, nextTask)
         if (isTerminalTask(nextTask)) {
           const snapshot = await hydrateTaskOutput(
             client,
@@ -1044,6 +1142,9 @@ export function useA2AChatController(options: UseA2AChatOptions = {}): UseA2ACha
           )
           return { task: snapshot ?? nextTask, done: true }
         }
+        if (isAwaitingInputTask(nextTask)) {
+          return { task: nextTask, done: true }
+        }
         return { task: nextTask, done: false }
       }
 
@@ -1051,7 +1152,9 @@ export function useA2AChatController(options: UseA2AChatOptions = {}): UseA2ACha
     },
     [
       appendAssistantEvent,
+      applyTaskContent,
       hydrateTaskOutput,
+      mergeAssistantParts,
       setAssistantStatus,
       updateAssistantMessage,
       updateTaskSession,
@@ -1227,7 +1330,10 @@ export function useA2AChatController(options: UseA2AChatOptions = {}): UseA2ACha
       let directResponseText = ""
 
       try {
-        const payload = buildA2AMessage(variables.taskText, targetSession.conversationState)
+        const payload = buildA2AMessageFromParts(variables.parts, {
+          contextId: targetSession.conversationState.contextId,
+          taskId: variables.resumeTaskId,
+        })
         const stream = await Effect.runPromise(
           sendTaskMessageStream(
             connection.client,
@@ -1329,16 +1435,20 @@ export function useA2AChatController(options: UseA2AChatOptions = {}): UseA2ACha
     onSuccess: async (_result, variables) => {
       await hydratePersistedSessions(variables.urlKey)
     },
-    onMutate: ({ taskText, assistantMessageId, urlKey, taskSessionId }) => {
+    onMutate: ({ displayText, respondsToMessageId, assistantMessageId, urlKey, taskSessionId }) => {
       updateTaskSession(urlKey, taskSessionId, (currentSession) => ({
         ...currentSession,
         title:
           currentSession.title === DEFAULT_TASK_TITLE && currentSession.messages.length === 0
-            ? getSessionTitleFromText(taskText)
+            ? getSessionTitleFromText(displayText)
             : currentSession.title,
         messages: [
-          ...currentSession.messages,
-          { id: createId("msg"), role: "user", text: taskText },
+          ...currentSession.messages.map((item) =>
+            respondsToMessageId && item.id === respondsToMessageId && item.inputRequest
+              ? { ...item, inputRequest: { ...item.inputRequest, pending: false } }
+              : item
+          ),
+          { id: createId("msg"), role: "user", text: displayText },
           {
             id: assistantMessageId,
             role: "assistant",
@@ -1452,12 +1562,52 @@ export function useA2AChatController(options: UseA2AChatOptions = {}): UseA2ACha
     }
 
     sendTaskMutation.mutate({
-      taskText,
+      parts: [{ kind: "text", text: taskText }],
+      displayText: taskText,
       assistantMessageId: createId("msg"),
       urlKey: baseUrl,
       taskSessionId: activeTaskSession.id,
     })
   }, [activeTaskSession, baseUrl, connectionQuery.data, sendTaskMutation, taskInput])
+
+  const handleSubmitInputResponse = React.useCallback(
+    (input: { messageId: string; request: InputRequest; values: Record<string, unknown> }) => {
+      const connection = connectionQuery.data
+      if (
+        sendTaskMutation.isPending ||
+        !activeTaskSession ||
+        connection.state !== "connected" ||
+        connection.connectedUrl !== baseUrl ||
+        !connection.client
+      ) {
+        return
+      }
+
+      const summary = summarizeFormResponse(input.request.form, input.values)
+      const parts: Part[] = [
+        { kind: "text", text: summary },
+        {
+          kind: "data",
+          data: {
+            type: "form-response",
+            formId: input.request.form?.id,
+            values: input.values,
+          },
+        },
+      ]
+
+      sendTaskMutation.mutate({
+        parts,
+        displayText: summary,
+        resumeTaskId: input.request.taskId,
+        respondsToMessageId: input.messageId,
+        assistantMessageId: createId("msg"),
+        urlKey: baseUrl,
+        taskSessionId: activeTaskSession.id,
+      })
+    },
+    [activeTaskSession, baseUrl, connectionQuery.data, sendTaskMutation]
+  )
 
   const handleCancelTask = React.useCallback(() => {
     const connection = connectionQuery.data
@@ -1635,6 +1785,7 @@ export function useA2AChatController(options: UseA2AChatOptions = {}): UseA2ACha
     handleConnect,
     handleSelectRecentAgent,
     handleSubmitTask,
+    handleSubmitInputResponse,
     handleCancelTask,
     handleCreateTaskSession,
     handleSelectTaskSession,

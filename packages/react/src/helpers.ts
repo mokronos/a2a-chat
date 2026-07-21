@@ -1,8 +1,9 @@
 import { AGENT_CARD_PATH } from "@a2a-js/sdk"
-import type { AgentCard, Message as A2AProtocolMessage, Task } from "@a2a-js/sdk"
+import type { AgentCard, Message as A2AProtocolMessage, Part, Task } from "@a2a-js/sdk"
 import { Client, JsonRpcTransport } from "@a2a-js/sdk/client"
 
 import { createAgentCardProxyUrl, createJsonRpcProxyUrl } from "./proxy"
+import type { FormField, FormSpec, InputRequest, RenderablePart } from "./message"
 import type { A2AClient, A2AConversationState } from "./types"
 import type { A2AProxyTransport } from "./types"
 
@@ -254,4 +255,256 @@ export function getClientCardName(client: A2AClient): string | null {
   }
 
   return candidate.name
+}
+
+export function buildA2AMessageFromParts(
+  parts: Part[],
+  reference: { contextId?: string; taskId?: string }
+): A2AProtocolMessage {
+  return {
+    kind: "message",
+    messageId: createId("msg"),
+    role: "user",
+    parts,
+    contextId: reference.contextId,
+    taskId: reference.taskId,
+  }
+}
+
+/**
+ * Data-part `type` discriminators that describe *process* (thinking, tool use,
+ * subagent progress, control signals) or *input requests*, not renderable
+ * output content. These are surfaced through the timeline / input-request UI
+ * instead of the message content, so they are excluded from renderable parts.
+ */
+const NON_CONTENT_DATA_TYPES = new Set([
+  "thinking",
+  "tool-call",
+  "tool-result",
+  "send-task-progress",
+  "finish",
+  "finish-step",
+  "form",
+  "form-response",
+])
+
+function getDataPartType(data: Record<string, unknown>): string | null {
+  return typeof data.type === "string" ? data.type : null
+}
+
+/** True when a data part carries process/control info rather than output content. */
+export function isNonContentDataPart(data: Record<string, unknown>): boolean {
+  const type = getDataPartType(data)
+  return type !== null && NON_CONTENT_DATA_TYPES.has(type)
+}
+
+// Small stable hash so re-extracting the same part from successive task
+// snapshots yields the same id (used for React keys and de-duplication).
+function stablePartId(prefix: string, seed: string): string {
+  let hash = 5381
+  for (let index = 0; index < seed.length; index += 1) {
+    hash = (hash * 33) ^ seed.charCodeAt(index)
+  }
+  return `${prefix}-${(hash >>> 0).toString(36)}`
+}
+
+function str(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined
+}
+
+function toRenderablePart(part: unknown): RenderablePart | null {
+  if (!isRecord(part)) {
+    return null
+  }
+
+  const kind = typeof part.kind === "string" ? part.kind : undefined
+
+  // File parts: the A2A spec shape nests bytes/uri under `file`; the flatter
+  // shape some servers (e.g. fasta2a) emit puts `raw`/`url`/`mediaType`/
+  // `filename` on the part itself with no `kind`. Support both.
+  const nestedFile = kind === "file" && isRecord(part.file) ? part.file : null
+  const looksLikeFlatFile =
+    (kind === "file" || kind === undefined) &&
+    (str(part.raw) !== undefined ||
+      str(part.url) !== undefined ||
+      str(part.bytes) !== undefined ||
+      str(part.uri) !== undefined)
+
+  if (nestedFile || looksLikeFlatFile) {
+    const source = nestedFile ?? part
+    const name = str(source.name) ?? str(part.filename)
+    const mimeType = str(source.mimeType) ?? str(part.mediaType) ?? str(part.media_type)
+    const uri = str(source.uri) ?? str(part.url)
+    const bytes = str(source.bytes) ?? str(part.raw)
+
+    if (!uri && !bytes) {
+      return null
+    }
+
+    const seed = `${name ?? ""}|${mimeType ?? ""}|${uri ?? bytes ?? ""}`
+    return { id: stablePartId("file", seed), kind: "file", name, mimeType, uri, bytes }
+  }
+
+  if ((kind === "data" || kind === undefined) && isRecord(part.data)) {
+    if (isNonContentDataPart(part.data)) {
+      return null
+    }
+    return { id: stablePartId("data", JSON.stringify(part.data)), kind: "data", data: part.data }
+  }
+
+  return null
+}
+
+/** Collect the non-text, renderable content parts (files, structured data) from a parts array. */
+export function collectRenderableParts(parts: unknown): RenderablePart[] {
+  if (!Array.isArray(parts)) {
+    return []
+  }
+
+  const collected: RenderablePart[] = []
+  const seen = new Set<string>()
+  for (const part of parts) {
+    const renderable = toRenderablePart(part)
+    if (renderable && !seen.has(renderable.id)) {
+      seen.add(renderable.id)
+      collected.push(renderable)
+    }
+  }
+
+  return collected
+}
+
+/**
+ * Renderable output content for a task. Artifacts are the agent's outputs, so
+ * they are the primary source; the agent's history messages (final replies) are
+ * folded in for agents that answer with a plain message instead of an artifact.
+ */
+export function collectTaskRenderableParts(task: Task): RenderablePart[] {
+  const collected: RenderablePart[] = []
+  const seen = new Set<string>()
+
+  const add = (parts: unknown) => {
+    for (const part of collectRenderableParts(parts)) {
+      if (!seen.has(part.id)) {
+        seen.add(part.id)
+        collected.push(part)
+      }
+    }
+  }
+
+  for (const artifact of task.artifacts ?? []) {
+    add(artifact.parts)
+  }
+
+  for (const historyMessage of task.history ?? []) {
+    if (isRecord(historyMessage) && historyMessage.role === "agent") {
+      add(historyMessage.parts)
+    }
+  }
+
+  return collected
+}
+
+function normalizeFormField(value: unknown): FormField | null {
+  if (!isRecord(value) || typeof value.name !== "string" || value.name.length === 0) {
+    return null
+  }
+
+  const field: FormField = { name: value.name }
+  if (typeof value.label === "string") field.label = value.label
+  if (typeof value.type === "string") field.type = value.type as FormField["type"]
+  if (typeof value.placeholder === "string") field.placeholder = value.placeholder
+  if (typeof value.description === "string") field.description = value.description
+  if (typeof value.required === "boolean") field.required = value.required
+  if (
+    typeof value.defaultValue === "string" ||
+    typeof value.defaultValue === "number" ||
+    typeof value.defaultValue === "boolean"
+  ) {
+    field.defaultValue = value.defaultValue
+  }
+
+  if (Array.isArray(value.options)) {
+    const options = value.options.flatMap((option) => {
+      if (typeof option === "string") {
+        return [{ value: option }]
+      }
+      if (isRecord(option) && typeof option.value === "string") {
+        return [{ value: option.value, label: typeof option.label === "string" ? option.label : undefined }]
+      }
+      return []
+    })
+    if (options.length > 0) {
+      field.options = options
+    }
+  }
+
+  return field
+}
+
+function normalizeFormSpec(data: Record<string, unknown>): FormSpec | null {
+  if (!Array.isArray(data.fields)) {
+    return null
+  }
+
+  const fields = data.fields.flatMap((field) => {
+    const normalized = normalizeFormField(field)
+    return normalized ? [normalized] : []
+  })
+  if (fields.length === 0) {
+    return null
+  }
+
+  const spec: FormSpec = { fields }
+  if (typeof data.id === "string") spec.id = data.id
+  if (typeof data.title === "string") spec.title = data.title
+  if (typeof data.description === "string") spec.description = data.description
+  if (typeof data.submitLabel === "string") spec.submitLabel = data.submitLabel
+
+  return spec
+}
+
+/** Find a `{ type: "form" }` data part in a parts array and normalize it. */
+export function extractFormSpec(parts: unknown): FormSpec | null {
+  if (!Array.isArray(parts)) {
+    return null
+  }
+
+  for (const part of parts) {
+    if (
+      isRecord(part) &&
+      (part.kind === "data" || typeof part.kind === "undefined") &&
+      isRecord(part.data) &&
+      part.data.type === "form"
+    ) {
+      const spec = normalizeFormSpec(part.data)
+      if (spec) {
+        return spec
+      }
+    }
+  }
+
+  return null
+}
+
+/**
+ * Build an {@link InputRequest} from a task that stopped in an input-awaiting
+ * state. Reads the prompt text and any attached form from the status message.
+ */
+export function extractInputRequest(task: Task): InputRequest | null {
+  const state = task.status.state
+  if (state !== "input-required" && state !== "auth-required") {
+    return null
+  }
+
+  const statusParts = task.status.message?.parts
+  const text = statusParts ? extractTextFromParts(statusParts).join("\n\n").trim() : ""
+
+  return {
+    taskId: task.id,
+    reason: state,
+    text: text.length > 0 ? text : undefined,
+    form: extractFormSpec(statusParts) ?? undefined,
+    pending: true,
+  }
 }
