@@ -1,47 +1,18 @@
-import React from "react"
-import { CircleHelpIcon, LockIcon } from "lucide-react"
+"use client"
 
+import * as React from "react"
+import type { A2AChat, ConversationId, TurnId } from "@mokronos/a2a-react"
 import { useA2AChat } from "@mokronos/a2a-react"
-import type { InputRequest } from "@mokronos/a2a-react"
-import { A2AForm } from "./a2a-form"
-import { Response } from "../ai-elements/response"
-import { cn } from "../../lib/utils"
+import { A2AForm, createFormResponseParts, type FormSpec } from "./a2a-form"
 
-export type A2AInputRequestProps = {
-  /** The assistant message that carries the request (used to correlate the reply). */
-  messageId: string
-  request: InputRequest
-  className?: string
+export type A2AInputRequestProps = { conversationId: ConversationId; turnId: TurnId; spec: FormSpec; controller?: A2AChat }
+function ProviderRequest(props: Omit<A2AInputRequestProps, "controller">) { return <Request {...props} controller={useA2AChat()} /> }
+function Request({ conversationId, turnId, spec, controller }: A2AInputRequestProps) {
+  const [error, setError] = React.useState<string>()
+  return <A2AForm spec={spec} error={error} onSubmit={async (values) => {
+    setError(undefined)
+    try { await controller!.respondToInput({ conversationId, turnId, parts: createFormResponseParts(spec, values) }) }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "The form response could not be sent."); throw cause }
+  }} />
 }
-
-/**
- * Renders an agent's request for user input. When the request carries a
- * {@link FormSpec} it renders a form and submits structured values back to the
- * task; otherwise it shows the prompt and the user replies through the normal
- * input box (which is already wired to the same task/context).
- */
-export function A2AInputRequest({ messageId, request, className }: A2AInputRequestProps) {
-  const { handleSubmitInputResponse } = useA2AChat()
-  const Icon = request.reason === "auth-required" ? LockIcon : CircleHelpIcon
-
-  return (
-    <div className={cn("flex flex-col gap-2", className)}>
-      {request.text ? (
-        <div className="flex items-start gap-2">
-          <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <Response className="text-sm">{request.text}</Response>
-        </div>
-      ) : null}
-
-      {request.form ? (
-        <A2AForm
-          spec={request.form}
-          disabled={!request.pending}
-          onSubmit={(values) => handleSubmitInputResponse({ messageId, request, values })}
-        />
-      ) : request.pending ? (
-        <p className="text-xs text-muted-foreground">Reply below to continue.</p>
-      ) : null}
-    </div>
-  )
-}
+export function A2AInputRequest(props: A2AInputRequestProps) { return props.controller ? <Request {...props} /> : <ProviderRequest {...props} /> }

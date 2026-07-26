@@ -7,7 +7,7 @@
     "dev:inspector": "bun run --cwd apps/server dev",
     "build:inspector": "bun run --cwd apps/server build:web",
     "dev": "bun run --cwd apps/server dev",
-    "build": "bun run build:server",
+    "build": "bun run build:packages && bun run build:server",
     "build:server": "bun run --cwd apps/server build",
     "build:api": "bun run --cwd packages/api build",
     "build:react": "bun run --cwd packages/react build",

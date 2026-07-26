@@ -1,99 +1,81 @@
 # @mokronos/a2a-chat-ui
 
-Styled React components for chatting with [A2A](https://a2a-protocol.org/) agents. Built on the headless [`@mokronos/a2a-react`](https://www.npmjs.com/package/@mokronos/a2a-react) — it brings the protocol logic, this package brings the UI.
-
-Two ways to use it: drop in the batteries-included `A2AChat` preset, or compose the individual primitives inside an `A2AChatProvider`.
-
-## Install
+Conversation-first React UI for `@mokronos/a2a-react`.
 
 ```bash
-bun add @mokronos/a2a-react @mokronos/a2a-chat-ui
+npm install @mokronos/a2a-chat-ui @mokronos/a2a-react react react-dom
 ```
 
-Always import the stylesheet once:
+Import the scoped stylesheet once:
 
 ```tsx
 import "@mokronos/a2a-chat-ui/styles.css"
 ```
 
-## 1. Batteries included
+## Drop-In Chat
 
-One component that owns the default layout (connection form, message list, task sidebar, input):
+`A2AChat` owns the controller, active conversation, automatic connection, and responsive drawer.
 
 ```tsx
 import { A2AChat } from "@mokronos/a2a-chat-ui"
-import "@mokronos/a2a-chat-ui/styles.css"
 
-export function ChatPage() {
+export function Chat() {
   return (
     <A2AChat
-      initialUrl="http://localhost:8000"
-      proxyBasePath="/api/a2a"
+      target={{ kind: "direct", baseUrl: "https://agent.example" }}
       autoConnect
-      layout="panel"
       fillHeight
     />
   )
 }
 ```
 
-### Key `A2AChat` props
+All `A2AChatProvider` options are accepted, including direct, proxy, and caller-provided client targets.
+Set `allowDirectUrl={false}` to restrict the connection UI to configured and suggested targets.
 
-Connection props (`initialUrl`, `proxyBasePath`, `autoConnect`, `persistence`) are passed straight through to `A2AChatProvider`. On top of those:
+## Composition
 
-| Prop | Type | Description |
-| --- | --- | --- |
-| `layout` | `"default" \| "panel"` | Overall layout. |
-| `fillHeight` | `boolean` | Fill the parent's height. |
-| `collapsibleSidebar` | `boolean` | Let the task sidebar collapse to a rail (default layout). |
-| `showHeader` / `showConnectionForm` / `showConnectionStatus` / `showTaskSessions` | `boolean` | Toggle chrome. |
-| `title` / `description` / `welcomeMessage` / `inputPlaceholder` | `string` | Copy. |
-| `agentSuggestions` | `A2AAgentSuggestion[]` | Quick-connect agent shortcuts. |
-| `promptSuggestions` | `A2AChatPromptSuggestion[]` | Starter prompts. |
-| `eventRenderers` | `MessageTimelineEventRenderer[]` | Custom renderers for timeline events. |
-| `className` / `contentClassName` / `messagesClassName` | `string` | Style hooks. |
-
-## 2. Composable primitives
-
-Arrange the pieces yourself inside an `A2AChatProvider` (re-exported here for convenience):
+Composable conversation components require an explicit `conversationId`. Pass a controller directly or render them under `A2AChatProvider`. Use `A2AChatRoot` as the CSS scope boundary.
 
 ```tsx
-import { A2AChatProvider } from "@mokronos/a2a-chat-ui"
-import { A2AInput, A2AMessages, A2ATaskList } from "@mokronos/a2a-chat-ui"
-import "@mokronos/a2a-chat-ui/styles.css"
+import {
+  A2AChatProvider,
+  A2AChatRoot,
+  A2AInput,
+  A2AMessages,
+  ConversationList,
+} from "@mokronos/a2a-chat-ui"
 
-export function ChatPage() {
-  return (
-    <A2AChatProvider initialUrl="http://localhost:8000" proxyBasePath="/api/a2a" autoConnect>
-      <aside>
-        <A2ATaskList />
-      </aside>
-      <main>
-        <A2AMessages maxWidth="3xl" />
-        <A2AInput placeholder="Ask anything" />
-      </main>
-    </A2AChatProvider>
-  )
-}
+<A2AChatProvider target={target} autoConnect>
+  <A2AChatRoot>
+    <ConversationList
+      activeConversationId={conversationId}
+      onConversationChange={setConversationId}
+    />
+    <A2AMessages conversationId={conversationId} />
+    <A2AInput conversationId={conversationId} />
+  </A2AChatRoot>
+</A2AChatProvider>
 ```
 
-Available primitives: `A2AConnectionForm`, `A2AConnectionStatus`, `A2AConnectionBar`, `A2AEmptyState`, `A2AMessages`, `A2AInput`, `A2APromptSuggestions` / `A2APromptSuggestion`, `A2ATaskList`. The `inspectorEventRenderers` export and `MessageTimelineEventRenderer` type let you customize how timeline events are rendered.
+## Optional Entries
 
-For a fully custom layout, skip these and read state directly with `useA2AChat` (also re-exported here, or from `@mokronos/a2a-react`).
+- `@mokronos/a2a-chat-ui/forms`: explicitly versioned form extension components and `createFormPartRenderer`.
+- `@mokronos/a2a-chat-ui/inspector`: opt-in `send_task` and `check_task_status` Part and event renderers.
+- `@mokronos/a2a-chat-ui/rich-markdown`: Mermaid, math, CJK, and Shiki-enabled `RichResponse`.
 
-## The proxy
+The default entry uses lightweight markdown and generic protocol renderers only.
 
-`proxyBasePath` makes the client route A2A traffic through your server instead of hitting the agent directly:
+## Attachments
 
-- `GET <proxyBasePath>/agent-card?target=<a2aBaseUrl>`
-- `POST <proxyBasePath>/jsonrpc?target=<jsonRpcEndpoint>`
+`A2AInput` supports text, file-only messages, multiple files, and caller-provided `DataPart[]`. The default adapter emits inline base64 `FilePart`s. Use `createUploadAttachmentAdapter` to upload files and emit URI `FilePart`s. Both preserve filename and MIME type and support count, per-file, total-byte, accept, and abort constraints.
 
-[`@mokronos/a2a-chat-api`](https://www.npmjs.com/package/@mokronos/a2a-chat-api) implements these endpoints for an Effect server.
+## Renderers
 
-## Part of a2a-chat
+Custom `PartRenderer` and `EventRenderer` functions receive the standard protocol value, `Conversation`, `Turn`, and source provenance. Return only `null` or `undefined` to defer. Thrown renderer errors are isolated to that item and fall through to generic defaults.
 
-| Package | Provides |
-| --- | --- |
-| [`@mokronos/a2a-react`](https://www.npmjs.com/package/@mokronos/a2a-react) | Headless React state and A2A orchestration |
-| **`@mokronos/a2a-chat-ui`** | This package — styled components and the `A2AChat` preset |
-| [`@mokronos/a2a-chat-api`](https://www.npmjs.com/package/@mokronos/a2a-chat-api) | Server-side A2A proxy endpoints |
+Answer Parts are projected from bare Message outputs and reconstructed Turn artifacts. Status, history, and streaming chunks remain available to Event renderers in the Activity timeline without duplicating answer content.
+
+Helpers include `createDataPartRenderer`, `createExtensionPartRenderer`, and `createEventRenderer`.
+
+Remote FilePart URIs default to `http`, `https`, `blob`, and `data` schemes. Supply `fileUriResolver` or `createFilePartRenderer` to define a different trust boundary.

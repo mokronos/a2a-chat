@@ -1,37 +1,23 @@
-import React from "react"
-import { ImageIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, PencilIcon, PlusIcon, SearchIcon } from "lucide-react"
+"use client"
 
+import * as React from "react"
+import type { A2AChatProviderProps, ConnectionTarget, ConversationId } from "@mokronos/a2a-react"
 import { A2AChatProvider, useA2AChat } from "@mokronos/a2a-react"
-import type { A2AChatProviderProps } from "@mokronos/a2a-react"
-import { A2AConnectionForm } from "./components/a2a/connection-form"
-import type { A2AAgentSuggestion } from "./components/a2a/connection-form"
+import { ImageIcon, MenuIcon, PencilIcon, SearchIcon, XIcon } from "lucide-react"
+import { ConversationList } from "./components/a2a/conversation-list"
+import { A2AConnectionForm, type A2AAgentSuggestion } from "./components/a2a/connection-form"
 import { A2AConnectionStatus } from "./components/a2a/connection-status"
+import { A2AInput, type A2AInputProps } from "./components/a2a/input"
 import { A2AMessages } from "./components/a2a/messages"
-import { A2AInput } from "./components/a2a/input"
 import { A2APromptSuggestion, A2APromptSuggestions } from "./components/a2a/prompt-suggestions"
-import { A2ATaskList } from "./components/a2a/task-list"
-import type { MessageTimelineEventRenderer } from "./components/shared/message-box"
-import type { A2APartRenderer } from "./components/a2a/part-renderers"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "./components/ui/card"
-import { Button } from "./components/ui/button"
+import type { EventRenderer, FileUriResolver, PartRenderer } from "./components/a2a/renderers"
 import { cn } from "./lib/utils"
 
-export type A2AChatPromptSuggestion = {
-  label: string
-  prompt?: string
-  icon?: React.ReactNode
-}
+export type A2AChatPromptSuggestion = { label: string; prompt?: string; icon?: React.ReactNode }
+type ProviderOptions = Omit<A2AChatProviderProps, "children">
+type ComposerOptions = Pick<A2AInputProps, "attachmentAdapter" | "accept" | "maxFiles" | "maxFileSize" | "maxTotalBytes" | "dataParts">
 
-export type A2AChatProps = Pick<
-  A2AChatProviderProps,
-  "initialUrl" | "proxyBasePath" | "autoConnect" | "persistence"
-> & {
+export type A2AChatProps = ProviderOptions & ComposerOptions & {
   className?: string
   contentClassName?: string
   messagesClassName?: string
@@ -40,195 +26,117 @@ export type A2AChatProps = Pick<
   showConnectionForm?: boolean
   showHeader?: boolean
   showConnectionStatus?: boolean
-  showTaskSessions?: boolean
-  /** Fill the parent's height (like the panel layout) while keeping the chosen layout. */
+  showConversations?: boolean
   fillHeight?: boolean
-  /** Allow the sidebar (tasks) to collapse to a thin rail. Default layout only. */
-  collapsibleSidebar?: boolean
-  layout?: "default" | "panel"
-  agentSuggestions?: A2AAgentSuggestion[]
-  promptSuggestions?: A2AChatPromptSuggestion[]
+  agentSuggestions?: readonly A2AAgentSuggestion[]
+  promptSuggestions?: readonly A2AChatPromptSuggestion[]
   welcomeMessage?: string
   inputPlaceholder?: string
-  eventRenderers?: MessageTimelineEventRenderer[]
-  partRenderers?: A2APartRenderer[]
+  eventRenderers?: readonly EventRenderer[]
+  partRenderers?: readonly PartRenderer[]
+  fileUriResolver?: FileUriResolver
+  allowDirectUrl?: boolean
 }
 
-const defaultPromptSuggestions: A2AChatPromptSuggestion[] = [
-  { label: "Create an image", icon: <ImageIcon className="size-4" aria-hidden="true" /> },
-  { label: "Write or edit", icon: <PencilIcon className="size-4" aria-hidden="true" /> },
-  { label: "Look something up", icon: <SearchIcon className="size-4" aria-hidden="true" /> },
+const defaultSuggestions: readonly A2AChatPromptSuggestion[] = [
+  { label: "Create an image", icon: <ImageIcon aria-hidden="true" /> },
+  { label: "Write or edit", icon: <PencilIcon aria-hidden="true" /> },
+  { label: "Look something up", icon: <SearchIcon aria-hidden="true" /> },
 ]
 
-type A2AChatCardProps = Omit<
-  A2AChatProps,
-  "initialUrl" | "proxyBasePath" | "autoConnect" | "persistence"
->
+type ShellProps = Omit<A2AChatProps, keyof ProviderOptions> & { configuredTarget?: ConnectionTarget }
 
-function A2AChatCard({
+function ChatShell({
   className,
   contentClassName,
   messagesClassName,
   title = "A2A Chat",
-  description = "Reusable chat shell component",
+  description = "A direct conversation with an A2A agent",
   showConnectionForm = true,
   showHeader = true,
   showConnectionStatus = true,
-  showTaskSessions = true,
+  showConversations = true,
   fillHeight = false,
-  collapsibleSidebar = false,
-  layout = "default",
-  agentSuggestions = [],
-  promptSuggestions = defaultPromptSuggestions,
+  agentSuggestions,
+  promptSuggestions = defaultSuggestions,
   welcomeMessage = "How can I help?",
-  inputPlaceholder = "Ask anything",
+  inputPlaceholder,
   eventRenderers,
   partRenderers,
-}: A2AChatCardProps) {
-  const { messages, connectionState, handleCreateTaskSession } = useA2AChat()
+  fileUriResolver,
+  allowDirectUrl = true,
+  attachmentAdapter,
+  accept,
+  maxFiles,
+  maxFileSize,
+  maxTotalBytes,
+  dataParts,
+  configuredTarget,
+}: ShellProps) {
+  const controller = useA2AChat()
+  const [activeId, setActiveId] = React.useState<ConversationId>()
+  const [drawerOpen, setDrawerOpen] = React.useState(false)
+  const [mobile, setMobile] = React.useState(false)
+  const rootRef = React.useRef<HTMLElement>(null)
+  const menuRef = React.useRef<HTMLButtonElement>(null)
+  const closeRef = React.useRef<HTMLButtonElement>(null)
 
-  const isPanel = layout === "panel"
-  // The panel layout always fills its parent; default layout opts in via `fillHeight`.
-  const fills = isPanel || fillHeight
-  const sidebarVisible = showTaskSessions
-  const canCollapse = collapsibleSidebar && !isPanel
-  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false)
-  const collapsed = canCollapse && sidebarCollapsed
-  const isEmpty = messages.length === 0
+  React.useEffect(() => {
+    if (activeId && controller.getConversation(activeId)) return
+    setActiveId(controller.conversations.at(-1)?.id ?? controller.createConversation().id)
+  }, [activeId, controller, controller.conversations])
+
+  React.useEffect(() => {
+    const root = rootRef.current
+    if (!root) return
+    const observer = new ResizeObserver(([entry]) => setMobile((entry?.contentRect.width ?? root.clientWidth) <= 672))
+    observer.observe(root)
+    return () => observer.disconnect()
+  }, [])
+
+  React.useEffect(() => {
+    if (!drawerOpen) return
+    closeRef.current?.focus()
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setDrawerOpen(false)
+        menuRef.current?.focus()
+      }
+    }
+    document.addEventListener("keydown", closeOnEscape)
+    return () => document.removeEventListener("keydown", closeOnEscape)
+  }, [drawerOpen])
+
+  const selectConversation = (id: ConversationId) => {
+    setActiveId(id)
+    setDrawerOpen(false)
+    requestAnimationFrame(() => menuRef.current?.focus())
+  }
+  const conversation = activeId ? controller.getConversation(activeId) : undefined
+  const empty = !conversation?.turns.length
 
   return (
-    <Card className={cn("w-full max-w-5xl", fills && "flex h-full min-w-0 max-w-none flex-col overflow-hidden", className)}>
-      {showHeader ? (
-        <CardHeader className={cn("border-b border-border", fills && "shrink-0", isPanel && "gap-2 p-3")}>
-          <CardTitle className={cn(isPanel && "text-base")}>{title}</CardTitle>
-          {description ? <CardDescription>{description}</CardDescription> : null}
-
-          {showConnectionForm ? (
-            <A2AConnectionForm className="mt-2" agentSuggestions={agentSuggestions} />
-          ) : null}
-
-          {showConnectionStatus ? <A2AConnectionStatus className="mt-2" /> : null}
-        </CardHeader>
-      ) : null}
-
-      <CardContent className={cn(fills && "min-h-0 flex-1", isPanel && "p-3", contentClassName)}>
-        <div
-          className={cn(
-            "grid min-w-0 gap-4",
-            isPanel
-              ? "h-full min-h-0 grid-rows-[auto_1fr]"
-              : cn(
-                  fillHeight && "h-full min-h-0",
-                  !sidebarVisible
-                    ? "grid-cols-1"
-                    : collapsed
-                      ? "md:grid-cols-[auto_1fr]"
-                      : "md:grid-cols-[15rem_1fr]",
-                ),
-          )}
-        >
-          {sidebarVisible && collapsed ? (
-            <div className="flex items-center justify-between gap-2 border-b border-border pb-2 md:flex-col md:items-stretch md:justify-start md:border-b-0 md:border-r md:pb-0 md:pr-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => setSidebarCollapsed(false)}
-                aria-label="Expand sidebar"
-                title="Expand sidebar"
-              >
-                <PanelLeftOpenIcon />
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon-sm"
-                onClick={handleCreateTaskSession}
-                disabled={connectionState !== "connected"}
-                aria-label="New task"
-                title="New task"
-              >
-                <PlusIcon />
-              </Button>
-            </div>
-          ) : null}
-
-          {sidebarVisible && !collapsed ? (
-            <aside className={cn("flex min-w-0 flex-col gap-4 border-b border-border pb-4", !isPanel && "md:border-r md:border-b-0 md:pb-0 md:pr-4")}>
-              {canCollapse ? (
-                <div className="flex items-center justify-end">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => setSidebarCollapsed(true)}
-                    aria-label="Collapse sidebar"
-                    title="Collapse sidebar"
-                  >
-                    <PanelLeftCloseIcon />
-                  </Button>
-                </div>
-              ) : null}
-              <A2ATaskList className="flex-1" />
-            </aside>
-          ) : null}
-
-          <div
-            className={cn(
-              "flex min-h-0 min-w-0 flex-col gap-3 transition-all duration-300",
-              isEmpty ? "justify-center py-8" : "justify-end",
-              fills && "h-full",
-            )}
-          >
-            {!isEmpty ? (
-              <A2AMessages eventRenderers={eventRenderers} partRenderers={partRenderers} className={cn(fills ? "min-h-0 flex-1" : "h-96", messagesClassName)} />
-            ) : null}
-            {isEmpty ? (
-              <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-6">
-                {welcomeMessage ? (
-                  <h2 className="text-center text-3xl font-medium tracking-tight text-foreground sm:text-4xl">
-                    {welcomeMessage}
-                  </h2>
-                ) : null}
-                <A2AInput placeholder={inputPlaceholder} className="w-full" />
-                {promptSuggestions.length > 0 ? (
-                  <A2APromptSuggestions>
-                    {promptSuggestions.map((suggestion) => (
-                      <A2APromptSuggestion
-                        key={suggestion.label}
-                        prompt={suggestion.prompt ?? suggestion.label}
-                      >
-                        {suggestion.icon}
-                        <span>{suggestion.label}</span>
-                      </A2APromptSuggestion>
-                    ))}
-                  </A2APromptSuggestions>
-                ) : null}
-              </div>
-            ) : (
-              <A2AInput placeholder={inputPlaceholder} />
-            )}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <section ref={rootRef} data-a2a-chat="" className={cn("a2a-chat", fillHeight && "a2a-fill", className)}>
+      {showHeader ? <header className="a2a-header"><div><h1>{title}</h1>{description ? <p>{description}</p> : null}</div><div className="a2a-header-actions">{showConnectionStatus ? <A2AConnectionStatus controller={controller} /> : null}{showConversations ? <button ref={menuRef} className="a2a-drawer-toggle" type="button" aria-label="Open conversations" aria-expanded={drawerOpen} onClick={() => setDrawerOpen(true)}><MenuIcon /></button> : null}</div>{showConnectionForm ? <A2AConnectionForm controller={controller} configuredTarget={configuredTarget} agentSuggestions={agentSuggestions} allowDirectUrl={allowDirectUrl} /> : null}</header> : null}
+      <div className={cn("a2a-layout", contentClassName)}>
+        {showConversations ? <><button className="a2a-drawer-backdrop" data-open={drawerOpen} type="button" aria-label="Close conversations" onClick={() => setDrawerOpen(false)} /><aside className="a2a-sidebar" data-open={drawerOpen} aria-label="Conversation navigation" inert={mobile && !drawerOpen ? true : undefined}><button ref={closeRef} className="a2a-drawer-close" type="button" aria-label="Close conversations" onClick={() => { setDrawerOpen(false); menuRef.current?.focus() }}><XIcon /></button><ConversationList controller={controller} activeConversationId={activeId} onConversationChange={selectConversation} /></aside></> : null}
+        <main className="a2a-main">
+          {activeId && !empty ? <A2AMessages controller={controller} conversationId={activeId} eventRenderers={eventRenderers} partRenderers={partRenderers} fileUriResolver={fileUriResolver} className={messagesClassName} maxWidth="4xl" /> : null}
+          {activeId ? <div className={cn("a2a-compose-area", empty && "a2a-welcome")}>
+            {empty && welcomeMessage ? <h2>{welcomeMessage}</h2> : null}
+            <A2AInput controller={controller} conversationId={activeId} placeholder={inputPlaceholder} attachmentAdapter={attachmentAdapter} accept={accept} maxFiles={maxFiles} maxFileSize={maxFileSize} maxTotalBytes={maxTotalBytes} dataParts={dataParts} />
+            {empty && promptSuggestions.length ? <A2APromptSuggestions>{promptSuggestions.map((suggestion) => <A2APromptSuggestion controller={controller} conversationId={activeId} prompt={suggestion.prompt ?? suggestion.label} key={suggestion.label}>{suggestion.icon}<span>{suggestion.label}</span></A2APromptSuggestion>)}</A2APromptSuggestions> : null}
+          </div> : null}
+        </main>
+      </div>
+    </section>
   )
 }
 
-/**
- * Batteries-included preset: one opinionated arrangement of the A2A primitives.
- * For custom layouts, compose {@link A2AChatProvider} with the individual
- * `A2A*` components instead.
- */
-export function A2AChat({ initialUrl, proxyBasePath, autoConnect, persistence, ...cardProps }: A2AChatProps) {
-  return (
-    <A2AChatProvider
-      initialUrl={initialUrl}
-      proxyBasePath={proxyBasePath}
-      autoConnect={autoConnect}
-      persistence={persistence}
-    >
-      <A2AChatCard {...cardProps} />
-    </A2AChatProvider>
-  )
+export function A2AChat(props: A2AChatProps) {
+  const {
+    target, autoConnect, repository, recovery, fetch, authentication, clientFactory, resolveCard,
+    supportedExtensionUris, ...shellProps
+  } = props
+  return <A2AChatProvider target={target} autoConnect={autoConnect} repository={repository} recovery={recovery} fetch={fetch} authentication={authentication} clientFactory={clientFactory} resolveCard={resolveCard} supportedExtensionUris={supportedExtensionUris}><ChatShell {...shellProps} configuredTarget={target} /></A2AChatProvider>
 }

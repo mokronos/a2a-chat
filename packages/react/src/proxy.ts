@@ -1,44 +1,20 @@
-import type { A2AProxyTransport } from "./types"
+export const DEFAULT_PROXY_BASE_PATH = "/api/a2a"
 
-const DEFAULT_PROXY_BASE_PATH = "/api/a2a"
-
-export function normalizeProxyBasePath(basePath?: string): string {
-  const rawPath = (basePath ?? DEFAULT_PROXY_BASE_PATH).trim()
-
-  if (!rawPath.startsWith("/")) {
-    return `/${rawPath.replace(/\/+$/, "")}`
-  }
-
-  return rawPath.replace(/\/+$/, "")
+export function normalizeProxyBasePath(basePath = DEFAULT_PROXY_BASE_PATH): string {
+  const value = basePath.trim().replace(/\/+$/, "")
+  return value.startsWith("/") ? value || "/" : `/${value}`
 }
 
-export function createProxyTransport(basePath?: string | false): A2AProxyTransport {
-  if (!basePath) {
-    return {
-      mode: "direct",
-    }
-  }
-
-  return {
-    mode: "proxy",
-    basePath: normalizeProxyBasePath(basePath),
-  }
+export function createProxyEndpoint(
+  basePath: string | undefined,
+  path: "agent-card" | "jsonrpc",
+  targetId: string,
+) {
+  const query = new URLSearchParams({ targetId })
+  const base = normalizeProxyBasePath(basePath)
+  return `${base === "/" ? "" : base}/${path}?${query}`
 }
 
-export function createAgentCardProxyUrl(transport: A2AProxyTransport, targetUrl: string): string {
-  if (transport.mode === "direct") {
-    return targetUrl
-  }
-
-  const params = new URLSearchParams({ target: targetUrl })
-  return `${transport.basePath}/agent-card?${params.toString()}`
-}
-
-export function createJsonRpcProxyUrl(transport: A2AProxyTransport, endpoint: string): string {
-  if (transport.mode === "direct") {
-    return endpoint
-  }
-
-  const params = new URLSearchParams({ target: endpoint })
-  return `${transport.basePath}/jsonrpc?${params.toString()}`
+export function createDirectAgentCardUrl(baseUrl: string): string {
+  return new URL(".well-known/agent-card.json", baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`).toString()
 }

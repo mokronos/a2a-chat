@@ -1,60 +1,47 @@
-import React from "react"
+"use client"
 
+import type { A2AChat, ConversationId } from "@mokronos/a2a-react"
 import { useA2AChat } from "@mokronos/a2a-react"
 import { MessageBox } from "../shared/message-box"
-import type { MessageTimelineEventRenderer } from "../shared/message-box"
-import { defaultPartRenderers } from "./part-renderers"
-import type { A2APartRenderer } from "./part-renderers"
-import { inspectorEventRenderers } from "./inspector-event-renderers"
+import type { EventRenderer, FileUriResolver, PartRenderer } from "./renderers"
 import { cn } from "../../lib/utils"
 
 export type A2AMessagesMaxWidth = "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "5xl" | "none"
-
-const MAX_WIDTH_CLASS: Record<A2AMessagesMaxWidth, string> = {
-  sm: "max-w-sm",
-  md: "max-w-md",
-  lg: "max-w-lg",
-  xl: "max-w-xl",
-  "2xl": "max-w-2xl",
-  "3xl": "max-w-3xl",
-  "4xl": "max-w-4xl",
-  "5xl": "max-w-5xl",
-  none: "",
+const WIDTH: Record<A2AMessagesMaxWidth, string> = {
+  sm: "max-w-sm", md: "max-w-md", lg: "max-w-lg", xl: "max-w-xl", "2xl": "max-w-2xl",
+  "3xl": "max-w-3xl", "4xl": "max-w-4xl", "5xl": "max-w-5xl", none: "",
 }
 
 export type A2AMessagesProps = {
+  conversationId: ConversationId
+  controller?: A2AChat
   className?: string
-  /** Classes applied to the inner content (the centered message column). */
   contentClassName?: string
-  /**
-   * Center the conversation content at this width while the scroll area stays
-   * full-bleed (ChatGPT-style). Default: "none" (content spans the full width).
-   */
   maxWidth?: A2AMessagesMaxWidth
-  /** Renderers for timeline events. Defaults to the built-in inspector renderers. */
-  eventRenderers?: MessageTimelineEventRenderer[]
-  /** Renderers for output content parts (images, files, data). Prepend your own for custom data. */
-  partRenderers?: A2APartRenderer[]
+  eventRenderers?: readonly EventRenderer[]
+  partRenderers?: readonly PartRenderer[]
+  fileUriResolver?: FileUriResolver
 }
 
-/** The message timeline for the active task session. Fills its parent. */
-export function A2AMessages({
-  className,
-  contentClassName,
-  maxWidth = "none",
-  eventRenderers = inspectorEventRenderers,
-  partRenderers = defaultPartRenderers,
-}: A2AMessagesProps) {
-  const { messages } = useA2AChat()
-  const widthClass = MAX_WIDTH_CLASS[maxWidth]
+function ProviderMessages(props: Omit<A2AMessagesProps, "controller">) {
+  return <Messages {...props} controller={useA2AChat()} />
+}
 
+function Messages({ conversationId, controller, className, contentClassName, maxWidth = "none", eventRenderers, partRenderers, fileUriResolver }: A2AMessagesProps) {
+  const conversation = controller!.getConversation(conversationId)
+  if (!conversation) return null
   return (
     <MessageBox
-      messages={messages}
+      conversation={conversation}
       eventRenderers={eventRenderers}
       partRenderers={partRenderers}
+      fileUriResolver={fileUriResolver}
       className={className}
-      contentClassName={cn(widthClass && `${widthClass} mx-auto w-full`, contentClassName)}
+      contentClassName={cn(WIDTH[maxWidth], WIDTH[maxWidth] && "mx-auto w-full", contentClassName)}
     />
   )
+}
+
+export function A2AMessages(props: A2AMessagesProps) {
+  return props.controller ? <Messages {...props} /> : <ProviderMessages {...props} />
 }

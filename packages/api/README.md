@@ -1,67 +1,155 @@
 # @mokronos/a2a-chat-api
 
-Server-side proxy helpers for [A2A](https://a2a-protocol.org/) agent traffic, built with [Effect](https://effect.website/) and `@effect/platform`'s `HttpApi`.
+Production-safe server-side A2A proxy endpoints built with Effect and `@effect/platform`'s `HttpApi`.
 
-Browsers can't talk to most A2A agents directly (CORS, mixed content, hidden credentials). This package gives your app server a same-origin proxy so the frontend (e.g. [`@mokronos/a2a-react`](https://www.npmjs.com/package/@mokronos/a2a-react)) can forward A2A traffic through it.
-
-It exposes two endpoints:
+The proxy exposes target IDs, never caller-selected production URLs:
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/api/a2a/agent-card?target=<a2aBaseUrl>` | Fetches the target agent's `/.well-known/agent-card.json` |
-| `POST` | `/api/a2a/jsonrpc?target=<jsonRpcEndpoint>` | Forwards the JSON-RPC body to the target agent |
+| `GET` | `/api/a2a/agent-card?targetId=<id>` | Fetch the configured target's agent card |
+| `POST` | `/api/a2a/jsonrpc?targetId=<id>` | Proxy JSON-RPC and SSE traffic to the configured target |
 
-A health check is served at `GET /`. Only `http:`/`https:` targets are allowed; bad targets return `400`, unreachable targets return `502`.
+`GET /` remains the health check.
+
+## Security Model
+
+`A2AProxyModule.layer({ targets })` is the production default. The server owns every URL and the browser only selects an allowlisted ID.
+
+For every initial request and redirect, the module:
+
+- accepts only absolute `http:` and `https:` URLs without credentials or fragments;
+- resolves DNS and rejects any private, loopback, link-local, standard IPv4-translated, multicast, or non-routable IPv4 or IPv6 answer;
+- uses `redirect: "manual"`, checks every redirect against the target policy, and DNS-validates every hop;
+- forwards only explicitly allowlisted client headers (`Accept` and `Content-Type` by default);
+- never accepts client `Authorization`, `Cookie`, proxy authorization, host, or hop-by-hop headers;
+- injects server-owned target headers only on the original origin, preventing credential leakage through redirects;
+- forwards only explicitly allowlisted response headers and always strips `Set-Cookie`, credentials, and hop-by-hop headers;
+- bounds request, agent-card, buffered response, and streaming response bytes;
+- propagates Effect interruption and client aborts to the upstream `AbortSignal`;
+- streams SSE with backpressure instead of buffering it.
+
+The default Node/Bun HTTP(S) adapter pins each connection to a DNS-validated address while preserving the URL hostname for HTTP Host and TLS SNI. Custom fetch adapters receive all validated addresses and are responsible for equivalent pinning.
 
 ## Install
 
 ```bash
-bun add @mokronos/a2a-chat-api
+bun add @mokronos/a2a-chat-api effect @effect/platform
 ```
 
-Peers: `effect`, `@effect/platform` (and a platform runtime such as `@effect/platform-bun`).
+Add the platform runtime used by your server, such as `@effect/platform-bun`.
 
-## Usage
-
-The package exports two pieces you wire together:
-
-- `InspectorApi` — the `HttpApi` definition (route shapes).
-- `CoreHandlers` — the `Layer` implementing those routes.
+## Production Usage
 
 ```ts
-import { InspectorApi, CoreHandlers } from "@mokronos/a2a-chat-api"
+import {
+  A2AProxyModule,
+  CoreHandlers,
+  InspectorApi,
+} from "@mokronos/a2a-chat-api"
 import { HttpApiBuilder, HttpServer } from "@effect/platform"
 import { Layer } from "effect"
 
-const ApiLive = HttpApiBuilder.api(InspectorApi).pipe(Layer.provide(CoreHandlers))
-const ApiLayer = Layer.mergeAll(ApiLive, HttpServer.layerContext)
+const ProxyLive = A2AProxyModule.layer({
+  targets: {
+    support: {
+      baseUrl: "https://agent.example.com/a2a",
+      // Optional overrides; these default to baseUrl and its agent-card path.
+      jsonRpcUrl: "https://agent.example.com/a2a/jsonrpc",
+      agentCardUrl: "https://agent.example.com/a2a/.well-known/agent-card.json",
+      // These values are server-owned and are never accepted from the browser.
+      headers: {
+        authorization: `Bearer ${process.env.AGENT_TOKEN}`,
+      },
+      // Cross-origin redirects are denied unless their exact origin is listed.
+      allowedRedirectOrigins: ["https://agent-cdn.example.com"],
+    },
+  },
+})
 
-// Turn it into a standard Web `fetch` handler...
+const HandlersLive = CoreHandlers.pipe(Layer.provide(ProxyLive))
+const ApiLive = HttpApiBuilder.api(InspectorApi).pipe(Layer.provide(HandlersLive))
+const ApiLayer = Layer.mergeAll(ApiLive, HttpServer.layerContext)
 const { handler } = HttpApiBuilder.toWebHandler(ApiLayer)
 
-// ...and mount it under /api in your server.
 Bun.serve({
   port: 8000,
-  fetch: (request) => {
-    const url = new URL(request.url)
-    if (url.pathname.startsWith("/api/")) return handler(request)
-    return new Response("Not found", { status: 404 })
+  fetch: (request) => handler(request),
+})
+```
+
+Clients use only the configured ID:
+
+```ts
+await fetch("/api/a2a/jsonrpc?targetId=support", {
+  method: "POST",
+  headers: {
+    accept: "text/event-stream",
+    "content-type": "application/json",
+  },
+  body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "message/send" }),
+})
+```
+
+## Configuration
+
+The secure defaults are:
+
+| Option | Default |
+| --- | ---: |
+| `maxRedirects` | 3 |
+| `requestTimeoutMs` | 10,000 |
+| `maxRequestBytes` | 1 MiB |
+| `maxAgentCardBytes` | 256 KiB |
+| `maxResponseBytes` | 8 MiB |
+| `maxStreamingResponseBytes` | 64 MiB |
+| `streamIdleTimeoutMs` | 60,000 |
+
+Override limits and safe header allowlists at module construction:
+
+```ts
+const ProxyLive = A2AProxyModule.layer({
+  targets,
+  limits: {
+    requestTimeoutMs: 5_000,
+    maxRequestBytes: 256 * 1024,
+  },
+  headers: {
+    request: ["accept", "content-type", "x-request-id"],
+    response: ["content-type", "cache-control", "x-request-id"],
   },
 })
 ```
 
-The frontend then points its proxy at the same base path:
+Sensitive and hop-by-hop headers cannot be added to client allowlists. Target-specific `headers` are the only way to inject upstream authorization or cookies.
 
-```tsx
-<A2AChatProvider proxyBasePath="/api/a2a" initialUrl="http://localhost:8000" autoConnect />
+For deeper integration, supply the `policy`, `dnsResolver`, or `fetchAdapter` interfaces instead of `targets`. The fetch adapter receives the operation, target ID, redirect count, validated URL, validated DNS addresses, and an interruption-aware request init.
+
+## Development URLs
+
+Caller-provided URLs require an explicit development-only policy. They remain HTTP(S)-only, same-origin across redirects, and subject to DNS checks.
+
+```ts
+import { A2AProxyModule, A2AProxyPolicy } from "@mokronos/a2a-chat-api"
+
+const DevelopmentProxyLive = A2AProxyModule.layer({
+  policy: A2AProxyPolicy.developmentUrls(),
+  // Required only when intentionally testing agents on localhost/private networks.
+  allowPrivateAddresses: true,
+})
 ```
 
-See `apps/server` in the [repo](https://github.com/mokronos/a2a-chat) for a complete reference server that also serves the inspector UI.
+Do not use this policy in production. With it enabled, `targetId` is interpreted as the complete development URL.
 
-## Part of a2a-chat
+## Errors
 
-| Package | Provides |
-| --- | --- |
-| [`@mokronos/a2a-react`](https://www.npmjs.com/package/@mokronos/a2a-react) | Headless React state and A2A orchestration |
-| [`@mokronos/a2a-chat-ui`](https://www.npmjs.com/package/@mokronos/a2a-chat-ui) | Styled React components and the `A2AChat` preset |
-| **`@mokronos/a2a-chat-api`** | This package — server-side A2A proxy endpoints |
+Policy and proxy failures use typed JSON responses:
+
+| Status | Type | Examples |
+| --- | --- | --- |
+| `400` | `ProxyBadRequest` | Missing target ID, malformed development URL |
+| `403` | `ProxyForbidden` | Unknown target ID, blocked address, disallowed redirect |
+| `413` | `ProxyPayloadTooLarge` | Request body exceeds its configured limit |
+| `502` | `ProxyBadGateway` | DNS/fetch failure, invalid redirect, oversized upstream body |
+| `504` | `ProxyGatewayTimeout` | Upstream did not respond within the configured timeout |
+
+Each response includes a stable `code` and a safe human-readable `message`.

@@ -1,275 +1,132 @@
-import React from "react"
-import { MessageSquareIcon } from "lucide-react"
-import type { Message, MessageTimelineEvent } from "@mokronos/a2a-react"
+"use client"
 
+import * as React from "react"
+import type { Conversation, Turn } from "@mokronos/a2a-react"
+import { MessageSquareIcon } from "lucide-react"
 import {
-  MessageScroller,
-  MessageScrollerButton,
-  MessageScrollerContent,
-  MessageScrollerItem,
-  MessageScrollerProvider,
-  MessageScrollerViewport,
-} from "../ui/message-scroller"
-import {
-  Message as MessageRow,
-  MessageContent,
-} from "../ui/message"
-import { Bubble, BubbleContent } from "../ui/bubble"
-import { Marker, MarkerContent, MarkerIcon } from "../ui/marker"
-import { Response } from "../ai-elements/response"
-import { Task, TaskContent, TaskItem, TaskTrigger } from "../ai-elements/task"
-import {
-  ChainOfThought,
-  ChainOfThoughtContent,
-  ChainOfThoughtHeader,
-  ChainOfThoughtStep,
-} from "../ai-elements/chain-of-thought"
-import { A2AInputRequest } from "../a2a/input-request"
-import { defaultPartRenderers, renderPart } from "../a2a/part-renderers"
-import type { A2APartRenderer } from "../a2a/part-renderers"
-import { Spinner } from "../ui/spinner"
+  createDefaultPartRenderers,
+  defaultEventRenderers,
+  dispatchRenderers,
+  turnProtocolEntries,
+  type EventRenderer,
+  type FileUriResolver,
+  type PartRenderer,
+  type PartRendererContext,
+} from "../a2a/renderers"
 import { cn } from "../../lib/utils"
 
-export type MessageTimelineEventRenderer = (event: MessageTimelineEvent) => React.ReactNode
+export type MessageTimelineEventRenderer = EventRenderer
 
-type MessageBoxProps = {
-  messages: Message[]
-  eventRenderers?: MessageTimelineEventRenderer[]
-  partRenderers?: A2APartRenderer[]
+type PartGroup = {
+  contexts: PartRendererContext[]
+  source: PartRendererContext["source"]
+}
+
+function partGroups(turn: Turn, conversation: Conversation): PartGroup[] {
+  const groups: PartGroup[] = []
+  for (const entry of turnProtocolEntries(conversation, turn)) {
+    if (entry.kind !== "part") continue
+    const previous = groups.at(-1)
+    if (previous?.source === entry.context.source) previous.contexts.push(entry.context)
+    else groups.push({ contexts: [entry.context], source: entry.context.source })
+  }
+  return groups
+}
+
+function Parts({ group, renderers }: { group: PartGroup; renderers: readonly PartRenderer[] }) {
+  return group.contexts.map((context) => {
+    const rendered = dispatchRenderers(context, renderers)
+    return rendered === undefined ? null : (
+      <div className="a2a-part" key={`${context.part.kind}-${context.partIndex}`}>{rendered}</div>
+    )
+  })
+}
+
+function EventTimeline({
+  conversation,
+  turn,
+  customRenderers,
+}: {
+  conversation: Conversation
+  turn: Turn
+  customRenderers: readonly EventRenderer[]
+}) {
+  const custom: { key: string; node: React.ReactNode }[] = []
+  const fallback: { key: string; node: React.ReactNode }[] = []
+  for (const entry of turnProtocolEntries(conversation, turn)) {
+    if (entry.kind !== "event") continue
+    const key = `${entry.context.event.kind}-${entry.context.eventIndex}`
+    const customNode = dispatchRenderers(entry.context, customRenderers)
+    if (customNode !== undefined) {
+      if (customNode !== false && customNode !== "") custom.push({ key, node: customNode })
+      continue
+    }
+    const fallbackNode = dispatchRenderers(entry.context, defaultEventRenderers)
+    if (fallbackNode !== undefined) fallback.push({ key, node: fallbackNode })
+  }
+  if (custom.length === 0 && fallback.length === 0) return null
+  return (
+    <>
+      {custom.map(({ key, node }) => <div className="a2a-custom-event" key={key}>{node}</div>)}
+      {fallback.length > 0 ? (
+        <details className="a2a-event-timeline">
+          <summary>Activity ({fallback.length})</summary>
+          <div className="a2a-event-timeline-content">
+            {fallback.map(({ key, node }) => <div className="a2a-event-summary" key={key}>{node}</div>)}
+          </div>
+        </details>
+      ) : null}
+    </>
+  )
+}
+
+export type MessageBoxProps = {
+  conversation: Conversation
+  eventRenderers?: readonly EventRenderer[]
+  partRenderers?: readonly PartRenderer[]
+  fileUriResolver?: FileUriResolver
   className?: string
   contentClassName?: string
 }
 
-function formatEventTime(timestamp: number): string {
-  return new Date(timestamp).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  })
-}
-
-function renderEventContent(
-  event: MessageTimelineEvent,
-  eventRenderers: MessageTimelineEventRenderer[]
-) {
-  for (const renderEvent of eventRenderers) {
-    const rendered = renderEvent(event)
-    if (rendered) {
-      return rendered
-    }
-  }
-
-  return null
-}
-
-function MessageStatus({ message }: { message: Message }) {
-  const statusHistory = message.statusHistory ?? []
-  const statusLabel = message.status ?? "Idle"
-  const indicator = message.isWorking ? (
-    <Spinner className="size-3" aria-hidden="true" />
-  ) : (
-    <span className="size-2 rounded-full bg-muted-foreground/60" aria-hidden="true" />
-  )
-
-  if (statusHistory.length <= 1) {
-    return (
-      <Marker role={message.isWorking ? "status" : undefined}>
-        <MarkerIcon>{indicator}</MarkerIcon>
-        <MarkerContent className={cn(message.isWorking && "shimmer")}>{statusLabel}</MarkerContent>
-      </Marker>
-    )
-  }
-
-  return (
-    <Task defaultOpen={false}>
-      <TaskTrigger title={statusLabel}>
-        <div className="flex w-full cursor-pointer items-center gap-2 text-xs text-muted-foreground transition-colors hover:text-foreground">
-          {indicator}
-          <span className="truncate">{statusLabel}</span>
-          <span className="text-[11px]">({statusHistory.length})</span>
-        </div>
-      </TaskTrigger>
-      <TaskContent>
-        {statusHistory.map((statusItem) => (
-          <TaskItem key={statusItem.id} className="flex items-center gap-3 text-xs">
-            <span className="font-mono opacity-80">{formatEventTime(statusItem.at)}</span>
-            <span>{statusItem.label}</span>
-          </TaskItem>
-        ))}
-      </TaskContent>
-    </Task>
-  )
-}
-
-function MessageEventTimeline({
-  events,
+export function MessageBox({
+  conversation,
   eventRenderers,
-  isWorking,
-}: {
-  events: MessageTimelineEvent[]
-  eventRenderers: MessageTimelineEventRenderer[]
-  isWorking: boolean
-}) {
-  const [isOpen, setIsOpen] = React.useState(isWorking)
-  const wasWorking = React.useRef(isWorking)
-  const renderedEvents = events.flatMap((event) => {
-    const content = renderEventContent(event, eventRenderers)
-    return content ? [{ event, content }] : []
-  })
-
-  React.useEffect(() => {
-    if (isWorking) {
-      setIsOpen(true)
-    } else if (wasWorking.current) {
-      setIsOpen(false)
-    }
-    wasWorking.current = isWorking
-  }, [isWorking])
-
-  if (renderedEvents.length === 0) {
-    return null
-  }
-
-  return (
-    <ChainOfThought open={isOpen} onOpenChange={setIsOpen}>
-      <ChainOfThoughtHeader>Event Timeline ({renderedEvents.length})</ChainOfThoughtHeader>
-      <ChainOfThoughtContent>
-        {renderedEvents.map(({ event, content }) => (
-          <ChainOfThoughtStep
-            key={event.id}
-            label={event.summary}
-            description={formatEventTime(event.at)}
-          >
-            <div className="min-w-0">{content}</div>
-          </ChainOfThoughtStep>
-        ))}
-      </ChainOfThoughtContent>
-    </ChainOfThought>
-  )
-}
-
-function MessageContentParts({
-  message,
   partRenderers,
-}: {
-  message: Message
-  partRenderers: A2APartRenderer[]
-}) {
-  const parts = message.parts ?? []
-  if (parts.length === 0) {
-    return null
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      {parts.flatMap((part) => {
-        const rendered = renderPart(part, partRenderers)
-        return rendered ? [<div key={part.id} className="min-w-0">{rendered}</div>] : []
-      })}
-    </div>
-  )
-}
-
-function EmptyState() {
-  return (
-    <div className="flex size-full flex-col items-center justify-center gap-2 p-8 text-center text-muted-foreground">
-      <MessageSquareIcon className="size-10" aria-hidden="true" />
-      <p className="text-sm font-medium text-foreground">No messages yet</p>
-      <p className="text-xs">Send a task to the agent to get started</p>
-    </div>
-  )
-}
-
-function MessageBox({
-  messages,
-  eventRenderers = [],
-  partRenderers = defaultPartRenderers,
+  fileUriResolver,
   className,
   contentClassName,
 }: MessageBoxProps) {
-  // Fills its parent by default — the parent decides the height. Box styling
-  // (border, background, fixed height) is left to `className`.
-  const anyWorking = messages.some((message) => message.isWorking === true)
+  const defaults = createDefaultPartRenderers(fileUriResolver)
+  const resolvedPartRenderers = partRenderers ? [...partRenderers, ...defaults] : defaults
+  const endRef = React.useRef<HTMLDivElement>(null)
+  const eventCount = conversation.turns.reduce((sum, turn) => sum + turn.events.length, 0)
+  React.useEffect(() => {
+    endRef.current?.scrollIntoView({ block: "nearest" })
+  }, [conversation.turns.length, eventCount])
 
-  if (messages.length === 0) {
-    return (
-      <div className={cn("size-full min-h-0", className)}>
-        <EmptyState />
-      </div>
-    )
+  if (conversation.turns.length === 0) {
+    return <div className={cn("a2a-empty", className)}><MessageSquareIcon aria-hidden="true" /><p>No messages yet</p></div>
   }
 
   return (
-    <MessageScrollerProvider autoScroll scrollPreviousItemPeek={48}>
-      <MessageScroller className={cn("size-full min-h-0 bg-transparent", className)}>
-        <MessageScrollerViewport>
-          <MessageScrollerContent className={cn("gap-3 p-3", contentClassName)} aria-busy={anyWorking}>
-            {messages.map((message) => {
-              const isUser = message.role === "user"
-              const timelineEvents = message.events ?? []
-
-              if (isUser) {
-                if (message.text.trim().length === 0) {
-                  return null
-                }
-
-                return (
-                  <MessageScrollerItem key={message.id} messageId={message.id} scrollAnchor>
-                    <MessageRow align="end">
-                      <MessageContent>
-                        <Bubble variant="secondary" align="end">
-                          <BubbleContent>
-                            <Response>{message.text}</Response>
-                          </BubbleContent>
-                        </Bubble>
-                      </MessageContent>
-                    </MessageRow>
-                  </MessageScrollerItem>
-                )
-              }
-
-              const request = message.inputRequest
-              const trimmedText = message.text.trim()
-              // The input-required prompt is surfaced by <A2AInputRequest>; avoid
-              // rendering the same text twice when it also landed in message.text.
-              const showText =
-                trimmedText.length > 0 && (!request?.text || trimmedText !== request.text.trim())
-
-              return (
-                <MessageScrollerItem key={message.id} messageId={message.id}>
-                  <MessageRow align="start">
-                    <MessageContent className="gap-2">
-                      <MessageStatus message={message} />
-                      {timelineEvents.length > 0 ? (
-                        <MessageEventTimeline
-                          events={timelineEvents}
-                          eventRenderers={eventRenderers}
-                          isWorking={message.isWorking === true}
-                        />
-                      ) : null}
-                      {showText ? (
-                        <Bubble variant="ghost" align="start">
-                          <BubbleContent>
-                            <Response>{message.text}</Response>
-                          </BubbleContent>
-                        </Bubble>
-                      ) : null}
-                      <MessageContentParts message={message} partRenderers={partRenderers} />
-                      {request ? (
-                        <A2AInputRequest messageId={message.id} request={request} />
-                      ) : null}
-                    </MessageContent>
-                  </MessageRow>
-                </MessageScrollerItem>
-              )
-            })}
-          </MessageScrollerContent>
-        </MessageScrollerViewport>
-        <MessageScrollerButton />
-      </MessageScroller>
-    </MessageScrollerProvider>
+    <div className={cn("a2a-messages", className)} role="log" aria-live="polite" aria-relevant="additions text">
+      <div className={cn("a2a-message-column", contentClassName)}>
+        {conversation.turns.map((turn) => {
+          const groups = partGroups(turn, conversation)
+          const request = groups.filter((group) => group.source.kind === "request")
+          const answers = groups.filter((group) => group.source.kind !== "request")
+          return (
+            <section className="a2a-turn" key={turn.id} aria-label={`Turn ${turn.lifecycle.kind}`}>
+              {request.map((group, index) => <article className="a2a-answer" data-role="user" key={`request-${index}`}><Parts group={group} renderers={resolvedPartRenderers} /></article>)}
+              <EventTimeline conversation={conversation} turn={turn} customRenderers={eventRenderers ?? []} />
+              {answers.map((group, index) => <article className="a2a-answer" data-role="agent" data-source={group.source.kind} key={`${group.source.kind}-${index}`}><Parts group={group} renderers={resolvedPartRenderers} /></article>)}
+              <p className="a2a-turn-status" role="status">{turn.lifecycle.kind === "failed" ? turn.lifecycle.error : turn.lifecycle.kind}</p>
+            </section>
+          )
+        })}
+        <div ref={endRef} />
+      </div>
+    </div>
   )
 }
-
-export { MessageBox }

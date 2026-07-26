@@ -113,12 +113,6 @@ By reference (URL), best for large or already-hosted files:
 > `mimeType` drives the rendering. Omit it and the file falls back to a download
 > card. URLs must be reachable by the browser (respect CORS / proxy them).
 
-> **Flat file shape also accepted.** Some frameworks (e.g. `fasta2a`) emit file
-> parts flat — `{ "raw": "<base64>", "url": "…", "mediaType": "image/png",
-> "filename": "x.png" }` with no `kind`/nested `file`. The client maps `raw`→
-> bytes, `url`→uri, `mediaType`/`media_type`→mimeType, `filename`→name. Prefer
-> the spec shape above for portability.
-
 ### `DataPart` → structured block
 
 Any `DataPart` that is **not** a recognized process/control type (see below) is
@@ -311,14 +305,14 @@ Handle a bespoke `DataPart` shape before the JSON fallback:
 
 ```tsx
 import { A2AMessages, defaultPartRenderers } from "@mokronos/a2a-chat-ui"
-import type { A2APartRenderer } from "@mokronos/a2a-chat-ui"
+import type { PartRenderer } from "@mokronos/a2a-chat-ui"
 
-const renderWeather: A2APartRenderer = (part) => {
-  if (part.kind !== "data" || part.data.type !== "weather") return null
+const renderWeather: PartRenderer = ({ part }) => {
+  if (part.kind !== "data" || part.data.type !== "weather") return undefined
   return <WeatherCard data={part.data} />
 }
 
-<A2AMessages partRenderers={[renderWeather, ...defaultPartRenderers]} />
+<A2AMessages conversationId={conversationId} partRenderers={[renderWeather, ...defaultPartRenderers]} />
 ```
 
 ### Custom timeline renderers

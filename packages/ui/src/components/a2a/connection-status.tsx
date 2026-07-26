@@ -1,48 +1,15 @@
-import React from "react"
+"use client"
 
+import type { A2AChat } from "@mokronos/a2a-react"
 import { useA2AChat } from "@mokronos/a2a-react"
 import { cn } from "../../lib/utils"
-import type { ConnectionState } from "@mokronos/a2a-react"
 
-export type A2AConnectionStatusProps = {
-  className?: string
-  /** Show the connected agent's name next to the status badge. Default: true. */
-  showAgentName?: boolean
+export type A2AConnectionStatusProps = { controller?: A2AChat; className?: string; showAgentName?: boolean }
+function ProviderStatus(props: Omit<A2AConnectionStatusProps, "controller">) { return <Status {...props} controller={useA2AChat()} /> }
+function Status({ controller, className, showAgentName = true }: A2AConnectionStatusProps) {
+  const connection = controller!.connection
+  const name = connection.kind === "connected" ? connection.card.name : undefined
+  const label = connection.kind === "failed" ? connection.error.message : connection.kind
+  return <div className={cn("a2a-connection-status", className)} data-state={connection.kind} role="status" aria-live="polite"><span>{label}</span>{showAgentName && name ? <small>{name}</small> : null}</div>
 }
-
-function getStatusClasses(state: ConnectionState) {
-  if (state === "connected") {
-    return "border-emerald-500/40 bg-emerald-500/10 text-emerald-700"
-  }
-
-  if (state === "connecting") {
-    return "border-amber-500/40 bg-amber-500/10 text-amber-700"
-  }
-
-  if (state === "error") {
-    return "border-destructive/30 bg-destructive/10 text-destructive"
-  }
-
-  return "border-border bg-muted text-muted-foreground"
-}
-
-/** Connection status badge (+ optional agent name), driven by the provider. */
-export function A2AConnectionStatus({ className, showAgentName = true }: A2AConnectionStatusProps) {
-  const { connectionState, connectionMessage, agentName } = useA2AChat()
-
-  return (
-    <div className={cn("flex flex-wrap items-center gap-2", className)}>
-      <div
-        className={cn(
-          "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium",
-          getStatusClasses(connectionState)
-        )}
-      >
-        {connectionMessage}
-      </div>
-      {showAgentName && agentName ? (
-        <div className="text-xs text-muted-foreground">Agent: {agentName}</div>
-      ) : null}
-    </div>
-  )
-}
+export function A2AConnectionStatus(props: A2AConnectionStatusProps) { return props.controller ? <Status {...props} /> : <ProviderStatus {...props} /> }

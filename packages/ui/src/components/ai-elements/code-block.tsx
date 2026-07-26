@@ -137,14 +137,13 @@ const highlighterCache = new Map<
 
 // Token cache
 const tokensCache = new Map<string, TokenizedCode>();
+const MAX_TOKEN_CACHE_ENTRIES = 100;
 
 // Subscribers for async token updates
 const subscribers = new Map<string, Set<(result: TokenizedCode) => void>>();
 
 const getTokensCacheKey = (code: string, language: BundledLanguage) => {
-  const start = code.slice(0, 100);
-  const end = code.length > 100 ? code.slice(-100) : "";
-  return `${language}:${code.length}:${start}:${end}`;
+  return `${language}:${code}`;
 };
 
 const getHighlighter = (
@@ -226,6 +225,10 @@ export const highlightCode = (
 
       // Cache the result
       tokensCache.set(tokensCacheKey, tokenized);
+      if (tokensCache.size > MAX_TOKEN_CACHE_ENTRIES) {
+        const oldest = tokensCache.keys().next().value;
+        if (oldest !== undefined) tokensCache.delete(oldest);
+      }
 
       // Notify all subscribers
       const subs = subscribers.get(tokensCacheKey);
@@ -390,33 +393,24 @@ export const CodeBlockContent = ({
   );
 
   // Async highlighting result (populated after shiki loads)
-  const [asyncTokens, setAsyncTokens] = useState<TokenizedCode | null>(null);
-  const asyncKeyRef = useRef({ code, language });
-
-  // Invalidate stale async tokens synchronously during render
-  if (
-    asyncKeyRef.current.code !== code ||
-    asyncKeyRef.current.language !== language
-  ) {
-    asyncKeyRef.current = { code, language };
-    setAsyncTokens(null);
-  }
+  const cacheKey = getTokensCacheKey(code, language);
+  const [asyncResult, setAsyncResult] = useState<{ key: string; tokens: TokenizedCode } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     highlightCode(code, language, (result) => {
       if (!cancelled) {
-        setAsyncTokens(result);
+        setAsyncResult({ key: cacheKey, tokens: result });
       }
     });
 
     return () => {
       cancelled = true;
     };
-  }, [code, language]);
+  }, [cacheKey, code, language]);
 
-  const tokenized = asyncTokens ?? syncTokens;
+  const tokenized = asyncResult?.key === cacheKey ? asyncResult.tokens : syncTokens;
 
   return (
     <div className="relative overflow-auto">

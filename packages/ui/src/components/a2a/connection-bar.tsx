@@ -1,13 +1,16 @@
-import React from "react"
+"use client"
 
 import { A2AConnectionForm } from "./connection-form"
 import type { A2AAgentSuggestion } from "./connection-form"
+import type { ConnectionTarget } from "@mokronos/a2a-react"
 import { A2AConnectionStatus } from "./connection-status"
 import { cn } from "../../lib/utils"
 
 export type A2AConnectionBarProps = {
   className?: string
   agentSuggestions?: A2AAgentSuggestion[]
+  configuredTarget?: ConnectionTarget
+  allowDirectUrl?: boolean
   /** Stack form over status ("vertical", e.g. in a sidebar) or inline them ("horizontal"). */
   orientation?: "horizontal" | "vertical"
 }
@@ -16,15 +19,16 @@ export type A2AConnectionBarProps = {
 export function A2AConnectionBar({
   className,
   agentSuggestions,
+  configuredTarget,
+  allowDirectUrl,
   orientation = "horizontal",
 }: A2AConnectionBarProps) {
-  const isVertical = orientation === "vertical"
-
   return (
-    <div className={cn("flex gap-2", isVertical ? "flex-col" : "items-center", className)}>
+    <div className={cn("a2a-connection-bar", className)} data-orientation={orientation}>
       <A2AConnectionForm
         agentSuggestions={agentSuggestions}
-        className={isVertical ? undefined : "min-w-0 flex-1"}
+        configuredTarget={configuredTarget}
+        allowDirectUrl={allowDirectUrl}
       />
       <A2AConnectionStatus />
     </div>

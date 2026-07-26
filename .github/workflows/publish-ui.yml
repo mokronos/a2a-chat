@@ -1,0 +1,36 @@
+name: Publish UI
+
+on:
+  push:
+    tags: ["ui-v*"]
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: publish-ui-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+      - run: npm install -g npm@latest
+      - name: Verify tag matches package version
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#ui-v}"
+          PKG_VERSION="$(jq -r .version packages/ui/package.json)"
+          test "$TAG_VERSION" = "$PKG_VERSION"
+      - run: bun install --frozen-lockfile
+      - run: bun run build:ui
+      - run: npm publish
+        working-directory: packages/ui

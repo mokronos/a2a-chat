@@ -9,7 +9,7 @@
       "title": "A2A Chat",
       "description": "Composable A2A agent chat UI components backed by the @mokronos/a2a-react headless package.",
       "dependencies": [
-        "@mokronos/a2a-react@0.3.0",
+        "@mokronos/a2a-react@0.4.0",
         "@base-ui/react@^1.6.0",
         "@shadcn/react@^0.2.1",
         "@streamdown/cjk@^1.0.3",
@@ -32,6 +32,8 @@
       "files": [
         { "path": "packages/ui/src/lib/utils.ts", "type": "registry:lib", "target": "lib/utils.ts" },
         { "path": "packages/ui/src/lib/use-controllable-state.ts", "type": "registry:lib", "target": "lib/use-controllable-state.ts" },
+        { "path": "packages/ui/src/lib/attachments.ts", "type": "registry:lib", "target": "lib/attachments.ts" },
+        { "path": "packages/ui/src/lib/protocol.ts", "type": "registry:lib", "target": "lib/protocol.ts" },
 
         { "path": "packages/ui/src/components/ui/badge.tsx", "type": "registry:ui", "target": "components/ui/badge.tsx" },
         { "path": "packages/ui/src/components/ui/button.tsx", "type": "registry:ui", "target": "components/ui/button.tsx" },
@@ -69,6 +71,9 @@
         { "path": "packages/ui/src/components/shared/message-box.tsx", "type": "registry:component", "target": "components/shared/message-box.tsx" },
 
         { "path": "packages/ui/src/components/a2a/inspector-event-renderers.tsx", "type": "registry:component", "target": "components/a2a/inspector-event-renderers.tsx" },
+        { "path": "packages/ui/src/components/a2a/renderers.tsx", "type": "registry:component", "target": "components/a2a/renderers.tsx" },
+        { "path": "packages/ui/src/components/a2a/chat-root.tsx", "type": "registry:component", "target": "components/a2a/chat-root.tsx" },
+        { "path": "packages/ui/src/components/a2a/conversation-list.tsx", "type": "registry:component", "target": "components/a2a/conversation-list.tsx" },
         { "path": "packages/ui/src/components/a2a/part-renderers.tsx", "type": "registry:component", "target": "components/a2a/part-renderers.tsx" },
         { "path": "packages/ui/src/components/a2a/a2a-form.tsx", "type": "registry:component", "target": "components/a2a/a2a-form.tsx" },
         { "path": "packages/ui/src/components/a2a/input-request.tsx", "type": "registry:component", "target": "components/a2a/input-request.tsx" },
@@ -79,9 +84,10 @@
         { "path": "packages/ui/src/components/a2a/input.tsx", "type": "registry:component", "target": "components/a2a/input.tsx" },
         { "path": "packages/ui/src/components/a2a/messages.tsx", "type": "registry:component", "target": "components/a2a/messages.tsx" },
         { "path": "packages/ui/src/components/a2a/prompt-suggestions.tsx", "type": "registry:component", "target": "components/a2a/prompt-suggestions.tsx" },
-        { "path": "packages/ui/src/components/a2a/task-list.tsx", "type": "registry:component", "target": "components/a2a/task-list.tsx" }
+        { "path": "packages/ui/src/A2AChat.tsx", "type": "registry:component", "target": "components/a2a/A2AChat.tsx" },
+        { "path": "packages/ui/src/styles/globals.css", "type": "registry:style", "target": "styles/a2a-chat.css" }
       ],
-      "docs": "Install @mokronos/a2a-react from npm first if your package manager does not install registry dependencies automatically. Wrap copied components in <A2AChatProvider> from @mokronos/a2a-react."
+      "docs": "Install @mokronos/a2a-react first if your package manager does not install registry dependencies automatically. Wrap composed primitives in <A2AChatProvider> and <A2AChatRoot>, and pass a conversationId to conversation components."
     }
   ]
 }

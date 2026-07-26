@@ -1,49 +1,12 @@
-import React from "react"
+"use client"
 
+import type { A2AChat, ConversationId } from "@mokronos/a2a-react"
 import { useA2AChat } from "@mokronos/a2a-react"
-import { Suggestion, Suggestions } from "../ai-elements/suggestion"
+import type { ReactNode } from "react"
+import { cn } from "../../lib/utils"
 
-export type A2APromptSuggestionsProps = {
-  className?: string
-  children: React.ReactNode
-}
-
-/** Container for a row of prompt suggestion chips. */
-export function A2APromptSuggestions({ className, children }: A2APromptSuggestionsProps) {
-  return <Suggestions className={className}>{children}</Suggestions>
-}
-
-export type A2APromptSuggestionProps = {
-  /** Text dropped into (or submitted to) the input when clicked. */
-  prompt: string
-  /** Submit immediately instead of just filling the input. Default: false. */
-  submit?: boolean
-  className?: string
-  children?: React.ReactNode
-}
-
-/** A single clickable prompt suggestion. Fills the input, or submits when `submit`. */
-export function A2APromptSuggestion({
-  prompt,
-  submit = false,
-  className,
-  children,
-}: A2APromptSuggestionProps) {
-  const { setTaskInput, handleSubmitTask } = useA2AChat()
-
-  return (
-    <Suggestion
-      suggestion={prompt}
-      className={className}
-      onClick={() => {
-        if (submit) {
-          handleSubmitTask(prompt)
-        } else {
-          setTaskInput(prompt)
-        }
-      }}
-    >
-      {children ?? prompt}
-    </Suggestion>
-  )
-}
+export function A2APromptSuggestions({ children, className }: { children: ReactNode; className?: string }) { return <div className={cn("a2a-suggestions", className)}>{children}</div> }
+export type A2APromptSuggestionProps = { conversationId: ConversationId; prompt: string; controller?: A2AChat; className?: string; children?: ReactNode }
+function ProviderSuggestion(props: Omit<A2APromptSuggestionProps, "controller">) { return <Suggestion {...props} controller={useA2AChat()} /> }
+function Suggestion({ conversationId, prompt, controller, className, children }: A2APromptSuggestionProps) { return <button type="button" className={className} disabled={controller!.connection.kind !== "connected"} onClick={() => { void controller!.sendText({ conversationId, text: prompt }) }}>{children ?? prompt}</button> }
+export function A2APromptSuggestion(props: A2APromptSuggestionProps) { return props.controller ? <Suggestion {...props} /> : <ProviderSuggestion {...props} /> }

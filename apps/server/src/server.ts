@@ -1,4 +1,4 @@
-import { InspectorApi, CoreHandlers } from "@mokronos/a2a-chat-api";
+import { A2AProxyModule, CoreHandlers, InspectorApi } from "@mokronos/a2a-chat-api";
 import { HttpApiBuilder, HttpServer } from "@effect/platform";
 import { Layer } from "effect";
 import { extname, resolve } from "node:path";
@@ -6,8 +6,19 @@ import { extname, resolve } from "node:path";
 const PORT = 19999
 const PUBLIC_DIR = resolve(import.meta.dir, "..", "public")
 
-const InspectorApiLive = HttpApiBuilder.api(InspectorApi).pipe(Layer.provide(CoreHandlers))
-const ApiLayer = Layer.mergeAll(InspectorApiLive, HttpServer.layerContext) as Layer.Layer<any, any, never>
+const ProxyLive = A2AProxyModule.layer({
+    targets: {
+        local: {
+            baseUrl: process.env.A2A_LOCAL_TARGET_URL ?? "http://localhost:8000",
+        },
+    },
+    // The packaged inspector is a local development tool. Production deployments
+    // must opt in before a configured target can resolve to a private address.
+    allowPrivateAddresses: process.env.NODE_ENV !== "production",
+})
+const HandlersLive = CoreHandlers.pipe(Layer.provide(ProxyLive))
+const InspectorApiLive = HttpApiBuilder.api(InspectorApi).pipe(Layer.provide(HandlersLive))
+const ApiLayer = Layer.mergeAll(InspectorApiLive, HttpServer.layerContext)
 const { handler: apiHandler } = HttpApiBuilder.toWebHandler(ApiLayer)
 
 const CONTENT_TYPES: Record<string, string> = {

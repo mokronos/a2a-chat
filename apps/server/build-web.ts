@@ -7,7 +7,7 @@ import { resolve } from "node:path"
 // `@mokronos/a2a-react` is reachable through more than one path — the workspace
 // symlink under apps/server/node_modules (from web/main.tsx) and the one under
 // packages/ui/node_modules (from the pre-built ui dist) — and bun's resolver
-// even prefers a stale published 0.3.0 copy in its global install cache. The
+// can otherwise prefer an installed copy over the workspace build. The
 // bundler keys module identity by the resolved file path, so these divergent
 // resolutions bundle a2a-react more than once. Two copies means two React
 // contexts: the <A2AChatProvider> from one copy can't satisfy the useA2AChat()
