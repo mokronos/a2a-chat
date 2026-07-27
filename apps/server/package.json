@@ -12,10 +12,10 @@
   "scripts": {
     "build": "bun run build:web && bun run build:cli",
     "build:cli": "bun build ./src/server.ts --outfile ./dist/cli.js --target bun --banner '#!/usr/bin/env bun' && chmod +x ./dist/cli.js",
-    "build:web": "bun run --cwd ../../packages/api build && bun run --cwd ../../packages/react build && bun run --cwd ../../packages/ui build && bun run ./build-web.ts && ../../node_modules/.bin/tailwindcss -i ./web/app.css -o ./public/assets/styles.css --minify && cp node_modules/katex/dist/katex.min.css ./public/assets/katex.min.css && mkdir -p ./public/assets/fonts && cp node_modules/katex/dist/fonts/* ./public/assets/fonts/",
+    "build:web": "bun run --cwd ../../packages/api build && bun run --cwd ../../packages/react build && bun run --cwd ../../packages/ui build && bun run ./build-web.ts && tailwindcss -i ./web/app.css -o ./public/assets/styles.css --minify && cp node_modules/katex/dist/katex.min.css ./public/assets/katex.min.css && mkdir -p ./public/assets/fonts && cp node_modules/katex/dist/fonts/* ./public/assets/fonts/",
     "dev": "bun run dev:build && bun run dev:watch",
-    "dev:build": "bun run --cwd ../../packages/api build:js && bun run --cwd ../../packages/react build:js && bun run --cwd ../../packages/ui build:js && bun run ./build-web.ts && ../../node_modules/.bin/tailwindcss -i ./web/app.css -o ./public/assets/styles.css && cp node_modules/katex/dist/katex.min.css ./public/assets/katex.min.css && mkdir -p ./public/assets/fonts && cp node_modules/katex/dist/fonts/* ./public/assets/fonts/",
-    "dev:watch": "bun run --cwd ../../packages/api watch & bun run --cwd ../../packages/react watch & bun run --cwd ../../packages/ui watch & bun run ./build-web.ts --watch & ../../node_modules/.bin/tailwindcss -i ./web/app.css -o ./public/assets/styles.css --watch & bun run --hot src/server.ts",
+    "dev:build": "bun run --cwd ../../packages/api build:js && bun run --cwd ../../packages/react build:js && bun run --cwd ../../packages/ui build:js && bun run ./build-web.ts && tailwindcss -i ./web/app.css -o ./public/assets/styles.css && cp node_modules/katex/dist/katex.min.css ./public/assets/katex.min.css && mkdir -p ./public/assets/fonts && cp node_modules/katex/dist/fonts/* ./public/assets/fonts/",
+    "dev:watch": "bun run --cwd ../../packages/api watch & bun run --cwd ../../packages/react watch & bun run --cwd ../../packages/ui watch & bun run ./build-web.ts --watch & tailwindcss -i ./web/app.css -o ./public/assets/styles.css --watch & bun run --hot src/server.ts",
     "prepack": "bun run build"
   },
   "devDependencies": {
@@ -23,6 +23,7 @@
     "@mokronos/a2a-chat-api": "workspace:*",
     "@mokronos/a2a-chat-ui": "workspace:*",
     "@mokronos/a2a-react": "workspace:*",
+    "@tailwindcss/cli": "^4.1.14",
     "@types/bun": "latest",
     "@types/react-dom": "^19.0.0",
     "effect": "^3.21.1",
@@ -30,6 +31,7 @@
     "lucide-react": "^1.17.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "tailwindcss": "^4.2.2",
     "typescript": "^5"
   }
 }
