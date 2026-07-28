@@ -4,15 +4,15 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
+# Vercel installs from this file, so the git revision is a direct reference
+# rather than a uv-only source, and pydantic-ai is pinned: after 1.84 its
+# `run_stream_events` became a context manager, which the worker does not use.
 dependencies = [
-    "fasta2a",
-    "pydantic-ai>=1.67.0",
-    "pydantic-ai-slim[mcp]>=1.80.0",
+    "fasta2a @ git+https://github.com/pydantic/fasta2a.git@b7b6f11d472745656d77c96d10e5656fc3be0e50",
+    "pydantic-ai==1.84.1",
+    "pydantic-ai-slim[mcp]==1.84.1",
     "python-dotenv>=1.2.2",
 ]
-
-[tool.uv.sources]
-fasta2a = { git = "https://github.com/pydantic/fasta2a.git", rev = "b7b6f11d472745656d77c96d10e5656fc3be0e50" }
 
 [tool.pyright]
 venvPath = "."

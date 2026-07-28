@@ -27,9 +27,15 @@
     "packages/*",
     "apps/*"
   ],
+  "dependencies": {
+    "@effect/platform": "^0.96.0",
+    "@mokronos/a2a-chat-api": "workspace:*",
+    "effect": "^3.21.1"
+  },
   "devDependencies": {
     "@effect/language-service": "^0.85.1",
     "@types/bun": "latest",
+    "@types/node": "^26.1.2",
     "@types/react": "^19.0.0",
     "shadcn": "^4.13.1",
     "typescript": "^5"

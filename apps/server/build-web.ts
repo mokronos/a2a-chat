@@ -37,6 +37,9 @@ async function runBuild(): Promise<boolean> {
     naming: "app.js",
     target: "browser",
     format: "esm",
+    // Hosted builds (Vercel sets NODE_ENV=production) pay for every byte over
+    // the wire; local dev keeps readable output for stack traces.
+    minify: process.env.NODE_ENV === "production",
     plugins: [pinA2AReact],
   })
   for (const log of result.logs) console.error(log)

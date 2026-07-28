@@ -11,3 +11,5 @@ skills-lock.json
 executor.jsonc
 # python tooling (test-agent)
 .ruff_cache/
+.vercel
+.env*
