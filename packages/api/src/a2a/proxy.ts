@@ -24,6 +24,7 @@ import {
     A2AProxyPolicy as Policy,
     type A2ATargetDefinition,
     type ResolvedA2ATarget,
+    type ResolvedClientCredential,
 } from "./policy"
 
 export interface A2AProxyLimits {
@@ -107,6 +108,15 @@ export const defaultA2AProxyLimits: A2AProxyLimits = Object.freeze({
     streamIdleTimeoutMs: 60_000,
 })
 
+/**
+ * The header a browser uses to hand its own upstream credential to the proxy.
+ *
+ * It is never forwarded verbatim: a target that opts in via `clientCredential`
+ * decides which upstream header carries the secret, so a credential meant for
+ * one agent cannot reach another.
+ */
+export const A2A_CLIENT_CREDENTIAL_HEADER = "x-a2a-credential"
+
 export const defaultA2AProxyHeaderPolicy: A2AProxyHeaderPolicy = Object.freeze({
     request: Object.freeze(["accept", "content-type"]),
     response: Object.freeze([
@@ -116,6 +126,7 @@ export const defaultA2AProxyHeaderPolicy: A2AProxyHeaderPolicy = Object.freeze({
         "etag",
         "last-modified",
         "retry-after",
+        "www-authenticate",
         "x-accel-buffering",
     ]),
 })
@@ -344,9 +355,20 @@ function readRequestBody(
     )
 }
 
+function clientCredentialHeader(
+    incoming: Readonly<Record<string, string>>,
+    credential: ResolvedClientCredential | undefined,
+): { readonly name: string; readonly value: string } | undefined {
+    if (!credential) return undefined
+    const secret = incoming[A2A_CLIENT_CREDENTIAL_HEADER]?.trim()
+    if (!secret) return undefined
+    return { name: credential.name, value: `${credential.prefix}${secret}` }
+}
+
 function safeRequestHeaders(input: {
     readonly incoming: Readonly<Record<string, string>>
     readonly injected: Readonly<Record<string, string>>
+    readonly credential: ResolvedClientCredential | undefined
     readonly allowlist: ReadonlySet<string>
     readonly includeInjected: boolean
     readonly hasBody: boolean
@@ -359,7 +381,12 @@ function safeRequestHeaders(input: {
         }
     }
 
+    // Credentials ride along only on the target's own origin — `includeInjected`
+    // is false once a redirect leaves it — and server-owned headers still win.
     if (input.includeInjected) {
+        const credential = clientCredentialHeader(input.incoming, input.credential)
+        if (credential) headers.set(credential.name, credential.value)
+
         for (const [rawName, value] of Object.entries(input.injected)) {
             const name = rawName.toLowerCase()
             if (!hardBlockedHeaders.has(name) && name !== "host") headers.set(name, value)
@@ -585,6 +612,7 @@ function makeService(options: A2AProxyModuleOptions): A2AProxyService {
                             headers: safeRequestHeaders({
                                 incoming: input.incomingHeaders,
                                 injected: input.target.headers,
+                                credential: input.target.clientCredential,
                                 allowlist: requestHeaders,
                                 includeInjected: url.origin === input.initialUrl.origin,
                                 hasBody: body !== undefined,

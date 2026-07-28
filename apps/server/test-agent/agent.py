@@ -13,20 +13,29 @@ from fasta2a.schema import Message, Part
 from pydantic_ai import Agent, FunctionToolset
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
-from pydantic_ai.mcp import MCPServerStreamableHTTP
-
-# executor = MCPServerStreamableHTTP("http://localhost:4788/mcp")
 
 def get_weather(location: str) -> str:
     """Get the weather in a given location."""
     return f"The weather in {location} is sunny with a temperature of 25 degrees Celsius."
 
+# The delegation demo talks to this same agent, so it follows the deployment URL
+# and has to present the same token every other client does.
+PEER_URL = os.environ.get(
+    "A2A_PEER_URL",
+    os.environ.get("A2A_PUBLIC_URL", "http://localhost:8000"),
+).rstrip("/")
+
 AGENTS = [
     {
         "name": "test agent",
-        "url": "http://localhost:8000",
+        "url": PEER_URL,
     }
 ]
+
+
+def _peer_headers() -> dict[str, str]:
+    token = os.environ.get("A2A_API_TOKEN", "").strip()
+    return {"Authorization": f"Bearer {token}"} if token else {}
 
 TERMINAL_STATES = {"completed", "failed", "canceled", "rejected"}
 ProgressCallback = Callable[[dict[str, Any]], Awaitable[None]]
@@ -145,7 +154,7 @@ async def send_task(url: str, text: str) -> str:
     latest_task_id: str | None = None
     latest_final_text = ""
 
-    async with httpx.AsyncClient(base_url=url, timeout=None) as http_client:
+    async with httpx.AsyncClient(base_url=url, timeout=None, headers=_peer_headers()) as http_client:
         client = A2AClient(base_url=url, http_client=http_client)
 
         async for event in client.stream_message(message):

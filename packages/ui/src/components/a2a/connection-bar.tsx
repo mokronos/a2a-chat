@@ -1,5 +1,6 @@
 "use client"
 
+import { A2AConnectionAuth } from "./connection-auth"
 import { A2AConnectionForm } from "./connection-form"
 import type { A2AAgentSuggestion } from "./connection-form"
 import type { ConnectionTarget } from "@mokronos/a2a-react"
@@ -31,6 +32,7 @@ export function A2AConnectionBar({
         allowDirectUrl={allowDirectUrl}
       />
       <A2AConnectionStatus />
+      <A2AConnectionAuth />
     </div>
   )
 }

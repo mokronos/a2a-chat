@@ -1,4 +1,5 @@
 import base64
+import os
 import uuid
 import logging
 from collections.abc import AsyncIterator
@@ -21,6 +22,7 @@ from fasta2a.schema import (
     TaskStatusUpdateEvent,
 )
 from fasta2a.storage import InMemoryStorage
+from starlette.middleware import Middleware
 from pydantic_ai import (
     AgentRunResultEvent,
     FinalResultEvent,
@@ -45,6 +47,8 @@ Context = list[Message]
 """The shape of the context you store in the storage."""
 
 from agent import agent, progress_callback
+from auth import BearerTokenMiddleware, configured_token
+from card import agent_card_route
 
 logger = logging.getLogger(__name__)
 
@@ -544,7 +548,25 @@ async def lifespan(app: FastA2A) -> AsyncIterator[None]:
             yield
 
 
-app = FastA2A(storage=storage, broker=broker, lifespan=lifespan)
+AGENT_NAME = "A2A test agent"
+AGENT_DESCRIPTION = "Demo agent for the a2a-chat inspector."
+AGENT_URL = os.environ.get("A2A_PUBLIC_URL", "http://localhost:8000").rstrip("/")
+
+_token = configured_token()
+
+app = FastA2A(
+    storage=storage,
+    broker=broker,
+    lifespan=lifespan,
+    name=AGENT_NAME,
+    description=AGENT_DESCRIPTION,
+    url=AGENT_URL,
+    # Registered before FastA2A adds its own card route, so this one answers.
+    routes=[agent_card_route(name=AGENT_NAME, description=AGENT_DESCRIPTION, url=AGENT_URL)],
+    middleware=(
+        [Middleware(BearerTokenMiddleware, token=_token)] if _token is not None else None
+    ),
+)
 
 def main() -> None:
     import uvicorn

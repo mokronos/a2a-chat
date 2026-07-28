@@ -18,6 +18,12 @@ export {
   turnMessages,
 } from "./reducer"
 export {
+  agentAuthRequirement,
+  CLIENT_CREDENTIAL_HEADER,
+  credentialHeaders,
+  credentialKey,
+} from "./credentials"
+export {
   isA2AEvent,
   isArtifact,
   isMessageEvent,
@@ -42,6 +48,12 @@ export {
 export { A2AChatError } from "./types"
 
 export type { A2AChat, UseA2AChatOptions } from "./use-a2a-chat"
+export type {
+  AgentAuthRequirement,
+  AuthState,
+  AuthStatus,
+  CredentialStorage,
+} from "./credentials"
 export type { A2AChatProviderProps } from "./context"
 export type {
   CancelResult,

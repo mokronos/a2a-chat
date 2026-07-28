@@ -18,6 +18,18 @@ import {
   type RequestOptions,
   type Transport,
 } from "@a2a-js/sdk/client"
+import {
+  agentAuthRequirement,
+  credentialHeaders,
+  credentialKey,
+  defaultCredentialStorage,
+  readCredential,
+  writeCredential,
+  type AgentAuthRequirement,
+  type AuthState,
+  type AuthStatus,
+  type CredentialStorage,
+} from "./credentials"
 import { isA2AEvent } from "./events"
 import {
   PERSISTED_CONVERSATION_VERSION,
@@ -70,11 +82,14 @@ type ConsumeResult = "aborted" | "closed" | "paused" | "settled"
 export type RuntimeOptions = ConnectionOptions & {
   repository?: ConversationRepository
   recovery?: RecoveryOptions
+  /** Where a user-entered agent credential is kept. Defaults to `sessionStorage`; `null` keeps it in memory. */
+  credentialStorage?: CredentialStorage | null
 }
 
 export type RuntimeSnapshot = {
   readonly connection: ConnectionState
   readonly conversations: readonly Conversation[]
+  readonly auth: AuthState
   readonly persistenceError?: Error
   readonly revision: number
 }
@@ -238,6 +253,10 @@ export class A2AChatRuntime {
   #connectionRevision = 0
   #persistenceError: Error | undefined
   #snapshot: RuntimeSnapshot
+  #credential: string | undefined
+  #credentialKey: string | undefined
+  #authRequirement: AgentAuthRequirement | undefined
+  #authStatus: AuthStatus = "not-required"
 
   constructor(options: RuntimeOptions = {}) {
     this.#options = options
@@ -250,6 +269,31 @@ export class A2AChatRuntime {
 
   get conversations(): readonly Conversation[] {
     return this.#snapshot.conversations
+  }
+
+  get auth(): AuthState {
+    return this.#snapshot.auth
+  }
+
+  /**
+   * Stores the secret the user pasted for the current agent.
+   *
+   * Nothing is validated here: the agent decides, and the next 401 or successful
+   * request moves the status to `rejected` or `accepted`.
+   */
+  setCredential(value: string | undefined): void {
+    const next = value?.trim() || undefined
+    this.#credential = next
+
+    const storage = this.#credentialStorage()
+    if (storage && this.#credentialKey) writeCredential(storage, this.#credentialKey, next)
+
+    this.#authStatus = next ? "provided" : this.#authRequirement ? "required" : "not-required"
+    this.#publish()
+  }
+
+  clearCredential(): void {
+    this.setCredential(undefined)
   }
 
   get persistenceError(): Error | undefined {
@@ -333,10 +377,13 @@ export class A2AChatRuntime {
     const revision = ++this.#connectionRevision
     this.#abortAllRunners(true)
     this.#connection = { kind: "connecting", target }
+    this.#loadCredentialFor(target)
+    this.#authRequirement = undefined
+    this.#authStatus = this.#credential ? "provided" : "not-required"
     this.#publish()
 
     try {
-      const { client, card } = await connectTarget(target, this.#options)
+      const { client, card } = await connectTarget(target, this.#connectionOptions(target))
       if (revision !== this.#connectionRevision) {
         throw new A2AChatError(
           "connection-superseded",
@@ -346,6 +393,8 @@ export class A2AChatRuntime {
 
       const connected: ConnectedState = { kind: "connected", target, client, card }
       this.#connection = connected
+      this.#authRequirement = agentAuthRequirement(card)
+      this.#refreshAuthStatus()
       this.#publish()
       this.#resumeEligibleTurns()
       return connected
@@ -374,6 +423,8 @@ export class A2AChatRuntime {
     ++this.#connectionRevision
     const abortedTurns = this.#abortAllRunners(true)
     this.#connection = { kind: "disconnected" }
+    this.#authRequirement = undefined
+    this.#authStatus = this.#credential ? "provided" : "not-required"
     this.#publish()
     return { abortedTurns }
   }
@@ -926,10 +977,106 @@ export class A2AChatRuntime {
     this.#publish()
   }
 
+  #credentialStorage(): CredentialStorage | undefined {
+    const configured = this.#options.credentialStorage
+    if (configured === null) return undefined
+    return configured ?? defaultCredentialStorage()
+  }
+
+  #loadCredentialFor(target: ConnectionTarget): void {
+    const key = credentialKey(target)
+    // An injected client has no stable key; whatever is in memory stays.
+    if (!key || key === this.#credentialKey) return
+
+    const previousKey = this.#credentialKey
+    this.#credentialKey = key
+    const storage = this.#credentialStorage()
+
+    const stored = storage ? readCredential(storage, key) : undefined
+    if (stored !== undefined) {
+      this.#credential = stored
+      return
+    }
+
+    // Switching agents drops the previous one's secret; a credential set before
+    // the first connection was meant for this agent, so it is kept and stored.
+    if (previousKey !== undefined) {
+      this.#credential = undefined
+      return
+    }
+    if (storage && this.#credential) writeCredential(storage, key, this.#credential)
+  }
+
+  #refreshAuthStatus(): void {
+    // A verdict from the agent outranks anything inferred from the card.
+    if (this.#authStatus === "accepted" || this.#authStatus === "rejected") return
+    this.#authStatus = this.#credential
+      ? "provided"
+      : this.#authRequirement
+        ? "required"
+        : "not-required"
+  }
+
+  #observeAuthResponse(response: Response): void {
+    const status = this.#authStatus
+    if (response.status === 401 || response.status === 403) {
+      this.#authStatus = this.#credential ? "rejected" : "required"
+    } else if (response.ok && this.#credential) {
+      this.#authStatus = "accepted"
+    } else {
+      return
+    }
+
+    if (this.#authStatus !== status) this.#publish()
+  }
+
+  /**
+   * Adds the user's credential to every agent request and watches the replies,
+   * so a 401 turns into an auth prompt instead of an opaque failure.
+   */
+  #connectionOptions(target: ConnectionTarget): RuntimeOptions {
+    const baseFetch = this.#options.fetch ?? globalThis.fetch
+    const send = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      // Proxy endpoints are same-origin relative paths, so the request keeps its
+      // original input: only a browser could resolve them into a URL.
+      const headers = new Headers(
+        init?.headers ?? (input instanceof Request ? input.headers : undefined),
+      )
+      for (const [name, value] of Object.entries(
+        credentialHeaders({
+          target,
+          credential: this.#credential,
+          requirement: this.#authRequirement,
+        }),
+      )) {
+        headers.set(name, value)
+      }
+
+      const response = input instanceof Request
+        ? await baseFetch(new Request(input, { ...init, headers }))
+        : await baseFetch(input, { ...init, headers })
+      this.#observeAuthResponse(response)
+      return response
+    }
+
+    // Bun's ambient fetch type carries `preconnect`, which browsers and test
+    // doubles lack. It is a connection hint, so forwarding it when it exists
+    // satisfies the SDK's `typeof fetch` contract without changing behaviour.
+    const preconnect: typeof fetch.preconnect = (url, options) =>
+      globalThis.fetch.preconnect?.(url, options)
+    const fetchWithCredential: typeof fetch = Object.assign(send, { preconnect })
+    return { ...this.#options, fetch: fetchWithCredential }
+  }
+
   #createSnapshot(revision: number): RuntimeSnapshot {
     return Object.freeze({
       connection: this.#connection,
       conversations: Object.freeze([...this.#conversations.values()]),
+      auth: Object.freeze({
+        requirement: this.#authRequirement,
+        hasCredential: this.#credential !== undefined,
+        status: this.#authStatus,
+      }),
       persistenceError: this.#persistenceError,
       revision,
     })

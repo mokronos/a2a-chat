@@ -4,12 +4,29 @@ import { ProxyBadRequest, ProxyForbidden } from "./errors"
 
 export type A2AProxyOperation = "agentCard" | "jsonrpc"
 
+/**
+ * How a browser-held credential is placed on upstream requests for one target.
+ *
+ * The browser never sets an upstream auth header itself — it sends its secret in
+ * `x-a2a-credential` and the target opts in to a translation. A target without
+ * this option ignores the client credential entirely.
+ */
+export type A2AClientCredentialPolicy =
+    | { readonly kind: "bearer" }
+    | { readonly kind: "header"; readonly name: string }
+
 export interface A2ATargetDefinition {
     readonly baseUrl: string | URL
     readonly agentCardUrl?: string | URL
     readonly jsonRpcUrl?: string | URL
     readonly headers?: Readonly<Record<string, string>>
     readonly allowedRedirectOrigins?: ReadonlyArray<string | URL>
+    readonly clientCredential?: A2AClientCredentialPolicy
+}
+
+export interface ResolvedClientCredential {
+    readonly name: string
+    readonly prefix: string
 }
 
 export interface ResolvedA2ATarget {
@@ -17,6 +34,7 @@ export interface ResolvedA2ATarget {
     readonly agentCardUrl: URL
     readonly jsonRpcUrl: URL
     readonly headers: Readonly<Record<string, string>>
+    readonly clientCredential?: ResolvedClientCredential
 }
 
 export interface A2AProxyPolicy {
@@ -84,6 +102,25 @@ function parseDevelopmentUrl(value: string): Effect.Effect<URL, ProxyBadRequest>
     })
 }
 
+function validateClientCredential(
+    targetId: string,
+    policy: A2AClientCredentialPolicy | undefined,
+): ResolvedClientCredential | undefined {
+    if (!policy) return undefined
+    if (policy.kind === "bearer") return Object.freeze({ name: "authorization", prefix: "Bearer " })
+
+    const name = policy.name.toLowerCase()
+    if (forbiddenInjectedHeaders.has(name)) {
+        throw new TypeError(`Target '${targetId}' cannot carry the client credential in '${policy.name}'`)
+    }
+    try {
+        new Headers().set(name, "probe")
+    } catch {
+        throw new TypeError(`Target '${targetId}' has an invalid client credential header name`)
+    }
+    return Object.freeze({ name, prefix: "" })
+}
+
 function validateHeaders(
     targetId: string,
     input: Readonly<Record<string, string>> | undefined,
@@ -145,6 +182,7 @@ function configuredTargets(
             agentCardUrl,
             jsonRpcUrl,
             headers: validateHeaders(id, definition.headers),
+            clientCredential: validateClientCredential(id, definition.clientCredential),
         })
 
         targets.set(id, {

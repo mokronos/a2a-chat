@@ -62,6 +62,10 @@ const ProxyLive = A2AProxyModule.layer({
       },
       // Cross-origin redirects are denied unless their exact origin is listed.
       allowedRedirectOrigins: ["https://agent-cdn.example.com"],
+      // Opt in to a credential the browser holds. It arrives in the neutral
+      // `x-a2a-credential` header and is translated here, so it can never be
+      // aimed at a target that did not ask for it. Omit for server-owned auth.
+      clientCredential: { kind: "bearer" }, // or { kind: "header", name: "X-API-Key" }
     },
   },
 })

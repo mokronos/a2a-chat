@@ -71,7 +71,14 @@ const proxy = A2AProxyModule.layer({
 })
 ```
 
+A target can also opt in to a credential the browser holds — the secret arrives in a neutral `x-a2a-credential` header and the proxy translates it into the scheme that target declared, so it can never be aimed at another agent ([ADR 0003](docs/adr/0003-browser-held-agent-credentials.md)). The UI discovers the requirement from the agent card and prompts for it.
+
 The proxy validates DNS addresses and redirects, pins requests to validated addresses, strips unsafe headers, bounds payloads, and streams SSE with backpressure. See `packages/api/README.md` for integration details.
+
+## Deploy The Inspector
+
+The inspector deploys to Vercel as a static bundle plus a serverless proxy function.
+See [docs/deploy-vercel.md](docs/deploy-vercel.md) for the required environment variables.
 
 ## Development
 

@@ -67,6 +67,23 @@ type ConnectionTarget =
 
 Direct targets resolve the agent card and select an advertised JSON-RPC or HTTP+JSON transport. Proxy targets use `<basePath>/agent-card?targetId=...` and `<basePath>/jsonrpc?targetId=...`. Injected clients are accepted as-is. Required card extensions are checked for every target kind against `supportedExtensionUris`.
 
+## Agent Credentials
+
+When a connected agent card declares a `bearer` or header `apiKey` scheme, the runtime
+publishes it as `auth.requirement` and reports `auth.status` (`required`, `provided`,
+`accepted`, `rejected`). Pass the user's secret to `setCredential`; it rides on every
+request afterwards — in `x-a2a-credential` for proxy targets, or in the card's own header
+for direct ones — and a 401 or 403 flips the status to `rejected`.
+
+```tsx
+const { auth, setCredential } = useA2AChat()
+
+if (auth.status === "required") return <TokenPrompt onSubmit={setCredential} />
+```
+
+Credentials are kept per target in `sessionStorage`; pass `credentialStorage` to choose
+another store, or `null` to keep them in memory only.
+
 ## Hook API
 
 `useA2AChat()` and `useA2AChatController()` return:
@@ -75,11 +92,14 @@ Direct targets resolve the agent card and select an advertised JSON-RPC or HTTP+
 type A2AChat = {
   readonly connection: ConnectionState
   readonly conversations: readonly Conversation[]
+  readonly auth: AuthState
   readonly persistenceError?: Error
   readonly runtime: A2AChatRuntime
 
   connect(target: ConnectionTarget): Promise<ConnectedState>
   disconnect(): DisconnectResult
+  setCredential(value: string | undefined): void
+  clearCredential(): void
   createConversation(id?: ConversationId): Conversation
   getConversation(id: ConversationId): Conversation | undefined
   deleteConversation(id: ConversationId): Promise<DeleteConversationResult>

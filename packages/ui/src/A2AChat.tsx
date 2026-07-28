@@ -5,6 +5,7 @@ import type { A2AChatProviderProps, ConnectionTarget, ConversationId } from "@mo
 import { A2AChatProvider, useA2AChat } from "@mokronos/a2a-react"
 import { ImageIcon, MenuIcon, PencilIcon, SearchIcon, XIcon } from "lucide-react"
 import { ConversationList } from "./components/a2a/conversation-list"
+import { A2AConnectionAuth } from "./components/a2a/connection-auth"
 import { A2AConnectionForm, type A2AAgentSuggestion } from "./components/a2a/connection-form"
 import { A2AConnectionStatus } from "./components/a2a/connection-status"
 import { A2AInput, type A2AInputProps } from "./components/a2a/input"
@@ -26,6 +27,8 @@ export type A2AChatProps = ProviderOptions & ComposerOptions & {
   showConnectionForm?: boolean
   showHeader?: boolean
   showConnectionStatus?: boolean
+  /** Show the credential prompt when the agent card asks for one. Defaults to true. */
+  showAuthPrompt?: boolean
   showConversations?: boolean
   fillHeight?: boolean
   agentSuggestions?: readonly A2AAgentSuggestion[]
@@ -55,6 +58,7 @@ function ChatShell({
   showConnectionForm = true,
   showHeader = true,
   showConnectionStatus = true,
+  showAuthPrompt = true,
   showConversations = true,
   fillHeight = false,
   agentSuggestions,
@@ -117,7 +121,7 @@ function ChatShell({
 
   return (
     <section ref={rootRef} data-a2a-chat="" className={cn("a2a-chat", fillHeight && "a2a-fill", className)}>
-      {showHeader ? <header className="a2a-header"><div><h1>{title}</h1>{description ? <p>{description}</p> : null}</div><div className="a2a-header-actions">{showConnectionStatus ? <A2AConnectionStatus controller={controller} /> : null}{showConversations ? <button ref={menuRef} className="a2a-drawer-toggle" type="button" aria-label="Open conversations" aria-expanded={drawerOpen} onClick={() => setDrawerOpen(true)}><MenuIcon /></button> : null}</div>{showConnectionForm ? <A2AConnectionForm controller={controller} configuredTarget={configuredTarget} agentSuggestions={agentSuggestions} allowDirectUrl={allowDirectUrl} /> : null}</header> : null}
+      {showHeader ? <header className="a2a-header"><div><h1>{title}</h1>{description ? <p>{description}</p> : null}</div><div className="a2a-header-actions">{showConnectionStatus ? <A2AConnectionStatus controller={controller} /> : null}{showConversations ? <button ref={menuRef} className="a2a-drawer-toggle" type="button" aria-label="Open conversations" aria-expanded={drawerOpen} onClick={() => setDrawerOpen(true)}><MenuIcon /></button> : null}</div>{showConnectionForm ? <A2AConnectionForm controller={controller} configuredTarget={configuredTarget} agentSuggestions={agentSuggestions} allowDirectUrl={allowDirectUrl} /> : null}{showAuthPrompt ? <A2AConnectionAuth controller={controller} /> : null}</header> : null}
       <div className={cn("a2a-layout", contentClassName)}>
         {showConversations ? <><button className="a2a-drawer-backdrop" data-open={drawerOpen} type="button" aria-label="Close conversations" onClick={() => setDrawerOpen(false)} /><aside className="a2a-sidebar" data-open={drawerOpen} aria-label="Conversation navigation" inert={mobile && !drawerOpen ? true : undefined}><button ref={closeRef} className="a2a-drawer-close" type="button" aria-label="Close conversations" onClick={() => { setDrawerOpen(false); menuRef.current?.focus() }}><XIcon /></button><ConversationList controller={controller} activeConversationId={activeId} onConversationChange={selectConversation} /></aside></> : null}
         <main className="a2a-main">
@@ -136,7 +140,7 @@ function ChatShell({
 export function A2AChat(props: A2AChatProps) {
   const {
     target, autoConnect, repository, recovery, fetch, authentication, clientFactory, resolveCard,
-    supportedExtensionUris, ...shellProps
+    supportedExtensionUris, credentialStorage, ...shellProps
   } = props
-  return <A2AChatProvider target={target} autoConnect={autoConnect} repository={repository} recovery={recovery} fetch={fetch} authentication={authentication} clientFactory={clientFactory} resolveCard={resolveCard} supportedExtensionUris={supportedExtensionUris}><ChatShell {...shellProps} configuredTarget={target} /></A2AChatProvider>
+  return <A2AChatProvider target={target} autoConnect={autoConnect} repository={repository} recovery={recovery} fetch={fetch} authentication={authentication} clientFactory={clientFactory} resolveCard={resolveCard} supportedExtensionUris={supportedExtensionUris} credentialStorage={credentialStorage}><ChatShell {...shellProps} configuredTarget={target} /></A2AChatProvider>
 }

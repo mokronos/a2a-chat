@@ -52,10 +52,14 @@ function localTarget(server: Bun.Server<unknown>, input: {
     }
 }
 
-function agentCardRequest(handler: (request: Request) => Promise<Response>, targetId?: string) {
+function agentCardRequest(
+    handler: (request: Request) => Promise<Response>,
+    targetId?: string,
+    init: RequestInit = {},
+) {
     const url = new URL("http://proxy.test/api/a2a/agent-card")
     if (targetId !== undefined) url.searchParams.set("targetId", targetId)
-    return handler(new Request(url))
+    return handler(new Request(url, init))
 }
 
 function jsonRpcRequest(
@@ -415,6 +419,146 @@ describe("headers", () => {
         expect(response.headers.get("x-upstream")).toBe("allowed")
         expect(response.headers.get("set-cookie")).toBeNull()
         expect(response.headers.get("x-hop")).toBeNull()
+    })
+
+    it("translates a browser credential into the header the target opted in to", async () => {
+        let bearerHeaders: Headers | undefined
+        let apiKeyHeaders: Headers | undefined
+        const bearerServer = startServer((request) => {
+            bearerHeaders = new Headers(request.headers)
+            return new Response("ok")
+        })
+        const apiKeyServer = startServer((request) => {
+            apiKeyHeaders = new Headers(request.headers)
+            return new Response("ok")
+        })
+        const handler = makeHandler({
+            targets: {
+                bearer: {
+                    ...localTarget(bearerServer),
+                    clientCredential: { kind: "bearer" },
+                },
+                apiKey: {
+                    ...localTarget(apiKeyServer),
+                    clientCredential: { kind: "header", name: "X-API-Key" },
+                },
+            },
+            allowPrivateAddresses: true,
+        })
+
+        await jsonRpcRequest(handler, "bearer", {
+            headers: { "content-type": "application/json", "x-a2a-credential": "browser-secret" },
+        })
+        await jsonRpcRequest(handler, "apiKey", {
+            headers: { "content-type": "application/json", "x-a2a-credential": "browser-secret" },
+        })
+
+        expect(bearerHeaders?.get("authorization")).toBe("Bearer browser-secret")
+        expect(bearerHeaders?.get("x-a2a-credential")).toBeNull()
+        expect(apiKeyHeaders?.get("x-api-key")).toBe("browser-secret")
+        expect(apiKeyHeaders?.get("authorization")).toBeNull()
+    })
+
+    it("ignores a browser credential for targets that did not opt in", async () => {
+        let receivedHeaders: Headers | undefined
+        const server = startServer((request) => {
+            receivedHeaders = new Headers(request.headers)
+            return new Response("ok")
+        })
+        const handler = makeHandler({
+            targets: { agent: localTarget(server) },
+            allowPrivateAddresses: true,
+        })
+
+        await jsonRpcRequest(handler, "agent", {
+            headers: { "content-type": "application/json", "x-a2a-credential": "browser-secret" },
+        })
+
+        expect(receivedHeaders?.get("authorization")).toBeNull()
+        expect(receivedHeaders?.get("x-a2a-credential")).toBeNull()
+    })
+
+    it("keeps server-owned headers ahead of a browser credential", async () => {
+        let receivedHeaders: Headers | undefined
+        const server = startServer((request) => {
+            receivedHeaders = new Headers(request.headers)
+            return new Response("ok")
+        })
+        const handler = makeHandler({
+            targets: {
+                agent: {
+                    ...localTarget(server, { headers: { authorization: "Bearer server-secret" } }),
+                    clientCredential: { kind: "bearer" },
+                },
+            },
+            allowPrivateAddresses: true,
+        })
+
+        await jsonRpcRequest(handler, "agent", {
+            headers: { "content-type": "application/json", "x-a2a-credential": "browser-secret" },
+        })
+
+        expect(receivedHeaders?.get("authorization")).toBe("Bearer server-secret")
+    })
+
+    it("does not send a browser credential to a redirect that leaves the target origin", async () => {
+        const received = { destination: null as string | null, source: null as string | null }
+        const destination = startServer((request) => {
+            received.destination = request.headers.get("authorization")
+            return new Response("destination")
+        })
+        const source = startServer((request) => {
+            received.source = request.headers.get("authorization")
+            return Response.redirect(new URL("/final", destination.url), 307)
+        })
+        const handler = makeHandler({
+            targets: {
+                agent: {
+                    ...localTarget(source, { allowedRedirectOrigins: [destination.url] }),
+                    clientCredential: { kind: "bearer" },
+                },
+            },
+            allowPrivateAddresses: true,
+        })
+
+        const response = await agentCardRequest(handler, "agent", {
+            headers: { "x-a2a-credential": "browser-secret" },
+        })
+
+        expect(response.status).toBe(200)
+        expect(received.source).toBe("Bearer browser-secret")
+        expect(received.destination).toBeNull()
+    })
+
+    it("rejects targets that would carry the client credential in a hop-by-hop header", () => {
+        expect(() => A2AProxyModule.layer({
+            targets: {
+                agent: {
+                    baseUrl: "https://agent.example/a2a",
+                    clientCredential: { kind: "header", name: "Transfer-Encoding" },
+                },
+            },
+        })).toThrow()
+    })
+
+    it("surfaces www-authenticate so the browser can prompt for a credential", async () => {
+        const server = startServer(() =>
+            new Response("unauthorized", {
+                status: 401,
+                headers: { "www-authenticate": 'Bearer realm="a2a"' },
+            })
+        )
+        const handler = makeHandler({
+            targets: { agent: localTarget(server) },
+            allowPrivateAddresses: true,
+        })
+
+        const response = await jsonRpcRequest(handler, "agent", {
+            headers: { "content-type": "application/json" },
+        })
+
+        expect(response.status).toBe(401)
+        expect(response.headers.get("www-authenticate")).toBe('Bearer realm="a2a"')
     })
 
     it("does not permit sensitive or hop-by-hop headers in configurable client allowlists", () => {

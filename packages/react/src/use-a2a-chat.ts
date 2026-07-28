@@ -3,6 +3,7 @@
 import type { JSONRPCResponse, MessageSendConfiguration, Part } from "@a2a-js/sdk"
 import type { RequestOptions } from "@a2a-js/sdk/client"
 import * as React from "react"
+import type { AuthState } from "./credentials"
 import type { Conversation } from "./reducer"
 import {
   A2AChatRuntime,
@@ -37,10 +38,13 @@ export type UseA2AChatOptions = RuntimeOptions & {
 export type A2AChat = {
   readonly connection: ConnectionState
   readonly conversations: readonly Conversation[]
+  readonly auth: AuthState
   readonly persistenceError?: Error
   readonly runtime: A2AChatRuntime
   connect(target: ConnectionTarget): Promise<ConnectedState>
   disconnect(): DisconnectResult
+  setCredential(value: string | undefined): void
+  clearCredential(): void
   createConversation(id?: ConversationId): Conversation
   getConversation(id: ConversationId): Conversation | undefined
   deleteConversation(id: ConversationId): Promise<DeleteConversationResult>
@@ -111,9 +115,12 @@ export function useA2AChatController(options: UseA2AChatOptions = {}): A2AChat {
     runtime,
     connection: snapshot.connection,
     conversations: snapshot.conversations,
+    auth: snapshot.auth,
     persistenceError: snapshot.persistenceError,
     connect: (target) => runtime.connect(target),
     disconnect: () => runtime.disconnect(),
+    setCredential: (value) => runtime.setCredential(value),
+    clearCredential: () => runtime.clearCredential(),
     createConversation: (id) => runtime.createConversation(id),
     getConversation: (id) => runtime.getConversation(id),
     deleteConversation: (id) => runtime.deleteConversation(id),

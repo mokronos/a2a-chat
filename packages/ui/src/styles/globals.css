@@ -48,6 +48,15 @@
 [data-a2a-chat] .a2a-connection-status[data-state="connected"] span { background: #e5f6eb; border-color: #a6dab5; color: #176b35; }
 [data-a2a-chat] .a2a-connection-status[data-state="failed"] span { background: #fff0ee; border-color: #f1b5ad; color: #a5281b; }
 [data-a2a-chat] .a2a-connection-status small { color: var(--a2a-muted); }
+[data-a2a-chat] .a2a-connection-auth { align-items: center; display: flex; gap: .5rem; grid-column: 1 / -1; }
+[data-a2a-chat] .a2a-connection-auth label { flex: 1; max-width: 22rem; }
+[data-a2a-chat] .a2a-connection-auth input { background: var(--a2a-bg); border: 1px solid var(--a2a-line); border-radius: 9px; min-height: 2.25rem; padding: .45rem .7rem; width: 100%; }
+[data-a2a-chat] .a2a-connection-auth input[aria-invalid="true"] { border-color: #f1b5ad; }
+[data-a2a-chat] .a2a-connection-auth button { background: var(--a2a-accent); border: 0; border-radius: 9px; color: var(--a2a-accent-ink); padding: .45rem .75rem; }
+[data-a2a-chat] .a2a-connection-auth button[type="button"] { background: transparent; border: 1px solid var(--a2a-line); color: inherit; }
+[data-a2a-chat] .a2a-connection-auth p { color: var(--a2a-muted); font-size: .75rem; margin: 0; }
+[data-a2a-chat] .a2a-connection-auth[data-status="rejected"] p { color: #b42318; }
+[data-a2a-chat] .a2a-connection-auth[data-status="accepted"] p { color: #176b35; }
 [data-a2a-chat] .a2a-connection-bar { align-items: center; display: flex; gap: .5rem; }
 [data-a2a-chat] .a2a-connection-bar[data-orientation="vertical"] { align-items: stretch; flex-direction: column; }
 
@@ -124,7 +133,8 @@
   [data-a2a-chat] .a2a-drawer-close { margin: 0 0 .75rem auto; }
   [data-a2a-chat] .a2a-drawer-backdrop[data-open="true"] { background: rgb(0 0 0 / 25%); border: 0; display: block; inset: 0; position: absolute; z-index: 3; }
   [data-a2a-chat] .a2a-header { padding: .8rem; }
-  [data-a2a-chat] .a2a-connection-form { flex-direction: column; }
+  [data-a2a-chat] .a2a-connection-form, [data-a2a-chat] .a2a-connection-auth { flex-direction: column; }
+  [data-a2a-chat] .a2a-connection-auth label { max-width: none; }
   [data-a2a-chat] .a2a-message-column { padding: 1rem; }
   [data-a2a-chat] .a2a-compose-area { padding: .75rem; }
 }

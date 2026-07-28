@@ -1,6 +1,7 @@
 export { InspectorApi } from "./api"
 export { CoreHandlers } from "./handlers"
 export {
+    A2A_CLIENT_CREDENTIAL_HEADER,
     A2AProxy,
     type A2AProxyFetchAdapter,
     type A2AProxyFetchRequest,
@@ -15,10 +16,12 @@ export {
     defaultA2AProxyLimits,
 } from "./a2a/proxy"
 export {
+    type A2AClientCredentialPolicy,
     type A2AProxyOperation,
     A2AProxyPolicy,
     type A2ATargetDefinition,
     type ResolvedA2ATarget,
+    type ResolvedClientCredential,
     resolveAgentCardUrl,
 } from "./a2a/policy"
 export {

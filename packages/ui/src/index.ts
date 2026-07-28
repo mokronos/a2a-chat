@@ -6,6 +6,8 @@ export { A2AChatProvider, useA2AChat, useA2AChatController } from "@mokronos/a2a
 export type { A2AChat as A2AChatController, A2AChatProviderProps, ConnectionTarget, Conversation, ConversationId, Turn } from "@mokronos/a2a-react"
 export { A2AConnectionForm } from "./components/a2a/connection-form"
 export type { A2AAgentSuggestion, A2AConnectionFormProps } from "./components/a2a/connection-form"
+export { A2AConnectionAuth } from "./components/a2a/connection-auth"
+export type { A2AConnectionAuthProps } from "./components/a2a/connection-auth"
 export { A2AConnectionStatus } from "./components/a2a/connection-status"
 export type { A2AConnectionStatusProps } from "./components/a2a/connection-status"
 export { A2AConnectionBar } from "./components/a2a/connection-bar"
